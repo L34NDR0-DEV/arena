@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Tower Defense on the Space</title>
+<link rel="icon" type="image/svg+xml" href="./favicon.svg"/>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
@@ -227,6 +228,8 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   padding:2px 6px;border-radius:3px;
 }
 .change-pilot-btn:hover{color:var(--cyan);}
+.logout-btn{color:#ff6b6b;border-color:#5a2222;}
+.logout-btn:hover{border-color:#ff6b6b;box-shadow:0 0 10px #ff6b6b33;color:#ff8a8a;}
 .changelog-btn{
   display:flex;align-items:center;gap:7px;
   background:var(--panel2);border:1px solid var(--border);border-radius:4px;
@@ -327,20 +330,44 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .shop-card{
   flex-shrink:0;width:96px;display:flex;flex-direction:column;align-items:center;gap:6px;
   background:var(--panel2);border:1.5px solid var(--border);border-radius:5px;
-  padding:10px 6px;cursor:pointer;transition:all .15s;
+  padding:10px 6px;cursor:pointer;transition:transform .18s,border-color .18s,box-shadow .18s,opacity .18s;
+  animation:shopCardIn .35s cubic-bezier(.34,1.56,.64,1) backwards;
+  animation-delay:calc(var(--i,0) * 45ms);
 }
-.shop-card:hover{border-color:var(--border2);transform:translateY(-2px);}
-.shop-card.selected{border-color:var(--cyan);box-shadow:0 0 12px #00d4ff33;background:#061422;}
-.shop-card.locked{filter:grayscale(.7);opacity:.6;}
-.shop-card.locked:hover{opacity:.9;}
+@keyframes shopCardIn{
+  0%{transform:translateY(10px) scale(.92);opacity:0;}
+  100%{transform:translateY(0) scale(1);opacity:1;}
+}
+.shop-card:hover{border-color:var(--cyan);transform:translateY(-3px) scale(1.03);box-shadow:0 6px 16px #00d4ff22;}
+.shop-card.selected{border-color:var(--cyan);box-shadow:0 0 16px #00d4ff44;background:#061422;animation:shopCardIn .35s cubic-bezier(.34,1.56,.64,1) backwards,shopCardPulse 2.4s ease-in-out infinite;}
+@keyframes shopCardPulse{
+  0%,100%{box-shadow:0 0 12px #00d4ff33;}
+  50%{box-shadow:0 0 20px #00d4ff55;}
+}
 .shop-card-name{font-size:8px;color:var(--text);text-align:center;letter-spacing:.5px;}
 .shop-card-tag{font-size:8px;}
 .shop-card-tag.owned{color:var(--green);}
 .shop-card-tag.locked{color:#ffcc44;}
+.shop-track-empty{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  color:var(--text2);font-size:10px;text-align:center;padding:30px 16px;letter-spacing:.5px;
+  animation:shopCardIn .4s cubic-bezier(.34,1.56,.64,1);
+}
+.shop-track-empty svg{width:34px;height:34px;color:var(--green);filter:drop-shadow(0 0 8px var(--green));}
 .shop-frame{
   flex-shrink:0;width:180px;display:flex;flex-direction:column;align-items:center;gap:8px;
   background:linear-gradient(180deg,#061422,#04080f);border:1.5px solid var(--cyan);
   border-radius:6px;padding:16px 14px;box-shadow:0 0 20px #00d4ff22;
+  animation:shopFrameGlow 3.6s ease-in-out infinite;
+}
+@keyframes shopFrameGlow{
+  0%,100%{box-shadow:0 0 16px #00d4ff1c;border-color:var(--cyan);}
+  50%{box-shadow:0 0 26px #00d4ff3c;border-color:#5be8ff;}
+}
+.shop-frame canvas{animation:shopFrameFloat 3.2s ease-in-out infinite;filter:drop-shadow(0 4px 10px #00d4ff33);}
+@keyframes shopFrameFloat{
+  0%,100%{transform:translateY(0);}
+  50%{transform:translateY(-4px);}
 }
 .shop-frame-label{font-size:7px;letter-spacing:2px;color:var(--cyan);font-family:'Press Start 2P',monospace;}
 .shop-frame-name{font-size:11px;color:var(--text);font-weight:700;text-align:center;}
@@ -673,6 +700,10 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
       <button class="changelog-btn" id="changelog-btn" onclick="openChangelog()" title="Novidades">
         <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="5"/><line x1="6" y1="4" x2="6" y2="6.5"/><circle cx="6" cy="8.5" r=".6" fill="currentColor" stroke="none"/></svg>
         NOVIDADES
+      </button>
+      <button class="changelog-btn logout-btn" id="logout-btn" onclick="goLoginScreen()" title="Sair da conta">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 2 H3 a1 1 0 0 0 -1 1 v6 a1 1 0 0 0 1 1 h2"/><path d="M5.5 6 H10.5"/><path d="M8.5 4 L10.5 6 L8.5 8"/></svg>
+        SAIR
       </button>
       <button class="play-btn" onclick="startGame()">
         <svg viewBox="0 0 10 10" fill="currentColor"><polygon points="1,0 10,5 1,10"/></svg>
@@ -1165,7 +1196,9 @@ function renderSkinGrid(){
   const owned = new Set(profile ? profile.ownedSkins : [economy_FREE_SKIN_ID]);
   const equipped = profile ? profile.equippedSkin : economy_FREE_SKIN_ID;
   grid.innerHTML='';
-  SKINS.forEach(skin=>{
+  // A nave equipada aparece primeiro — é a que o piloto está usando agora.
+  const ordered = [...SKINS].sort((a,b)=> (b.id===equipped) - (a.id===equipped));
+  ordered.forEach(skin=>{
     const isOwned = owned.has(skin.id);
     const isEquipped = skin.id===equipped;
     if (isEquipped) selectedSkin = skin.id;
@@ -1205,15 +1238,30 @@ function shopOwnedSet(){
   return new Set(profile ? profile.ownedSkins : [economy_FREE_SKIN_ID]);
 }
 
+function shopAvailableSkins(){
+  // A vitrine só mostra naves que o piloto ainda não possui — comprar o que já se tem não faz sentido.
+  const owned = shopOwnedSet();
+  return SKINS.filter(s=>!owned.has(s.id));
+}
+
 function buildShopTrack(){
   const track = document.getElementById('shop-track');
   track.innerHTML = '';
-  const owned = shopOwnedSet();
-  SKINS.forEach(skin=>{
-    const isOwned = owned.has(skin.id);
+  const available = shopAvailableSkins();
+
+  if (!available.length) {
+    track.innerHTML = `<div class="shop-track-empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 16 L7 6 L17 6 L19 16 Z"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="19" r="1.6"/></svg>
+      <span>Você já desbloqueou todas as naves disponíveis!</span>
+    </div>`;
+    return;
+  }
+
+  available.forEach((skin, i)=>{
     const card = document.createElement('div');
-    card.className = 'shop-card' + (isOwned ? '' : ' locked') + (skin.id===shopSelectedId ? ' selected' : '');
+    card.className = 'shop-card' + (skin.id===shopSelectedId ? ' selected' : '');
     card.dataset.id = skin.id;
+    card.style.setProperty('--i', i);
     const cv = document.createElement('canvas'); cv.width = cv.height = 56;
     const cctx = cv.getContext('2d');
     function draw(){
@@ -1228,8 +1276,8 @@ function buildShopTrack(){
     name.className = 'shop-card-name';
     name.textContent = skin.name;
     const tag = document.createElement('div');
-    tag.className = 'shop-card-tag ' + (isOwned ? 'owned' : 'locked');
-    tag.textContent = isOwned ? '✔ POSSUI' : `🔒 ${SHOP_PRICE} CR`;
+    tag.className = 'shop-card-tag locked';
+    tag.textContent = `🔒 ${SHOP_PRICE} CR`;
     card.append(cv, name, tag);
     card.onclick = () => selectShopSkin(skin.id);
     track.appendChild(card);
@@ -1254,7 +1302,6 @@ window.selectShopSkin = function(skinId){
   const skin = SKINS.find(s=>s.id===skinId);
   if (!skin) return;
   shopSelectedId = skinId;
-  const isOwned = shopOwnedSet().has(skinId);
   const errEl = document.getElementById('shop-error');
   errEl.style.display = 'none';
   errEl.textContent = '';
@@ -1264,12 +1311,12 @@ window.selectShopSkin = function(skinId){
 
   document.getElementById('shop-skin-name').textContent = skin.name;
   const statusEl = document.getElementById('shop-skin-status');
-  statusEl.textContent = isOwned ? '✔ DESBLOQUEADA' : '🔒 BLOQUEADA';
-  statusEl.className = 'shop-frame-status' + (isOwned ? ' owned' : '');
-  document.getElementById('shop-skin-price').style.display = isOwned ? 'none' : 'block';
+  statusEl.textContent = '🔒 BLOQUEADA';
+  statusEl.className = 'shop-frame-status';
+  document.getElementById('shop-skin-price').style.display = 'block';
   document.getElementById('shop-skin-price').textContent = `${SHOP_PRICE} CR`;
-  document.getElementById('shop-buy-btn').style.display = isOwned ? 'none' : 'flex';
-  document.getElementById('shop-equip-btn').style.display = isOwned ? 'flex' : 'none';
+  document.getElementById('shop-buy-btn').style.display = 'flex';
+  document.getElementById('shop-equip-btn').style.display = 'none';
   drawShopFrame(skin);
 
   // Atualiza destaque na esteira sem reconstruir tudo
@@ -1288,10 +1335,10 @@ window.openShop = function(){
   document.getElementById('shop-balance').textContent = currentUser.credits;
   switchShopTab('ships');
   buildShopTrack();
-  const owned = shopOwnedSet();
-  const initial = (profile && profile.equippedSkin!=null) ? profile.equippedSkin
-                : SKINS.find(s=>!owned.has(s.id))?.id ?? SKINS[0].id;
-  selectShopSkin(initial);
+  const available = shopAvailableSkins();
+  const frame = document.getElementById('shop-frame');
+  if (available.length) { frame.style.display = ''; selectShopSkin(available[0].id); }
+  else { frame.style.display = 'none'; }
   document.getElementById('shop-modal').style.display='flex';
 };
 
@@ -1300,10 +1347,14 @@ window.openShopAt = function(skinId){
   document.getElementById('shop-balance').textContent = currentUser.credits;
   switchShopTab('ships');
   buildShopTrack();
-  selectShopSkin(skinId);
+  const available = shopAvailableSkins();
+  const frame = document.getElementById('shop-frame');
+  const target = available.find(s=>s.id===skinId) ? skinId : available[0]?.id;
+  if (target!=null) { frame.style.display = ''; selectShopSkin(target); }
+  else { frame.style.display = 'none'; }
   document.getElementById('shop-modal').style.display='flex';
   setTimeout(()=>{
-    const card = document.querySelector(`#shop-track .shop-card[data-id="${skinId}"]`);
+    const card = document.querySelector(`#shop-track .shop-card[data-id="${target}"]`);
     if (card) card.scrollIntoView({ behavior:'instant', inline:'center', block:'nearest' });
   }, 0);
 };
@@ -1340,7 +1391,8 @@ window.confirmPurchase = async function(){
   const errEl = document.getElementById('shop-error');
   errEl.style.display = 'none';
   try {
-    const { ok, data } = await apiFetch('/api/shop/buy', { method:'POST', body:{ skinId: shopSelectedId } });
+    const purchasedId = shopSelectedId;
+    const { ok, data } = await apiFetch('/api/shop/buy', { method:'POST', body:{ skinId: purchasedId } });
     if (ok && data) {
       profile = data;
       currentUser.credits = data.user.credits;
@@ -1348,11 +1400,9 @@ window.confirmPurchase = async function(){
       updateCreditsBadge();
       renderSkinGrid();
       document.getElementById('shop-balance').textContent = currentUser.credits;
-      buildShopTrack();
-      selectShopSkin(shopSelectedId);
 
       // Animação de sucesso: substitui temporariamente o botão "Comprar"
-      const skin = SKINS.find(s=>s.id===shopSelectedId);
+      const skin = SKINS.find(s=>s.id===purchasedId);
       btn.style.display = 'none';
       const successEl = document.getElementById('shop-success');
       successEl.style.animation = 'none';
@@ -1363,6 +1413,12 @@ window.confirmPurchase = async function(){
       setTimeout(()=>{
         successEl.style.display = 'none';
         btn.style.display = '';
+        // A nave comprada some da vitrine — seleciona a próxima disponível (se houver).
+        buildShopTrack();
+        const available = shopAvailableSkins();
+        const frame = document.getElementById('shop-frame');
+        if (available.length) { frame.style.display = ''; selectShopSkin(available[0].id); }
+        else { frame.style.display = 'none'; }
       }, 1400);
       return;
     }
