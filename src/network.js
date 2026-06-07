@@ -168,7 +168,7 @@ export class RemotePlayer {
     ctx.fillStyle = teamColor;
     ctx.font = '11px system-ui';
     ctx.textAlign = 'center';
-    ctx.fillText(this.isBot ? `🤖 ${this.name}` : this.name, this.x, this.y - 28);
+    ctx.fillText(this.isBot ? `[BOT] ${this.name}` : this.name, this.x, this.y - 28);
     // HP bar
     const bw = 30;
     ctx.fillStyle = '#0d1e32';

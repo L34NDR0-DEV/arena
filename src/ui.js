@@ -83,7 +83,7 @@ export class UI {
           + (p.team === 'red' ? ' team-red' : p.team === 'blue' ? ' team-blue' : '');
         card.innerHTML =
           `<div class="ml-icon"></div>`
-          + `<div class="ml-name">${p.isBot ? '🤖 ' : ''}${p.name}</div>`
+          + `<div class="ml-name">${p.isBot ? '[BOT] ' : ''}${p.name}</div>`
           + `<div class="ml-skin">${p.skin ? p.skin.name : ''}</div>`;
         const iconEl = card.querySelector('.ml-icon');
         const iconCv = document.createElement('canvas');

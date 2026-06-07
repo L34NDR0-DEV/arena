@@ -114,27 +114,27 @@ export class Game {
             } else if (result.type==='nuke') {
               this.combat.triggerBomb(px,py,en,this.player,420);
               this.arena.spawnParticles(px,py,'#ff4400',30,280);
-              this.ui.notify('☢ NUKE!'+bonus,'#ff2200'); this._audio.playBomb?.();
+              this.ui.notify('NUKE!'+bonus,'#ff2200'); this._audio.playBomb?.();
             } else if (result.type==='freeze') {
               for(const e of en){if(!e.dead&&Math.hypot(e.x-px,e.y-py)<320)e._state='dodge';}
-              this.ui.notify('❄ FREEZE!'+bonus,'#88ddff');
+              this.ui.notify('FREEZE!'+bonus,'#88ddff');
             } else if (result.type==='nova') {
               // Pulso que destrói todos os inimigos na tela
               for(const e of en){if(!e.dead){e.hp=0;e.dead=true;this.player.kills++;this.player.score+=e.score;this.player.addXP(e.score);}}
               this.arena.spawnParticles(px,py,'#ff00ff',35,300);
               this.combat.spawnExplosion(px,py,200,'#ff00ff');
-              this.ui.notify('★ NOVA!'+bonus,'#ff00ff'); this._audio.playBomb?.();
+              this.ui.notify('NOVA!'+bonus,'#ff00ff'); this._audio.playBomb?.();
             } else if (result.type==='warp') {
               // Teleporta para o cursor do mouse
               this.player.x=this._mouse.wx; this.player.y=this._mouse.wy;
               this.player.vx=0; this.player.vy=0;
               this.arena.spawnParticles(px,py,'#aa44ff',20,180);
               this.arena.spawnParticles(this.player.x,this.player.y,'#aa44ff',20,180);
-              this.ui.notify('⚡ WARP!'+bonus,'#aa44ff');
+              this.ui.notify('WARP!'+bonus,'#aa44ff');
             } else if (result.type==='missile') {
               const count = bonus ? 5 : 3;
               this.combat.launchMissiles(px, py, this.enemyMgr.enemies, this.player, count);
-              this.ui.notify('🚀 MÍSSEIS!'+bonus,'#ff6600'); this._audio.playBomb?.();
+              this.ui.notify('MÍSSEIS!'+bonus,'#ff6600'); this._audio.playBomb?.();
             } else {
               const nl={
                 HEALTH:'+Vida',HEALTH_BIG:'+Vida Grande!',
@@ -144,7 +144,7 @@ export class Game {
                 MAGNET:'Ímã!',BOOST:'Velocidade!',DASH_BOOST:'Super Dash!',
                 FREEZE:'Freeze!',REGEN:'Regeneração!',SHIELD_AURA:'Aura de Escudo!',
                 OVERCLOCK:'Sobrecarga de Dano!',INVISIBLE:'Invisível!',
-                GODMODE:'★ MODO DEUS!',VAMPIRO:'Vampiro!',MISSILE:'Mísseis!',
+                GODMODE:'MODO DEUS!',VAMPIRO:'Vampiro!',MISSILE:'Mísseis!',
               };
               this.ui.notify((nl[result.itemType]||'Item usado')+bonus, result.color||'#00ff88');
             }
@@ -354,7 +354,7 @@ export class Game {
     // Torres Astrais: vitória ao capturar as 2 torres do lado adversário
     if (this.towerMgr?.winner) {
       const won = this.towerMgr.winner==='player';
-      if (won) { this.player.score+=200; this.ui.notify('★ TORRES CONQUISTADAS! VITÓRIA!','#ffcc00'); }
+      if (won) { this.player.score+=200; this.ui.notify('TORRES CONQUISTADAS! VITÓRIA!','#ffcc00'); }
       this._endGame(won);
       return;
     }

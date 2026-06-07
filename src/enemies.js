@@ -448,7 +448,7 @@ export class TeamBot {
     ctx.beginPath(); ctx.arc(this.x,this.y,this.r+14,0,Math.PI*2); ctx.stroke();
     ctx.restore();
     ctx.fillStyle=teamColor; ctx.font='11px system-ui'; ctx.textAlign='center';
-    ctx.fillText(`🤖 ${this.name}`, this.x, this.y-this.r-46);
+    ctx.fillText(`[BOT] ${this.name}`, this.x, this.y-this.r-46);
   }
 }
 
