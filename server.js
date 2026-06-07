@@ -70,7 +70,7 @@ function startTeamMatch(roomId) {
     const team = assignTeam(tr);
     tr.teamCounts[team]++;
     const botId = `bot_${roomId}_${i}`;
-    botSlots.push({ id: botId, name: `BOT-${Math.floor(1000+Math.random()*9000)}`, skinIndex: Math.floor(Math.random()*7), profileIcon: 0, team, isBot: true, isHost: false });
+    botSlots.push({ id: botId, name: `BOT-${Math.floor(1000+Math.random()*9000)}`, skinIndex: Math.floor(Math.random()*10), profileIcon: 0, team, isBot: true, isHost: false });
   }
 
   const playersPayload = tr.players.map((p, idx) => ({

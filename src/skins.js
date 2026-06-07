@@ -150,6 +150,39 @@ const skinRoxa = makeSprite(6, 'Shadow Roxa', '#aa44ff', 'Roxa.png', {
   ],
 });
 
+// Marrom-Azul — caça pesado, motor central + 2 motores nas naceles laterais
+const skinMarromAzul = makeSprite(7, 'Stratos Azul', '#3388dd', 'Marromeazul.png', {
+  size: 84,
+  nozzle:  { x:0, y:-0.85 },
+  engines: [
+    { x: 0,    y:  0.92 },   // motor central
+    { x:-0.34, y:  0.78 },   // nacel esquerdo
+    { x: 0.34, y:  0.78 },   // nacel direito
+  ],
+});
+
+// Rosa & Verde — caça com emblema nas asas, motor central + 2 nas naceles
+const skinRosaVerde = makeSprite(8, 'Aurora Rosa', '#ff5fa8', 'Rosaeverde.png', {
+  size: 84,
+  nozzle:  { x:0, y:-0.85 },
+  engines: [
+    { x: 0,    y:  0.90 },   // motor central
+    { x:-0.32, y:  0.80 },   // nacel esquerdo
+    { x: 0.32, y:  0.80 },   // nacel direito
+  ],
+});
+
+// Rosa Neon — caça compacto, motor central único
+const skinRosaNeon = makeSprite(9, 'Nebula Rosa', '#ff3d9a', 'Rosa.png', {
+  size: 80,
+  nozzle:  { x:0, y:-0.85 },
+  engines: [
+    { x: 0,    y:  0.88 },   // motor central
+    { x:-0.30, y:  0.62 },   // motor lateral esquerdo
+    { x: 0.30, y:  0.62 },   // motor lateral direito
+  ],
+});
+
 export const SKINS = [
   skinVermelho,
   skinPonta,
@@ -158,4 +191,7 @@ export const SKINS = [
   skinTriangulo,
   skinAlien,
   skinRoxa,
+  skinMarromAzul,
+  skinRosaVerde,
+  skinRosaNeon,
 ];
