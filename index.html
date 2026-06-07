@@ -403,6 +403,18 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .pkg-card-price{font-size:14px;color:#ffcc44;font-weight:700;}
 .pkg-card-credits{font-size:10px;color:var(--text);letter-spacing:.5px;}
 .pkg-card-bonus{font-size:8px;color:var(--green);letter-spacing:1px;}
+
+.about-body{padding-top:6px;}
+.about-hero{
+  display:flex;align-items:center;gap:14px;padding:14px 16px;margin:0 18px 4px;
+  background:linear-gradient(135deg,#061422,#04080f);border:1.5px solid var(--cyan);
+  border-radius:6px;box-shadow:0 0 18px #00d4ff22;
+}
+.about-ship{width:40px;height:40px;flex-shrink:0;animation:shopFrameFloat 3.2s ease-in-out infinite;filter:drop-shadow(0 4px 10px #00d4ff33);}
+.about-title{font-family:'Press Start 2P',monospace;font-size:11px;color:var(--cyan);letter-spacing:1px;line-height:1.6;}
+.about-sub{font-size:9px;color:var(--text2);margin-top:6px;line-height:1.6;}
+.about-link{color:var(--cyan);text-decoration:underline;}
+.about-link:hover{color:#5be8ff;}
 .pkg-card .play-btn{width:100%;justify-content:center;font-size:8px;padding:9px 8px;}
 .skin-info{flex:1;min-width:0;}
 .skin-name{font-size:8px;color:var(--text);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'Press Start 2P',monospace;line-height:1.6;}
@@ -667,7 +679,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
       </div>
 
       <div class="login-bottom">
-        <div class="login-credits">© TDOTS ARCADE<br>v2.0</div>
+        <div class="login-credits">© LEANDRO · TOWERDEFENSESPACE.COM.BR<br>v2.0 · TODOS OS DIREITOS RESERVADOS</div>
         <div class="coin-insert">INSERT COIN</div>
       </div>
     </div>
@@ -896,7 +908,58 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
       <h2>Novidades</h2>
       <button class="changelog-close" onclick="closeChangelog()">✕</button>
     </div>
+
+    <div class="auth-tabs shop-tabs">
+      <button class="auth-tab active" id="cl-tab-news-btn" onclick="switchChangelogTab('news')">NOVIDADES</button>
+      <button class="auth-tab" id="cl-tab-about-btn" onclick="switchChangelogTab('about')">SOBRE</button>
+    </div>
+
     <div class="changelog-list" id="changelog-list"></div>
+
+    <div class="changelog-list about-body" id="changelog-about" style="display:none;">
+      <div class="about-hero">
+        <svg viewBox="0 0 32 32" class="about-ship">
+          <polygon points="16,6 23,24 16,20 9,24" fill="url(#aboutHull)" stroke="#bdf6ff" stroke-width=".6"/>
+          <polygon points="16,11 19,21 16,18.5 13,21" fill="#04323f"/>
+          <ellipse cx="16" cy="25.5" rx="3.2" ry="2" fill="#ffcc44" opacity=".85"/>
+          <defs>
+            <linearGradient id="aboutHull" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#5be8ff"/>
+              <stop offset="100%" stop-color="#00a8d8"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div>
+          <div class="about-title">TOWER DEFENSE ON THE SPACE</div>
+          <div class="about-sub">Arcade espacial de ação e estratégia — pilote, defenda, evolua.</div>
+        </div>
+      </div>
+
+      <div class="changelog-entry">
+        <span class="changelog-version">SOBRE O JOGO</span>
+        <ul class="changelog-changes">
+          <li>Um arcade de ação espacial com elementos de tower defense: pilote sua nave, destrua ondas de inimigos e proteja seu território em diferentes modos de jogo.</li>
+          <li>Personalize sua nave com skins desbloqueáveis, ganhe créditos jogando partidas e suba de patente entre os pilotos.</li>
+          <li>Jogue sozinho contra a IA ou desafie um amigo no modo multiplayer Duplo, direto do navegador — sem downloads.</li>
+        </ul>
+      </div>
+
+      <div class="changelog-entry" style="border-color:#ffcc44;">
+        <span class="changelog-version" style="color:#ffcc44;">CRIADOR & SITE OFICIAL</span>
+        <ul class="changelog-changes">
+          <li>Desenvolvido e mantido por <b>Leandro</b>.</li>
+          <li>Site oficial: <a href="https://towerdefensespace.com.br" target="_blank" rel="noopener" class="about-link">towerdefensespace.com.br</a></li>
+          <li>© Leandro · Todos os direitos reservados. Uso, cópia ou redistribuição não autorizados são proibidos — consulte a licença do projeto.</li>
+        </ul>
+      </div>
+
+      <div class="changelog-entry">
+        <span class="changelog-version">PRÓXIMOS PASSOS</span>
+        <ul class="changelog-changes">
+          <li>Novos modos de jogo, naves e mapas estão a caminho — acompanhe a aba <b>Novidades</b> para não perder nenhuma atualização.</li>
+        </ul>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1180,6 +1243,54 @@ resizeLoginBg(); window.addEventListener('resize',resizeLoginBg);
     ctx.fillStyle=`rgba(140,200,255,${a})`;
     if(s.px){ctx.fillRect(s.x-s.r,s.y-s.r,s.r*2,s.r*2);}
     else{ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();}
+  }
+
+  // Naves cruzando o fundo (silhuetas neon, em diferentes profundidades/velocidades)
+  if (!animateLoginBg._ships) animateLoginBg._ships = [];
+  const ships = animateLoginBg._ships;
+  if (Math.random() < 0.012 && ships.length < 4) {
+    const dir = Math.random()<0.5 ? 1 : -1;
+    const depth = 0.5 + Math.random()*0.9; // tamanho/brilho relativo (perspectiva)
+    ships.push({
+      x: dir>0 ? -60 : W+60,
+      y: H*(0.12+Math.random()*0.6),
+      dir, depth,
+      speed: (40+Math.random()*70)*dir,
+      hue: Math.random()<0.5 ? '#5be8ff' : '#ffcc44',
+      bob: Math.random()*Math.PI*2,
+    });
+  }
+  for (let i=ships.length-1;i>=0;i--){
+    const s = ships[i];
+    s.x += s.speed * (1/60);
+    const yy = s.y + Math.sin(t*1.6+s.bob)*6;
+    const sz = 14*s.depth;
+    ctx.save();
+    ctx.translate(s.x, yy);
+    ctx.scale(s.dir, 1);
+    ctx.globalAlpha = 0.35*s.depth + 0.15;
+
+    // Rastro luminoso
+    const trail = ctx.createLinearGradient(-sz*3,0,0,0);
+    trail.addColorStop(0,'rgba(0,0,0,0)');
+    trail.addColorStop(1,s.hue);
+    ctx.fillStyle = trail;
+    ctx.fillRect(-sz*3,-1.5*s.depth,sz*3,3*s.depth);
+
+    // Casco triangular
+    ctx.fillStyle = s.hue;
+    ctx.shadowColor = s.hue; ctx.shadowBlur = 10*s.depth;
+    ctx.beginPath();
+    ctx.moveTo(sz, 0);
+    ctx.lineTo(-sz*0.7, -sz*0.55);
+    ctx.lineTo(-sz*0.35, 0);
+    ctx.lineTo(-sz*0.7, sz*0.55);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+    ctx.globalAlpha = 1;
+
+    if ((s.dir>0 && s.x > W+80) || (s.dir<0 && s.x < -80)) ships.splice(i,1);
   }
 
   // Scanlines
@@ -1793,6 +1904,14 @@ window.goLoginScreen=async function(){
   showScreen('login');
 };
 
+window.switchChangelogTab=function(tab){
+  const isNews = tab==='news';
+  document.getElementById('cl-tab-news-btn').classList.toggle('active', isNews);
+  document.getElementById('cl-tab-about-btn').classList.toggle('active', !isNews);
+  document.getElementById('changelog-list').style.display = isNews ? '' : 'none';
+  document.getElementById('changelog-about').style.display = isNews ? 'none' : '';
+};
+
 window.openChangelog=function(){
   const list=document.getElementById('changelog-list');
   list.innerHTML=CHANGELOG.map(entry=>`
@@ -1801,6 +1920,7 @@ window.openChangelog=function(){
       <ul class="changelog-changes">${entry.changes.map(c=>`<li>${c}</li>`).join('')}</ul>
     </div>
   `).join('');
+  switchChangelogTab('news');
   document.getElementById('changelog-modal').style.display='flex';
 };
 
