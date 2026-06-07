@@ -202,7 +202,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 
 .menu-header{
   background:linear-gradient(180deg,#030810,#030810cc);
-  padding:10px 24px 10px;display:flex;align-items:center;gap:12px;
+  padding:12px 28px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;row-gap:10px;
   border-bottom:1px solid var(--border);flex-shrink:0;
 }
 .menu-logo-small{
@@ -211,11 +211,11 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   text-shadow:0 0 8px var(--cyan);line-height:1.5;
 }
 .menu-logo-small span{color:var(--green);font-size:0.75em;display:block;margin-top:2px;}
-.menu-header-right{display:flex;align-items:center;gap:8px;margin-left:auto;}
+.menu-header-right{display:flex;align-items:center;gap:12px;margin-left:auto;flex-wrap:wrap;row-gap:8px;}
 .pilot-badge{
   display:flex;align-items:center;gap:8px;
   background:var(--panel2);border:1px solid var(--border);border-radius:4px;
-  padding:5px 12px;font-size:11px;
+  padding:6px 14px;font-size:11px;
 }
 .pilot-badge svg{width:12px;height:12px;color:var(--cyan);}
 .pilot-name{color:var(--cyan);font-weight:700;}
@@ -228,10 +228,10 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 }
 .change-pilot-btn:hover{color:var(--cyan);}
 .changelog-btn{
-  display:flex;align-items:center;gap:6px;
+  display:flex;align-items:center;gap:7px;
   background:var(--panel2);border:1px solid var(--border);border-radius:4px;
-  padding:7px 12px;font-size:8px;letter-spacing:1px;color:var(--gold);cursor:pointer;
-  font-family:'Press Start 2P',monospace;transition:all .15s;
+  padding:8px 14px;font-size:8px;letter-spacing:1px;color:var(--gold);cursor:pointer;
+  font-family:'Press Start 2P',monospace;transition:all .15s;white-space:nowrap;
 }
 .changelog-btn:hover{border-color:var(--gold);box-shadow:0 0 10px #ffcc0033;}
 .changelog-btn svg{width:11px;height:11px;}
@@ -303,6 +303,80 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .skin-card.locked:hover{opacity:.85;}
 .skin-card canvas{flex-shrink:0;}
 .skin-price{color:#ffcc44;}
+
+/* Loja — carrossel */
+.shop-panel{width:min(680px,94vw);}
+.shop-balance-pill{
+  margin-left:auto;margin-right:10px;display:flex;align-items:center;gap:6px;
+  background:var(--panel2);border:1px solid var(--border);border-radius:4px;
+  padding:5px 12px;font-size:11px;font-weight:700;color:#ffcc44;
+}
+.shop-body{display:flex;gap:16px;padding:16px 18px;align-items:stretch;}
+.shop-track-wrap{flex:1;display:flex;align-items:center;gap:8px;overflow:hidden;min-width:0;}
+.shop-track{
+  flex:1;display:flex;gap:12px;overflow-x:auto;scroll-behavior:smooth;
+  padding:6px 4px;min-width:0;
+}
+.shop-track::-webkit-scrollbar{height:6px;}
+.shop-track::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px;}
+.shop-arrow{
+  flex-shrink:0;width:28px;height:38px;border-radius:4px;border:1px solid var(--border);
+  background:var(--panel2);color:var(--cyan);font-size:18px;cursor:pointer;transition:all .15s;
+}
+.shop-arrow:hover{border-color:var(--cyan);box-shadow:0 0 10px #00d4ff33;}
+.shop-card{
+  flex-shrink:0;width:96px;display:flex;flex-direction:column;align-items:center;gap:6px;
+  background:var(--panel2);border:1.5px solid var(--border);border-radius:5px;
+  padding:10px 6px;cursor:pointer;transition:all .15s;
+}
+.shop-card:hover{border-color:var(--border2);transform:translateY(-2px);}
+.shop-card.selected{border-color:var(--cyan);box-shadow:0 0 12px #00d4ff33;background:#061422;}
+.shop-card.locked{filter:grayscale(.7);opacity:.6;}
+.shop-card.locked:hover{opacity:.9;}
+.shop-card-name{font-size:8px;color:var(--text);text-align:center;letter-spacing:.5px;}
+.shop-card-tag{font-size:8px;}
+.shop-card-tag.owned{color:var(--green);}
+.shop-card-tag.locked{color:#ffcc44;}
+.shop-frame{
+  flex-shrink:0;width:180px;display:flex;flex-direction:column;align-items:center;gap:8px;
+  background:linear-gradient(180deg,#061422,#04080f);border:1.5px solid var(--cyan);
+  border-radius:6px;padding:16px 14px;box-shadow:0 0 20px #00d4ff22;
+}
+.shop-frame-label{font-size:7px;letter-spacing:2px;color:var(--cyan);font-family:'Press Start 2P',monospace;}
+.shop-frame-name{font-size:11px;color:var(--text);font-weight:700;text-align:center;}
+.shop-frame-status{font-size:9px;color:var(--text2);}
+.shop-frame-status.owned{color:var(--green);}
+.shop-success{
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  color:var(--green);font-size:10px;letter-spacing:1px;font-weight:700;
+  animation:shopUnlock .6s cubic-bezier(.34,1.56,.64,1);
+}
+.shop-success svg{width:30px;height:30px;filter:drop-shadow(0 0 8px var(--green));}
+@keyframes shopUnlock{
+  0%{transform:scale(.4);opacity:0;}
+  60%{transform:scale(1.15);opacity:1;}
+  100%{transform:scale(1);opacity:1;}
+}
+.play-btn.loading{opacity:.6;cursor:wait;pointer-events:none;}
+
+.shop-tabs{padding:0 18px;margin-top:14px;margin-bottom:0;}
+.shop-credits-body{padding:16px 18px;display:flex;flex-direction:column;gap:14px;}
+.shop-credits-msg{
+  font-size:10px;color:var(--text2);line-height:1.7;text-align:center;
+  background:var(--panel2);border:1px solid var(--border);border-radius:5px;padding:18px;
+}
+.shop-credits-msg.success{color:var(--green);border-color:var(--green);}
+.shop-packages{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
+.pkg-card{
+  flex:1;min-width:140px;max-width:180px;display:flex;flex-direction:column;align-items:center;gap:8px;
+  background:var(--panel2);border:1.5px solid var(--border);border-radius:6px;
+  padding:16px 12px;transition:all .15s;
+}
+.pkg-card:hover{border-color:var(--cyan);box-shadow:0 0 12px #00d4ff22;}
+.pkg-card-price{font-size:14px;color:#ffcc44;font-weight:700;}
+.pkg-card-credits{font-size:10px;color:var(--text);letter-spacing:.5px;}
+.pkg-card-bonus{font-size:8px;color:var(--green);letter-spacing:1px;}
+.pkg-card .play-btn{width:100%;justify-content:center;font-size:8px;padding:9px 8px;}
 .skin-info{flex:1;min-width:0;}
 .skin-name{font-size:8px;color:var(--text);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'Press Start 2P',monospace;line-height:1.6;}
 .skin-sub{font-size:8px;color:var(--text2);}
@@ -588,6 +662,10 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
         <span class="credits-amount" id="credits-amount">0</span>
         <span class="credits-label">CR</span>
       </div>
+      <button class="changelog-btn" id="shop-open-btn" onclick="openShop()" title="Loja" style="color:#ffcc44;">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4 L2.7 2 L9.3 2 L10 4"/><path d="M2 4 L10 4 L9.5 10 L2.5 10 Z"/><path d="M4.5 4 Q4.5 6 6 6 T7.5 4"/></svg>
+        LOJA
+      </button>
       <button class="changelog-btn" id="howtoplay-btn" onclick="openHowToPlay()" title="Como Jogar">
         <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="5"/><path d="M4.5 4.5 Q4.5 3 6 3 T7.5 4.5 Q7.5 5.5 6 6 L6 7"/><circle cx="6" cy="9" r=".6" fill="currentColor" stroke="none"/></svg>
         COMO JOGAR
@@ -793,24 +871,53 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 
 <!-- ═══ LOJA DE SKINS ═══════════════════════════════════════ -->
 <div id="shop-modal" class="changelog-overlay" style="display:none;" onclick="if(event.target===this)closeShop()">
-  <div class="changelog-panel" style="width:min(360px,90vw);">
+  <div class="changelog-panel shop-panel">
     <div class="changelog-header">
       <h2>Loja</h2>
+      <div class="shop-balance-pill">
+        <span style="color:#ffcc44;">$</span> <span id="shop-balance">0</span> CR
+      </div>
       <button class="changelog-close" onclick="closeShop()">✕</button>
     </div>
-    <div class="changelog-list" style="align-items:center;">
-      <canvas id="shop-skin-canvas" width="84" height="84" style="align-self:center;"></canvas>
-      <div style="text-align:center;">
-        <div class="changelog-version" id="shop-skin-name" style="color:var(--cyan);">SKIN</div>
-        <div class="skin-price" id="shop-skin-price" style="margin-top:4px;font-size:12px;">500 CR</div>
+
+    <div class="auth-tabs shop-tabs">
+      <button class="auth-tab active" id="shop-tab-ships-btn" onclick="switchShopTab('ships')">NAVES</button>
+      <button class="auth-tab" id="shop-tab-credits-btn" onclick="switchShopTab('credits')">CRÉDITOS</button>
+    </div>
+
+    <div class="shop-body" id="shop-tab-ships">
+      <div class="shop-track-wrap">
+        <button class="shop-arrow shop-arrow-left" onclick="shopScroll(-1)">‹</button>
+        <div class="shop-track" id="shop-track"></div>
+        <button class="shop-arrow shop-arrow-right" onclick="shopScroll(1)">›</button>
       </div>
-      <div style="text-align:center;font-size:10px;color:var(--text2);">
-        Seu saldo: <span class="credits-amount" id="shop-balance" style="color:#ffcc44;">0</span> CR
+      <div class="shop-frame" id="shop-frame">
+        <div class="shop-frame-label">SELECIONADA</div>
+        <canvas id="shop-skin-canvas" width="96" height="96"></canvas>
+        <div class="shop-frame-name" id="shop-skin-name">SKIN</div>
+        <div class="shop-frame-status" id="shop-skin-status">🔒 BLOQUEADA</div>
+        <div class="skin-price" id="shop-skin-price">500 CR</div>
+        <div class="shop-success" id="shop-success" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M7 12.5 L10.5 16 L17 8.5"/></svg>
+          <span>DESBLOQUEADA!</span>
+        </div>
+        <div class="auth-error" id="shop-error" style="display:none;"></div>
+        <button class="play-btn" id="shop-buy-btn" onclick="confirmPurchase()" style="justify-content:center;width:100%;">
+          ► COMPRAR ◄
+        </button>
+        <button class="play-btn" id="shop-equip-btn" onclick="equipFromShop()" style="display:none;justify-content:center;width:100%;background:linear-gradient(90deg,#0a4,#0f8);">
+          ► EQUIPAR ◄
+        </button>
       </div>
-      <div class="auth-error" id="shop-error" style="display:none;"></div>
-      <button class="play-btn" id="shop-buy-btn" onclick="confirmPurchase()" style="align-self:center;justify-content:center;width:100%;">
-        ► &nbsp; COMPRAR &nbsp; ◄
-      </button>
+    </div>
+
+    <div class="shop-credits-body" id="shop-tab-credits" style="display:none;">
+      <div id="shop-credits-disabled" style="display:none;" class="shop-credits-msg">
+        Pagamentos com PIX e cartão chegam em breve! Estamos preparando tudo
+        para você comprar Créditos com segurança. 🚀
+      </div>
+      <div id="shop-credits-packages" class="shop-packages"></div>
+      <div id="shop-credits-status" class="shop-credits-msg" style="display:none;"></div>
     </div>
   </div>
 </div>
@@ -1076,13 +1183,13 @@ function renderSkinGrid(){
       ? `<div class="skin-name">${skin.name}</div><div class="skin-sub">${skin.color.toUpperCase()}</div>`
       : `<div class="skin-name">${skin.name}</div><div class="skin-sub skin-price">🔒 ${SHOP_PRICE} CR</div>`;
     card.append(cv,info);
-    card.onclick=()=> isOwned ? equipSkin(skin.id) : openShopConfirm(skin);
+    card.onclick=()=> isOwned ? equipSkin(skin.id) : openShopAt(skin.id);
     grid.appendChild(card);
   });
 }
 
-// ── Loja: comprar e equipar skins ─────────────────────────────
-let shopSkin = null;
+// ── Loja: carrossel de naves (esquerda → direita, vitrine na direita) ──
+let shopSelectedId = null;
 
 window.equipSkin = async function(skinId){
   if (!currentUser) return;
@@ -1094,15 +1201,42 @@ window.equipSkin = async function(skinId){
   }
 };
 
-window.openShopConfirm = function(skin){
-  if (!currentUser) return;
-  shopSkin = skin;
-  const errEl = document.getElementById('shop-error');
-  errEl.style.display = 'none';
-  errEl.textContent = '';
-  document.getElementById('shop-skin-name').textContent = skin.name;
-  document.getElementById('shop-skin-price').textContent = `${SHOP_PRICE} CR`;
-  document.getElementById('shop-balance').textContent = currentUser.credits;
+function shopOwnedSet(){
+  return new Set(profile ? profile.ownedSkins : [economy_FREE_SKIN_ID]);
+}
+
+function buildShopTrack(){
+  const track = document.getElementById('shop-track');
+  track.innerHTML = '';
+  const owned = shopOwnedSet();
+  SKINS.forEach(skin=>{
+    const isOwned = owned.has(skin.id);
+    const card = document.createElement('div');
+    card.className = 'shop-card' + (isOwned ? '' : ' locked') + (skin.id===shopSelectedId ? ' selected' : '');
+    card.dataset.id = skin.id;
+    const cv = document.createElement('canvas'); cv.width = cv.height = 56;
+    const cctx = cv.getContext('2d');
+    function draw(){
+      cctx.clearRect(0,0,56,56);
+      cctx.save(); cctx.translate(28,28);
+      skin.drawPreview(cctx, 56/skin._size);
+      cctx.restore();
+    }
+    if (skin.img){ skin.img.onload=draw; setTimeout(draw,300); }
+    draw();
+    const name = document.createElement('div');
+    name.className = 'shop-card-name';
+    name.textContent = skin.name;
+    const tag = document.createElement('div');
+    tag.className = 'shop-card-tag ' + (isOwned ? 'owned' : 'locked');
+    tag.textContent = isOwned ? '✔ POSSUI' : `🔒 ${SHOP_PRICE} CR`;
+    card.append(cv, name, tag);
+    card.onclick = () => selectShopSkin(skin.id);
+    track.appendChild(card);
+  });
+}
+
+function drawShopFrame(skin){
   const cv = document.getElementById('shop-skin-canvas');
   const cctx = cv.getContext('2d');
   function draw(){
@@ -1114,36 +1248,239 @@ window.openShopConfirm = function(skin){
   }
   if (skin.img){ skin.img.onload=draw; setTimeout(draw,300); }
   draw();
+}
+
+window.selectShopSkin = function(skinId){
+  const skin = SKINS.find(s=>s.id===skinId);
+  if (!skin) return;
+  shopSelectedId = skinId;
+  const isOwned = shopOwnedSet().has(skinId);
+  const errEl = document.getElementById('shop-error');
+  errEl.style.display = 'none';
+  errEl.textContent = '';
+  const successEl = document.getElementById('shop-success');
+  successEl.style.display = 'none';
+  successEl.style.animation = 'none';
+
+  document.getElementById('shop-skin-name').textContent = skin.name;
+  const statusEl = document.getElementById('shop-skin-status');
+  statusEl.textContent = isOwned ? '✔ DESBLOQUEADA' : '🔒 BLOQUEADA';
+  statusEl.className = 'shop-frame-status' + (isOwned ? ' owned' : '');
+  document.getElementById('shop-skin-price').style.display = isOwned ? 'none' : 'block';
+  document.getElementById('shop-skin-price').textContent = `${SHOP_PRICE} CR`;
+  document.getElementById('shop-buy-btn').style.display = isOwned ? 'none' : 'flex';
+  document.getElementById('shop-equip-btn').style.display = isOwned ? 'flex' : 'none';
+  drawShopFrame(skin);
+
+  // Atualiza destaque na esteira sem reconstruir tudo
+  document.querySelectorAll('#shop-track .shop-card').forEach(c=>{
+    c.classList.toggle('selected', Number(c.dataset.id)===skinId);
+  });
+};
+
+window.shopScroll = function(dir){
+  const track = document.getElementById('shop-track');
+  track.scrollBy({ left: dir * 130, behavior: 'smooth' });
+};
+
+window.openShop = function(){
+  if (!currentUser) return;
+  document.getElementById('shop-balance').textContent = currentUser.credits;
+  switchShopTab('ships');
+  buildShopTrack();
+  const owned = shopOwnedSet();
+  const initial = (profile && profile.equippedSkin!=null) ? profile.equippedSkin
+                : SKINS.find(s=>!owned.has(s.id))?.id ?? SKINS[0].id;
+  selectShopSkin(initial);
   document.getElementById('shop-modal').style.display='flex';
+};
+
+window.openShopAt = function(skinId){
+  if (!currentUser) return;
+  document.getElementById('shop-balance').textContent = currentUser.credits;
+  switchShopTab('ships');
+  buildShopTrack();
+  selectShopSkin(skinId);
+  document.getElementById('shop-modal').style.display='flex';
+  setTimeout(()=>{
+    const card = document.querySelector(`#shop-track .shop-card[data-id="${skinId}"]`);
+    if (card) card.scrollIntoView({ behavior:'instant', inline:'center', block:'nearest' });
+  }, 0);
 };
 
 window.closeShop = function(){
   document.getElementById('shop-modal').style.display='none';
-  shopSkin = null;
+};
+
+function setBtnLoading(btn, loading){
+  btn.classList.toggle('loading', loading);
+  btn.disabled = loading;
+}
+
+window.equipFromShop = async function(){
+  if (shopSelectedId==null) return;
+  const btn = document.getElementById('shop-equip-btn');
+  if (btn.disabled) return;
+  setBtnLoading(btn, true);
+  try { await equipSkin(shopSelectedId); }
+  finally { setBtnLoading(btn, false); }
 };
 
 const SHOP_ERROR_MESSAGES = {
   insufficient_credits: 'Créditos insuficientes!',
   already_owned: 'Você já possui esta skin.',
+  rate_limited: 'Muitas tentativas seguidas — aguarde um instante.',
 };
 
 window.confirmPurchase = async function(){
-  if (!shopSkin) return;
+  if (shopSelectedId==null) return;
+  const btn = document.getElementById('shop-buy-btn');
+  if (btn.disabled) return;
+  setBtnLoading(btn, true);
   const errEl = document.getElementById('shop-error');
   errEl.style.display = 'none';
-  const { ok, status, data } = await apiFetch('/api/shop/buy', { method:'POST', body:{ skinId: shopSkin.id } });
-  if (ok && data) {
-    profile = data;
-    currentUser.credits = data.user.credits;
-    currentUser.equippedSkin = data.equippedSkin;
-    updateCreditsBadge();
-    renderSkinGrid();
-    closeShop();
-    return;
+  try {
+    const { ok, data } = await apiFetch('/api/shop/buy', { method:'POST', body:{ skinId: shopSelectedId } });
+    if (ok && data) {
+      profile = data;
+      currentUser.credits = data.user.credits;
+      currentUser.equippedSkin = data.equippedSkin;
+      updateCreditsBadge();
+      renderSkinGrid();
+      document.getElementById('shop-balance').textContent = currentUser.credits;
+      buildShopTrack();
+      selectShopSkin(shopSelectedId);
+
+      // Animação de sucesso: substitui temporariamente o botão "Comprar"
+      const skin = SKINS.find(s=>s.id===shopSelectedId);
+      btn.style.display = 'none';
+      const successEl = document.getElementById('shop-success');
+      successEl.style.animation = 'none';
+      void successEl.offsetWidth; // reinicia a animação
+      successEl.style.animation = '';
+      successEl.style.display = 'flex';
+      showNotify(`✔ ${skin ? skin.name : 'Skin'} desbloqueada!`);
+      setTimeout(()=>{
+        successEl.style.display = 'none';
+        btn.style.display = '';
+      }, 1400);
+      return;
+    }
+    errEl.textContent = (data && SHOP_ERROR_MESSAGES[data.error]) || 'Não foi possível concluir a compra.';
+    errEl.style.display = 'block';
+  } finally {
+    setBtnLoading(btn, false);
   }
-  errEl.textContent = (data && SHOP_ERROR_MESSAGES[data.error]) || 'Não foi possível concluir a compra.';
-  errEl.style.display = 'block';
 };
+
+// ── Loja: aba de Créditos (compra com dinheiro real via Mercado Pago) ──
+let creditPackagesLoaded = false;
+
+window.switchShopTab = function(tab){
+  const shipsBtn = document.getElementById('shop-tab-ships-btn');
+  const creditsBtn = document.getElementById('shop-tab-credits-btn');
+  const shipsBody = document.getElementById('shop-tab-ships');
+  const creditsBody = document.getElementById('shop-tab-credits');
+  const isCredits = tab === 'credits';
+  shipsBtn.classList.toggle('active', !isCredits);
+  creditsBtn.classList.toggle('active', isCredits);
+  shipsBody.style.display = isCredits ? 'none' : 'flex';
+  creditsBody.style.display = isCredits ? 'flex' : 'none';
+  if (isCredits && !creditPackagesLoaded) loadCreditPackages();
+};
+
+async function loadCreditPackages(){
+  const disabledEl = document.getElementById('shop-credits-disabled');
+  const listEl = document.getElementById('shop-credits-packages');
+  try {
+    const { ok, data } = await apiFetch('/api/payments/packages');
+    if (!ok || !data) return;
+    creditPackagesLoaded = true;
+    if (!data.enabled) {
+      disabledEl.style.display = 'block';
+      listEl.innerHTML = '';
+      return;
+    }
+    disabledEl.style.display = 'none';
+    listEl.innerHTML = '';
+    data.packages.forEach(pkg => listEl.appendChild(buildPackageCard(pkg)));
+  } catch {}
+}
+
+function buildPackageCard(pkg){
+  const card = document.createElement('div');
+  card.className = 'pkg-card';
+  card.innerHTML = `
+    <div class="pkg-card-price">${pkg.label}</div>
+    <div class="pkg-card-credits">${pkg.credits} Créditos</div>
+    ${pkg.bonus ? `<div class="pkg-card-bonus">BÔNUS ${pkg.bonus}</div>` : ''}
+    <button class="play-btn">► PAGAR COM PIX / CARTÃO ◄</button>
+  `;
+  const btn = card.querySelector('button');
+  btn.onclick = () => startCheckout(pkg.id, btn);
+  return card;
+}
+
+async function startCheckout(packageId, btn){
+  if (btn.disabled) return;
+  setBtnLoading(btn, true);
+  try {
+    const { ok, data } = await apiFetch('/api/payments/checkout', { method:'POST', body:{ packageId } });
+    if (ok && data && data.checkoutUrl) {
+      window.location.href = data.checkoutUrl;
+      return;
+    }
+    showNotify('Não foi possível iniciar o pagamento. Tente novamente.');
+  } catch {
+    showNotify('Não foi possível iniciar o pagamento. Tente novamente.');
+  } finally {
+    setBtnLoading(btn, false);
+  }
+}
+
+async function pollOrderStatus(orderId, attemptsLeft){
+  const statusEl = document.getElementById('shop-credits-status');
+  try {
+    const { ok, data } = await apiFetch('/api/payments/orders/recent');
+    if (ok && data) {
+      const order = data.orders.find(o => o.id === orderId);
+      if (order && order.status === 'approved') {
+        statusEl.textContent = '✔ Pagamento aprovado! Créditos adicionados à sua conta.';
+        statusEl.classList.add('success');
+        await refreshProfile();
+        document.getElementById('shop-balance').textContent = currentUser.credits;
+        showNotify('✔ Créditos adicionados com sucesso!');
+        return;
+      }
+      if (order && (order.status === 'rejected' || order.status === 'cancelled')) {
+        statusEl.textContent = 'Pagamento não foi concluído. Você pode tentar novamente.';
+        return;
+      }
+    }
+  } catch {}
+  if (attemptsLeft > 0) {
+    setTimeout(() => pollOrderStatus(orderId, attemptsLeft - 1), 2000);
+  } else {
+    statusEl.textContent = 'Ainda processando seu pagamento — o saldo será atualizado assim que for confirmado.';
+  }
+}
+
+function checkPendingCreditOrder(){
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('shop') !== 'credits') return;
+  const orderId = Number(params.get('order'));
+  history.replaceState(null, '', window.location.pathname);
+  if (!currentUser) return;
+  openShop();
+  switchShopTab('credits');
+  if (Number.isInteger(orderId)) {
+    const statusEl = document.getElementById('shop-credits-status');
+    statusEl.classList.remove('success');
+    statusEl.textContent = 'Pagamento em processamento...';
+    statusEl.style.display = 'block';
+    pollOrderStatus(orderId, 3);
+  }
+}
 
 // ── Arena select ──────────────────────────────────────────────
 const arenaSelect=document.getElementById('arena-select');
@@ -1542,6 +1879,7 @@ function showNotify(text){
   if (hasSession) {
     loadHistory();
     showScreen('menu');
+    checkPendingCreditOrder();
   } else {
     showScreen('login');
   }

@@ -10,7 +10,8 @@ const auth          = require('./src/auth');
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
 // Demais variáveis de ambiente (DB_PATH, SESSION_SECRET, GOOGLE_CLIENT_ID,
-// COOKIE_SECURE) são lidas diretamente em src/db.js, src/auth.js e src/api.js,
+// COOKIE_SECURE, MP_ACCESS_TOKEN, MP_PUBLIC_KEY, PUBLIC_URL) são lidas
+// diretamente em src/db.js, src/auth.js, src/api.js e src/payments.js,
 // todas com defaults que funcionam em http://localhost.
 
 const MIME = {

@@ -1,10 +1,30 @@
 'use strict';
-const db   = require('./db');
-const auth = require('./auth');
-const economy = require('./economy');
+const db       = require('./db');
+const auth     = require('./auth');
+const economy  = require('./economy');
+const payments = require('./payments');
+const { rateLimit } = require('./ratelimit');
 
 const COOKIE_SECURE = process.env.COOKIE_SECURE === '1';
 const MAX_BODY_BYTES = 1024 * 1024; // 1MB
+
+function clientIp(req) {
+  return (req.socket && req.socket.remoteAddress) || 'unknown';
+}
+
+// Aplica um limite de requisições; loga e responde 429 quando estourado.
+// `keyFn` recebe (req, ctx) e retorna a chave de agrupamento (ex: por usuário ou IP).
+function rateLimited(label, max, windowMs, keyFn) {
+  return (req, res, ctx) => {
+    const key = `${label}:${keyFn(req, ctx)}`;
+    if (!rateLimit(key, max, windowMs)) {
+      console.warn(`[ANTIFRAUDE] rate limit em "${label}" para ${key}`);
+      sendJson(res, 429, { error: 'rate_limited' });
+      return false;
+    }
+    return true;
+  };
+}
 
 // ── Helpers de resposta ────────────────────────────────────────────────────
 function sendJson(res, status, obj) {
@@ -86,6 +106,7 @@ const ROUTES = [
 
   {
     method: 'POST', path: '/api/auth/register',
+    rateLimit: rateLimited('auth', 8, 60_000, (req) => clientIp(req)),
     handler: (req, res, { body }) => {
       const email = normalizeEmail(body.email);
       const displayName = normalizeDisplayName(body.displayName);
@@ -109,6 +130,7 @@ const ROUTES = [
 
   {
     method: 'POST', path: '/api/auth/login',
+    rateLimit: rateLimited('auth', 8, 60_000, (req) => clientIp(req)),
     handler: (req, res, { body }) => {
       const email = normalizeEmail(body.email);
       const password = String(body.password || '');
@@ -169,6 +191,7 @@ const ROUTES = [
   {
     method: 'POST', path: '/api/shop/buy',
     auth: true,
+    rateLimit: rateLimited('shop_buy', 5, 10_000, (req, { user }) => user.id),
     handler: (req, res, { body, user }) => {
       const skinId = Number(body.skinId);
       if (!Number.isInteger(skinId) || skinId < 0 || skinId > 6) {
@@ -192,6 +215,7 @@ const ROUTES = [
   {
     method: 'POST', path: '/api/shop/equip',
     auth: true,
+    rateLimit: rateLimited('shop_equip', 5, 10_000, (req, { user }) => user.id),
     handler: (req, res, { body, user }) => {
       const skinId = Number(body.skinId);
       if (!Number.isInteger(skinId) || skinId < 0 || skinId > 6) {
@@ -207,13 +231,21 @@ const ROUTES = [
   {
     method: 'POST', path: '/api/matches',
     auth: true,
+    rateLimit: rateLimited('matches', 20, 60_000, (req, { user }) => user.id),
     handler: (req, res, { body, user }) => {
       const mode = String(body.mode || 'livre').slice(0, 30);
       const difficulty = body.difficulty ? String(body.difficulty).slice(0, 20) : null;
       const win = body.win ? 1 : 0;
       const score = Number.isFinite(body.score) ? Math.trunc(body.score) : 0;
       const kills = Number.isFinite(body.kills) ? Math.trunc(body.kills) : 0;
-      const skinId = Number.isInteger(body.skinId) ? body.skinId : null;
+
+      // O skinId enviado só é aceito se o jogador realmente possui a skin —
+      // caso contrário usamos a equipada no banco. Evita registrar partidas
+      // "vencidas" com naves não compradas (vetor de inconsistência de dados).
+      const requestedSkin = Number.isInteger(body.skinId) ? body.skinId : null;
+      const skinId = (requestedSkin !== null && db.ownsSkin.get(user.id, requestedSkin))
+        ? requestedSkin
+        : user.equipped_skin;
 
       const result = db.transaction(() => {
         const reward = economy.recordMatchAndMaybeReward(user.id, { mode, win: !!win });
@@ -238,10 +270,69 @@ const ROUTES = [
       sendJson(res, 200, { matches: rows });
     },
   },
+
+  {
+    method: 'GET', path: '/api/payments/packages',
+    handler: (req, res) => {
+      sendJson(res, 200, { enabled: payments.isEnabled(), packages: Object.values(payments.CREDIT_PACKAGES) });
+    },
+  },
+
+  {
+    method: 'POST', path: '/api/payments/checkout',
+    auth: true,
+    rateLimit: rateLimited('checkout', 3, 60_000, (req, { user }) => user.id),
+    handler: async (req, res, { body, user }) => {
+      const packageId = String(body.packageId || '');
+      if (!payments.CREDIT_PACKAGES[packageId]) return sendJson(res, 400, { error: 'invalid_package' });
+      if (!payments.isEnabled()) return sendJson(res, 503, { error: 'payments_disabled' });
+
+      try {
+        const { checkoutUrl } = await payments.createCheckout(user, packageId);
+        sendJson(res, 200, { checkoutUrl });
+      } catch (err) {
+        console.error('[PAGAMENTOS] erro ao criar checkout:', err.message);
+        sendJson(res, 502, { error: 'checkout_failed' });
+      }
+    },
+  },
+
+  {
+    method: 'POST', path: '/api/payments/webhook',
+    handler: async (req, res, { body, query }) => {
+      try {
+        const result = await payments.handleWebhook(query, body);
+        if (!result.ok) console.warn('[ANTIFRAUDE] webhook de pagamento rejeitado:', result.reason);
+      } catch (err) {
+        console.error('[PAGAMENTOS] erro ao processar webhook:', err.message);
+      }
+      // O Mercado Pago espera 200 rapidamente, independentemente do resultado
+      // interno — reenvios de notificação são tratados de forma idempotente.
+      res.writeHead(200);
+      res.end();
+    },
+  },
+
+  {
+    method: 'GET', path: '/api/payments/orders/recent',
+    auth: true,
+    handler: (req, res, { user }) => {
+      const rows = db.recentOrders.all(user.id, 10);
+      sendJson(res, 200, { orders: rows });
+    },
+  },
 ];
 
 function matchRoute(method, urlPath) {
   return ROUTES.find(r => r.method === method && r.path === urlPath);
+}
+
+function parseQuery(req) {
+  const idx = req.url.indexOf('?');
+  if (idx === -1) return {};
+  const out = {};
+  for (const [k, v] of new URLSearchParams(req.url.slice(idx + 1))) out[k] = v;
+  return out;
 }
 
 function handleApi(req, res, urlPath) {
@@ -251,16 +342,20 @@ function handleApi(req, res, urlPath) {
   const user = auth.resolveUserFromCookieHeader(req.headers.cookie);
   if (route.auth && !user) return sendJson(res, 401, { error: 'unauthenticated' });
 
+  const query = parseQuery(req);
+
   if (req.method === 'GET') {
-    try { route.handler(req, res, { user }); }
+    if (route.rateLimit && !route.rateLimit(req, { user, query })) return;
+    try { route.handler(req, res, { user, query }); }
     catch (err) { console.error(err); sendJson(res, 500, { error: 'internal_error' }); }
     return;
   }
 
   readJsonBody(req, (err, body) => {
     if (err) return sendJson(res, 400, { error: 'invalid_body' });
+    if (route.rateLimit && !route.rateLimit(req, { user, query, body })) return;
     Promise.resolve()
-      .then(() => route.handler(req, res, { body, user }))
+      .then(() => route.handler(req, res, { body, user, query }))
       .catch((e) => { console.error(e); sendJson(res, 500, { error: 'internal_error' }); });
   });
 }

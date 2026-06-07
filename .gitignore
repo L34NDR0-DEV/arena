@@ -3,3 +3,5 @@ data/
 *.log
 .DS_Store
 Thumbs.db
+start.local.ps1
+.env
