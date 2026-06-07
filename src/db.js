@@ -101,6 +101,7 @@ const stmts = {
   listOwnedSkins:       db.prepare(`SELECT skin_id FROM owned_skins WHERE user_id = ?`),
   setEquippedSkin:      db.prepare(`UPDATE users SET equipped_skin = ? WHERE id = ?`),
   setProfileIcon:       db.prepare(`UPDATE users SET profile_icon = ? WHERE id = ?`),
+  setDisplayName:       db.prepare(`UPDATE users SET display_name = ? WHERE id = ?`),
   addCredits:           db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ?`),
   spendCredits:         db.prepare(`UPDATE users SET credits = credits - ? WHERE id = ? AND credits >= ?`),
   setRewardState:       db.prepare(`UPDATE users SET reward_progress_count = ?, reward_modes_seen = ? WHERE id = ?`),

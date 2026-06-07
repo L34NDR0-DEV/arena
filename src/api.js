@@ -258,6 +258,19 @@ const ROUTES = [
   },
 
   {
+    method: 'POST', path: '/api/profile/name',
+    auth: true,
+    rateLimit: rateLimited('profile_name', 5, 60_000, (req, { user }) => user.id),
+    handler: (req, res, { body, user }) => {
+      const displayName = normalizeDisplayName(body.displayName);
+      if (!displayName) return sendJson(res, 400, { error: 'missing_display_name' });
+
+      db.setDisplayName.run(displayName, user.id);
+      sendJson(res, 200, { ok: true, displayName });
+    },
+  },
+
+  {
     method: 'POST', path: '/api/matches',
     auth: true,
     rateLimit: rateLimited('matches', 20, 60_000, (req, { user }) => user.id),
