@@ -9,9 +9,11 @@ const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN || '';
 const PUBLIC_URL      = (process.env.PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '');
 
 const CREDIT_PACKAGES = {
-  pack_5:  { id: 'pack_5',  credits: 250,  priceCents: 500,  label: 'R$ 5,00',  bonus: null   },
-  pack_10: { id: 'pack_10', credits: 550,  priceCents: 1000, label: 'R$ 10,00', bonus: '+10%' },
-  pack_20: { id: 'pack_20', credits: 1200, priceCents: 2000, label: 'R$ 20,00', bonus: '+20%' },
+  pack_5:  { id: 'pack_5',  credits: 250,   priceCents: 500,   label: 'R$ 5,00',  bonus: null   },
+  pack_10: { id: 'pack_10', credits: 550,   priceCents: 1000,  label: 'R$ 10,00', bonus: '+10%' },
+  pack_20: { id: 'pack_20', credits: 1200,  priceCents: 2000,  label: 'R$ 20,00', bonus: '+20%' },
+  pack_50: { id: 'pack_50', credits: 3250,  priceCents: 5000,  label: 'R$ 50,00', bonus: '+30%' },
+  pack_100:{ id: 'pack_100',credits: 7000,  priceCents: 10000, label: 'R$ 100,00',bonus: '+40%' },
 };
 
 let mpClient = null;
@@ -43,24 +45,42 @@ async function createCheckout(user, packageId) {
   const info = db.insertOrder.run(user.id, pkg.id, pkg.credits, pkg.priceCents);
   const orderId = Number(info.lastInsertRowid);
 
-  const result = await mp.preference.create({
-    body: {
-      items: [{
-        title: `${pkg.credits} Créditos — Arena`,
-        quantity: 1,
-        unit_price: pkg.priceCents / 100,
-        currency_id: 'BRL',
-      }],
-      external_reference: String(orderId),
-      back_urls: {
-        success: `${PUBLIC_URL}/?shop=credits&order=${orderId}`,
-        failure: `${PUBLIC_URL}/?shop=credits&order=${orderId}&status=failure`,
-        pending: `${PUBLIC_URL}/?shop=credits&order=${orderId}&status=pending`,
-      },
-      auto_return: 'approved',
-      notification_url: `${PUBLIC_URL}/api/payments/webhook`,
+  // O Mercado Pago rejeita "auto_return" quando back_urls não são URLs
+  // públicas e absolutas em HTTPS (ex.: http://localhost) — sem PUBLIC_URL
+  // configurado em produção, isso fazia toda criação de preferência falhar
+  // com "invalid_auto_return" e o checkout nunca abria.
+  const isPublicHttps = /^https:\/\//i.test(PUBLIC_URL);
+  const body = {
+    items: [{
+      title: `${pkg.credits} Créditos — Arena`,
+      quantity: 1,
+      unit_price: pkg.priceCents / 100,
+      currency_id: 'BRL',
+    }],
+    external_reference: String(orderId),
+    back_urls: {
+      success: `${PUBLIC_URL}/?shop=credits&order=${orderId}`,
+      failure: `${PUBLIC_URL}/?shop=credits&order=${orderId}&status=failure`,
+      pending: `${PUBLIC_URL}/?shop=credits&order=${orderId}&status=pending`,
     },
-  });
+    notification_url: `${PUBLIC_URL}/api/payments/webhook`,
+  };
+  if (isPublicHttps) body.auto_return = 'approved';
+
+  let result;
+  try {
+    result = await mp.preference.create({ body });
+  } catch (err) {
+    // O SDK do Mercado Pago expõe os detalhes do erro da API em `err.cause`
+    // (array de {code, description}) — sem logar isso, só vemos "Error"
+    // genérico e fica impossível saber o motivo real da rejeição.
+    const details = Array.isArray(err.cause) ? err.cause.map(c => `${c.code}: ${c.description}`).join(' | ') : err.message;
+    console.error(`[PAGAMENTOS] mercadopago rejeitou a preferência (order ${orderId}): ${details}`);
+    if (!isPublicHttps) {
+      console.error('[PAGAMENTOS] dica: PUBLIC_URL não está configurado como HTTPS público — defina a variável de ambiente PUBLIC_URL com a URL real do site (ex.: https://seujogo.com)');
+    }
+    throw err;
+  }
 
   db.setOrderPreference.run(result.id, orderId);
   return { checkoutUrl: result.init_point, orderId };

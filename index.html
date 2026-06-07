@@ -530,22 +530,59 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .play-btn.loading{opacity:.6;cursor:wait;pointer-events:none;animation:none!important;}
 
 .shop-tabs{padding:0 18px;margin-top:14px;margin-bottom:0;}
-.shop-credits-body{padding:16px 18px;display:flex;flex-direction:column;gap:14px;}
+.shop-credits-body{padding:22px 24px;display:flex;flex-direction:column;gap:18px;}
 .shop-credits-msg{
-  font-size:10px;color:var(--text2);line-height:1.7;text-align:center;
-  background:var(--panel2);border:1px solid var(--border);border-radius:5px;padding:18px;
+  font-size:11px;color:var(--text2);line-height:1.7;text-align:center;
+  background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:20px;
 }
 .shop-credits-msg.success{color:var(--green);border-color:var(--green);}
-.shop-packages{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;}
+.shop-packages{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;align-items:stretch;}
 .pkg-card{
-  flex:1;min-width:140px;max-width:180px;display:flex;flex-direction:column;align-items:center;gap:8px;
-  background:var(--panel2);border:1.5px solid var(--border);border-radius:6px;
-  padding:16px 12px;transition:all .15s;
+  flex:1;min-width:150px;max-width:200px;display:flex;flex-direction:column;align-items:center;gap:10px;
+  background:linear-gradient(165deg,var(--panel2),#0a1726);border:2px solid var(--border);border-radius:10px;
+  padding:22px 16px 18px;position:relative;overflow:hidden;
+  transition:transform .2s cubic-bezier(.2,.9,.3,1.3),border-color .2s,box-shadow .2s;
 }
-.pkg-card:hover{border-color:var(--cyan);box-shadow:0 0 12px #00d4ff22;}
-.pkg-card-price{font-size:14px;color:#ffcc44;font-weight:700;}
-.pkg-card-credits{font-size:10px;color:var(--text);letter-spacing:.5px;}
-.pkg-card-bonus{font-size:8px;color:var(--green);letter-spacing:1px;}
+.pkg-card::before{
+  content:'';position:absolute;inset:0;pointer-events:none;opacity:0;
+  background:linear-gradient(125deg,transparent 35%,rgba(255,255,255,.14) 50%,transparent 65%);
+  background-size:240% 100%;background-position:160% 0;transition:opacity .2s;
+}
+.pkg-card:hover::before{opacity:1;animation:shopCardSheen 1.3s ease-in-out infinite;}
+.pkg-card:hover{border-color:#ffcc44;transform:translateY(-4px);box-shadow:0 10px 26px #ffcc4422;}
+.pkg-card.best{
+  border-color:#ffcc44;background:linear-gradient(165deg,#2a1d06,#0d0a04);
+  box-shadow:0 0 22px #ffcc4433;
+}
+.pkg-card.best::after{
+  content:'MELHOR OFERTA';position:absolute;top:10px;right:-30px;transform:rotate(40deg);
+  background:linear-gradient(90deg,#ff8800,#ffcc00);color:#1a1100;font-weight:800;
+  font-size:7px;letter-spacing:1px;padding:3px 34px;box-shadow:0 2px 8px #00000044;
+}
+.pkg-card-price{font-size:18px;color:#ffcc44;font-weight:800;text-shadow:0 0 12px #ffcc4444;}
+.pkg-card-credits{font-size:11px;color:var(--text);letter-spacing:.5px;font-weight:700;}
+.pkg-card-bonus{
+  font-size:9px;color:var(--green);letter-spacing:1px;font-weight:700;
+  background:#00ff8814;border:1px solid #00ff8833;border-radius:10px;padding:3px 10px;
+}
+.pkg-buy-btn{
+  position:relative;z-index:1;overflow:hidden;width:100%;justify-content:center;
+  font-size:9px;padding:12px 10px;border-radius:6px;letter-spacing:1px;margin-top:4px;
+  background:linear-gradient(90deg,#006688,var(--cyan),#006688);background-size:220% 100%;
+  color:#001620;font-weight:800;border:none;cursor:pointer;
+  font-family:'Press Start 2P',monospace;display:flex;align-items:center;gap:6px;
+  box-shadow:0 4px 16px #00000055;transition:transform .15s,box-shadow .15s,filter .15s;
+  animation:shopBuyGradient 3s linear infinite;
+}
+.pkg-buy-btn::after{
+  content:'';position:absolute;top:0;bottom:0;left:-60%;width:40%;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.5),transparent);
+  transform:skewX(-20deg);animation:shopBtnShine 2.6s ease-in-out infinite;
+}
+.pkg-buy-btn svg{width:12px;height:12px;flex-shrink:0;}
+.pkg-buy-btn:hover{transform:translateY(-2px);filter:brightness(1.12);box-shadow:0 6px 20px #00d4ff33;}
+.pkg-buy-btn:active{transform:translateY(0) scale(.97);}
+.pkg-buy-btn.loading{opacity:.6;cursor:wait;pointer-events:none;animation:none;}
 
 .about-body{padding-top:6px;}
 .about-hero{
@@ -937,6 +974,9 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   .shop-arrow{width:42px;height:56px;font-size:24px;}
   #shop-buy-btn,#shop-equip-btn{padding:14px 20px;font-size:11px;}
   .shop-balance-pill{font-size:11px;padding:6px 12px;}
+  .shop-credits-body{padding:14px 14px 18px;gap:14px;}
+  .pkg-card{min-width:130px;padding:18px 12px 14px;}
+  .pkg-buy-btn{padding:13px 10px;font-size:10px;}
 
   /* Modais (changelog, troca de ícone) ocupando a tela toda, scroll suave */
   .changelog-panel{width:100%;height:100%;max-height:none;border-radius:0;}
@@ -2049,18 +2089,23 @@ async function loadCreditPackages(){
     }
     disabledEl.style.display = 'none';
     listEl.innerHTML = '';
-    data.packages.forEach(pkg => listEl.appendChild(buildPackageCard(pkg)));
+    const bestId = data.packages.reduce((best, p) =>
+      (!best || p.priceCents > best.priceCents) ? p : best, null)?.id;
+    data.packages.forEach(pkg => listEl.appendChild(buildPackageCard(pkg, pkg.id === bestId)));
   } catch {}
 }
 
-function buildPackageCard(pkg){
+function buildPackageCard(pkg, isBest){
   const card = document.createElement('div');
-  card.className = 'pkg-card';
+  card.className = 'pkg-card' + (isBest ? ' best' : '');
   card.innerHTML = `
     <div class="pkg-card-price">${pkg.label}</div>
     <div class="pkg-card-credits">${pkg.credits} Créditos</div>
     ${pkg.bonus ? `<div class="pkg-card-bonus">BÔNUS ${pkg.bonus}</div>` : ''}
-    <button class="play-btn">► PAGAR COM PIX / CARTÃO ◄</button>
+    <button class="pkg-buy-btn">
+      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="1.2" y="2.5" width="9.6" height="7" rx="1"/><path d="M1.2 4.6 H10.8"/><path d="M2.6 7.4 H4.6"/></svg>
+      PAGAR
+    </button>
   `;
   const btn = card.querySelector('button');
   btn.onclick = () => startCheckout(pkg.id, btn);
