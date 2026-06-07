@@ -1,0 +1,866 @@
+// IA do inimigo — Contra1: nave inteligente com sistema de VIDAS.
+import { ARENA_W, ARENA_H } from './arena.js';
+
+const DIFF = { facil:0.6, moderado:1.0, dificil:1.5, insano:2.2 };
+const MAX_LIVES = 5;
+
+// ── Combustão na popa ─────────────────────────────────────────
+function spawnFlame(flames, ex, ey, angle, isAlien=false) {
+  if (isAlien) return;
+  for (let i=0;i<2;i++) {
+    const spread=(Math.random()-0.5)*0.55;
+    const fa=angle+Math.PI+spread;
+    const sp=55+Math.random()*70;
+    const life=0.15+Math.random()*0.18;
+    flames.push({
+      x:ex+(Math.random()-.5)*3, y:ey+(Math.random()-.5)*3,
+      vx:Math.cos(fa)*sp, vy:Math.sin(fa)*sp,
+      life, maxLife:life, size:3+Math.random()*7, flicker:Math.random(),
+    });
+  }
+}
+
+function updateFlames(flames, dt) {
+  for (const f of flames) {
+    f.x+=f.vx*dt; f.y+=f.vy*dt;
+    f.vx*=(1-5*dt); f.vy*=(1-5*dt); f.life-=dt;
+  }
+  return flames.filter(f=>f.life>0);
+}
+
+function drawFlames(ctx, flames) {
+  for (const f of flames) {
+    const t=f.life/f.maxLife, r=f.size*t;
+    const flicker=0.7+0.3*Math.sin(f.flicker*40+Date.now()*0.03);
+    ctx.save(); ctx.globalAlpha=t*flicker;
+    const g=ctx.createRadialGradient(f.x,f.y,0,f.x,f.y,r);
+    g.addColorStop(0,'rgba(255,255,180,1)');
+    g.addColorStop(0.4,'rgba(255,100,0,0.8)');
+    g.addColorStop(1,'rgba(255,20,0,0)');
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(f.x,f.y,r,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+}
+
+function drawAlienThruster(ctx, ex, ey, age) {
+  for (let i=0;i<3;i++) {
+    const phase=((age*2.5+i/3)%1);
+    const r=5+phase*16, a=(1-phase)*0.7;
+    ctx.save(); ctx.strokeStyle=`rgba(255,80,80,${a})`; ctx.lineWidth=2;
+    ctx.shadowColor='#ff4422'; ctx.shadowBlur=8;
+    ctx.beginPath(); ctx.arc(ex,ey,r,0,Math.PI*2); ctx.stroke(); ctx.restore();
+  }
+}
+
+// ── Indicador de vidas (corações) ────────────────────────────
+function drawLives(ctx, x, y, lives, maxLives, color) {
+  const sz=9, gap=13;
+  const total=(maxLives-1)*gap+sz;
+  const startX=x-total/2;
+  for (let i=0;i<maxLives;i++) {
+    const px=startX+i*gap;
+    const filled=i<lives;
+    ctx.save();
+    ctx.globalAlpha=filled?1:0.25;
+    ctx.fillStyle=filled?color:'#ffffff';
+    ctx.shadowColor=filled?color:'transparent';
+    ctx.shadowBlur=filled?8:0;
+    // Losango / diamante como indicador de vida
+    ctx.beginPath();
+    ctx.moveTo(px+sz/2,y); ctx.lineTo(px+sz,y+sz/2);
+    ctx.lineTo(px+sz/2,y+sz); ctx.lineTo(px,y+sz/2);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+}
+
+// ── Números de dano flutuantes ────────────────────────────────
+const _dmgNums = [];
+
+export function spawnDamageNumber(x, y, value) {
+  _dmgNums.push({ x, y: y - 10, value: Math.round(value), age: 0, maxAge: 1.1, vy: -48 - Math.random()*22, vx: (Math.random()-0.5)*30 });
+}
+
+export function updateDamageNumbers(dt) {
+  for (const d of _dmgNums) { d.age+=dt; d.x+=d.vx*dt; d.y+=d.vy*dt; d.vy*=(1-3*dt); }
+  _dmgNums.splice(0, _dmgNums.length, ..._dmgNums.filter(d=>d.age<d.maxAge));
+}
+
+export function drawDamageNumbers(ctx) {
+  for (const d of _dmgNums) {
+    const t = d.age/d.maxAge;
+    const alpha = t < 0.6 ? 1 : 1 - (t-0.6)/0.4;
+    const scale = t < 0.15 ? 0.6 + t/0.15*0.6 : 1.2 - t*0.3;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(d.x, d.y);
+    ctx.scale(scale, scale);
+    ctx.font = `bold ${Math.round(11 + d.value/15)}px system-ui`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.strokeStyle = '#000000cc';
+    ctx.lineWidth = 3;
+    ctx.strokeText(d.value, 0, 0);
+    ctx.fillStyle = d.value >= 80 ? '#ffdd00' : d.value >= 40 ? '#ff8833' : '#ffffff';
+    ctx.fillText(d.value, 0, 0);
+    ctx.restore();
+  }
+}
+
+// ── Estilhaços do inimigo ─────────────────────────────────────
+// Escala 1.5x em relação ao original (r=22→34)
+function createEnemyShards(x, y) {
+  const shards = [];
+  const pieces = [
+    { pts:[{x:0,y:-39},{x:13.5,y:18},{x:0,y:12},{x:-13.5,y:18}], color:'#cc2233' },
+    { pts:[{x:0,y:-39},{x:-13.5,y:18},{x:0,y:12}], color:'#cc2233' },
+    { pts:[{x:0,y:12},{x:13.5,y:18},{x:21,y:24},{x:0,y:22.5}], color:'#660011' },
+    { pts:[{x:0,y:12},{x:-13.5,y:18},{x:-21,y:24},{x:0,y:22.5}], color:'#660011' },
+    { pts:[{x:-21,y:15},{x:-42,y:33},{x:-15,y:24}], color:'#440008' },
+    { pts:[{x:21,y:15},{x:42,y:33},{x:15,y:24}], color:'#440008' },
+    { pts:[{x:-6,y:-21},{x:6,y:-21},{x:9,y:0},{x:-9,y:0}], color:'#ff000044' },
+  ];
+
+  for (const piece of pieces) {
+    // Centro do fragmento
+    const cx = piece.pts.reduce((s,p)=>s+p.x,0)/piece.pts.length;
+    const cy = piece.pts.reduce((s,p)=>s+p.y,0)/piece.pts.length;
+    const dist = Math.hypot(cx, cy);
+    const angle = Math.atan2(cy, cx) + (Math.random()-0.5)*0.6;
+    const spd = 60 + dist*1.5 + Math.random()*90;
+    shards.push({
+      x, y,
+      vx: Math.cos(angle)*spd,
+      vy: Math.sin(angle)*spd,
+      rot: 0,
+      vr: (Math.random()-0.5)*7,
+      pts: piece.pts,
+      color: piece.color,
+      age: 0,
+      maxAge: 1.4 + Math.random()*0.8,
+    });
+  }
+  return shards;
+}
+
+// ── Nave inimiga inteligente ──────────────────────────────────
+export class SmartEnemy {
+  constructor(x, y, difficulty, wave=1, lives=MAX_LIVES) {
+    const m=DIFF[difficulty]||1;
+    this.x=x; this.y=y; this.vx=0; this.vy=0; this.angle=0;
+    this.r=46;
+    this.maxHp=120+40*m; this.hp=this.maxHp;
+    this.lives=lives; this.maxLives=lives;
+    this.speed=160+40*m;
+    this.damage=22*m;
+    this.score=15+5*wave;
+    this.color='#ff3355';
+    this.dead=false; this._age=0;
+    this.isAlien=false; this._alienAngle=0;
+    this.shards=[]; this._dying=false; this._dyingAge=0;
+
+    // Respawn flash após perder vida
+    this._respawnTimer=0;
+    this._respawnDuration=1.2;
+    this._respawnX=x; this._respawnY=y;
+
+    // IA
+    this._state='approach'; this._stateTimer=0;
+    this._shootTimer=1.2+Math.random()*0.8;
+    this._shootCd=1.8-m*0.25;
+    this._dodgeTimer=0; this._dodgeDir=1;
+    this._predictMult=0.5+m*0.3;
+
+    this.flames=[]; this._audio=null;
+  }
+
+  setAudio(a) { this._audio=a; }
+
+  _getNozzle() {
+    return { x:this.x+Math.sin(this.angle)*(-48.6), y:this.y-Math.cos(this.angle)*(-48.6) };
+  }
+  _getEngine() {
+    return { x:this.x-Math.sin(this.angle)*(-44.5), y:this.y+Math.cos(this.angle)*(-44.5) };
+  }
+
+  // Retorna true se perdeu uma vida (mas não está morto ainda)
+  loseLife() {
+    this.hp=this.maxHp;
+    this.lives--;
+    this._respawnTimer=this._respawnDuration;
+    // Teleporta para canto oposto ao player (posição aleatória nas bordas)
+    const margin=80;
+    const side=Math.floor(Math.random()*4);
+    if (side===0) { this._respawnX=margin+Math.random()*(ARENA_W-margin*2); this._respawnY=margin; }
+    else if (side===1) { this._respawnX=ARENA_W-margin; this._respawnY=margin+Math.random()*(ARENA_H-margin*2); }
+    else if (side===2) { this._respawnX=margin+Math.random()*(ARENA_W-margin*2); this._respawnY=ARENA_H-margin; }
+    else { this._respawnX=margin; this._respawnY=margin+Math.random()*(ARENA_H-margin*2); }
+    if (this.lives<=0) { this.dead=true; return false; }
+    return true;
+  }
+
+  get isRespawning() { return this._respawnTimer>0; }
+
+  startDeath() {
+    this._dying=true;
+    this._dyingAge=0;
+    this.shards=createEnemyShards(this.x, this.y);
+  }
+
+  update(dt, player, bullets) {
+    // Atualiza estilhaços de morte
+    if (this._dying) {
+      this._dyingAge+=dt;
+      for (const s of this.shards) {
+        s.age+=dt;
+        s.x+=s.vx*dt; s.y+=s.vy*dt;
+        s.vx*=(1-4*dt); s.vy*=(1-4*dt);
+        s.vy+=60*dt; // gravidade leve
+        s.rot+=s.vr*dt;
+      }
+      if (this._dyingAge>2.2) this.dead=true;
+      return;
+    }
+    if (this.dead) return;
+    this._age+=dt;
+
+    // ── Respawn: invencível e teleportando ─────────────────
+    if (this._respawnTimer>0) {
+      this._respawnTimer-=dt;
+      // Interpola para nova posição durante respawn
+      const pct=1-(this._respawnTimer/this._respawnDuration);
+      this.x=this.x+(this._respawnX-this.x)*Math.min(1,pct*3);
+      this.y=this.y+(this._respawnY-this.y)*Math.min(1,pct*3);
+      this.vx=0; this.vy=0;
+      return;
+    }
+
+    const tx=player.x, ty=player.y;
+    const pvx=player.vx, pvy=player.vy;
+    const dx=tx-this.x, dy=ty-this.y;
+    const dist=Math.hypot(dx,dy)||1;
+
+    // ── Estados de IA ──────────────────────────────────────
+    this._stateTimer-=dt;
+    if (this._stateTimer<=0) {
+      const hpRatio=this.hp/this.maxHp;
+      if (dist>500) { this._state='approach'; this._stateTimer=1.5; }
+      else if (dist<120) { this._state='retreat'; this._stateTimer=1.0+Math.random(); }
+      else if (hpRatio<0.35&&Math.random()<0.4) { this._state='retreat'; this._stateTimer=2.0; }
+      else if (Math.random()<0.3) { this._state='flank'; this._dodgeDir=Math.random()<0.5?1:-1; this._stateTimer=1.2+Math.random(); }
+      else { this._state='strafe'; this._dodgeDir=Math.random()<0.5?1:-1; this._stateTimer=0.8+Math.random()*0.6; }
+    }
+
+    // ── Esquiva de projéteis ───────────────────────────────
+    this._dodgeTimer-=dt;
+    if (this._dodgeTimer<=0) {
+      this._dodgeTimer=0.4+Math.random()*0.3;
+      for (const b of bullets) {
+        if (b.owner!=='player') continue;
+        const bdist=Math.hypot(this.x-b.x,this.y-b.y);
+        if (bdist<140) {
+          const bdx=this.x-b.x, bdy=this.y-b.y;
+          this._state='dodge'; this._stateTimer=0.35;
+          this._dodgeDir=Math.sign(bdx*b.vy-bdy*b.vx)||1;
+        }
+      }
+    }
+
+    // ── Movimento ─────────────────────────────────────────
+    let tvx=0,tvy=0;
+    const perp={x:-dy/dist,y:dx/dist};
+    if (this._state==='approach') { tvx=(dx/dist)*this.speed; tvy=(dy/dist)*this.speed; }
+    else if (this._state==='retreat') { tvx=-(dx/dist)*this.speed; tvy=-(dy/dist)*this.speed; }
+    else if (this._state==='strafe') { tvx=perp.x*this.speed*this._dodgeDir+(dx/dist)*this.speed*0.2; tvy=perp.y*this.speed*this._dodgeDir+(dy/dist)*this.speed*0.2; }
+    else if (this._state==='flank') {
+      const fx=tx+perp.x*200*this._dodgeDir, fy=ty+perp.y*200*this._dodgeDir;
+      const fd=Math.hypot(fx-this.x,fy-this.y)||1;
+      tvx=(fx-this.x)/fd*this.speed; tvy=(fy-this.y)/fd*this.speed;
+    }
+    else if (this._state==='dodge') { tvx=perp.x*this.speed*1.4*this._dodgeDir; tvy=perp.y*this.speed*1.4*this._dodgeDir; }
+
+    this.vx+=(tvx-this.vx)*Math.min(1,6*dt);
+    this.vy+=(tvy-this.vy)*Math.min(1,6*dt);
+    const sp=Math.hypot(this.vx,this.vy);
+    if (sp>this.speed*1.1) { this.vx=this.vx/sp*this.speed*1.1; this.vy=this.vy/sp*this.speed*1.1; }
+
+    this.x+=this.vx*dt; this.y+=this.vy*dt;
+    this.x=Math.max(this.r,Math.min(ARENA_W-this.r,this.x));
+    this.y=Math.max(this.r,Math.min(ARENA_H-this.r,this.y));
+
+    this.angle=Math.atan2(dy,dx)+Math.PI/2;
+
+    // ── Chama ─────────────────────────────────────────────
+    const eng=this._getEngine();
+    spawnFlame(this.flames,eng.x,eng.y,this.angle,this.isAlien);
+    this.flames=updateFlames(this.flames,dt);
+
+    // ── Tiro preditivo ────────────────────────────────────
+    this._shootTimer-=dt;
+    if (this._shootTimer<=0&&dist<520) {
+      this._shootTimer=this._shootCd;
+      this._firePredictive(tx,ty,pvx,pvy,dist,bullets);
+      this._audio?.playEnemyShoot();
+    }
+  }
+
+  _firePredictive(tx,ty,pvx,pvy,dist,bullets) {
+    const bspd=340, tof=dist/bspd;
+    const px=tx+pvx*tof*this._predictMult, py=ty+pvy*tof*this._predictMult;
+    const nozzle=this._getNozzle();
+    const dx=px-nozzle.x, dy=py-nozzle.y;
+    const d=Math.hypot(dx,dy)||1;
+    bullets.push({ x:nozzle.x,y:nozzle.y, vx:(dx/d)*bspd,vy:(dy/d)*bspd, damage:this.damage, owner:'enemy', life:1.6, owner_color:'#ff4466', dirX:dx/d,dirY:dy/d });
+  }
+
+  draw(ctx) {
+    // Animação de morte: estilhaços voando
+    if (this._dying) {
+      for (const s of this.shards) {
+        const t = 1 - s.age/s.maxAge;
+        ctx.save();
+        ctx.globalAlpha = t * t;
+        ctx.translate(s.x, s.y);
+        ctx.rotate(s.rot);
+        ctx.fillStyle = s.color;
+        ctx.shadowColor = '#ff4466'; ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.moveTo(s.pts[0].x, s.pts[0].y);
+        for (let i=1;i<s.pts.length;i++) ctx.lineTo(s.pts[i].x, s.pts[i].y);
+        ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
+      return;
+    }
+
+    if (this.dead) return;
+    const respawning=this.isRespawning;
+
+    if (!respawning) {
+      if (!this.isAlien) drawFlames(ctx,this.flames);
+      else { const e=this._getEngine(); drawAlienThruster(ctx,e.x,e.y,this._age); }
+    }
+
+    ctx.save();
+    ctx.translate(this.x,this.y);
+    ctx.rotate(this.angle);
+
+    // Flash de respawn
+    if (respawning) {
+      const blink=Math.sin(this._respawnTimer*20)>0;
+      if (!blink) { ctx.restore(); return; }
+      ctx.globalAlpha=0.6+0.4*(1-this._respawnTimer/this._respawnDuration);
+    }
+
+    ctx.scale(1.35,1.35);
+
+    // Fuselagem (escala 1.5x: r=34)
+    ctx.fillStyle='#660011';
+    ctx.beginPath(); ctx.moveTo(0,-39); ctx.lineTo(21,24); ctx.lineTo(10.5,30); ctx.lineTo(0,22.5); ctx.lineTo(-10.5,30); ctx.lineTo(-21,24); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#cc2233';
+    ctx.beginPath(); ctx.moveTo(0,-33); ctx.lineTo(13.5,18); ctx.lineTo(0,12); ctx.lineTo(-13.5,18); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#440008';
+    ctx.beginPath(); ctx.moveTo(-21,15); ctx.lineTo(-42,33); ctx.lineTo(-15,24); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(21,15); ctx.lineTo(42,33); ctx.lineTo(15,24); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle='#ff2244'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(-21,15); ctx.lineTo(-39,31.5); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(21,15); ctx.lineTo(39,31.5); ctx.stroke();
+    ctx.fillStyle='#ff000044';
+    ctx.beginPath(); ctx.ellipse(0,-12,6,10.5,0,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#ff4466'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.ellipse(0,-12,6,10.5,0,0,Math.PI*2); ctx.stroke();
+    ctx.restore();
+
+    // HP bar
+    const bw=58;
+    ctx.fillStyle='#0d1e32bb'; ctx.fillRect(this.x-bw/2,this.y-this.r-14,bw,6);
+    ctx.fillStyle='#ff3355'; ctx.fillRect(this.x-bw/2,this.y-this.r-14,bw*Math.max(0,this.hp/this.maxHp),6);
+
+    // Vidas
+    drawLives(ctx,this.x,this.y-this.r-24,this.lives,this.maxLives,'#ff4466');
+
+    // Label
+    ctx.fillStyle='#ff6677'; ctx.font='10px system-ui'; ctx.textAlign='center';
+    ctx.fillText('INIMIGO',this.x,this.y-this.r-36);
+  }
+}
+
+// ── Drone: inimigo rápido e pequeno ──────────────────────────
+export class DroneEnemy {
+  constructor(x, y, difficulty) {
+    const m = DIFF[difficulty]||1;
+    this.x=x; this.y=y; this.vx=0; this.vy=0;
+    this.r=22; this.angle=0; this._age=0;
+    this.maxHp=40+14*m; this.hp=this.maxHp;
+    this.lives=1; this.maxLives=1;
+    this.speed=240+60*m;
+    this.damage=12*m;
+    this.score=8;
+    this.color='#ff8800';
+    this.dead=false; this._dying=false; this._dyingAge=0;
+    this.shards=[];
+    this._shootTimer=0.6+Math.random()*0.5;
+    this._shootCd=1.2-m*0.15;
+    this._wobble=Math.random()*Math.PI*2;
+    this.isAlien=false; this._audio=null;
+    this._respawnTimer=0; this._respawnDuration=0;
+    this._respawnX=x; this._respawnY=y;
+  }
+
+  setAudio(a) { this._audio=a; }
+  get isRespawning() { return false; }
+
+  loseLife() { this.dead=true; return false; }
+
+  startDeath() {
+    this._dying=true; this._dyingAge=0;
+    // Fragmentos simples triangulares
+    this.shards=[];
+    for (let i=0;i<6;i++) {
+      const a=Math.random()*Math.PI*2, spd=70+Math.random()*100;
+      this.shards.push({x:this.x,y:this.y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,rot:0,vr:(Math.random()-0.5)*8,age:0,maxAge:0.9+Math.random()*0.4,
+        pts:[{x:0,y:-12},{x:10,y:9},{x:-10,y:9}],color:'#ff8822'});
+    }
+  }
+
+  update(dt, player, bullets) {
+    if (this._dying) {
+      this._dyingAge+=dt;
+      for (const s of this.shards){s.age+=dt;s.x+=s.vx*dt;s.y+=s.vy*dt;s.vx*=(1-3*dt);s.vy*=(1-3*dt);s.rot+=s.vr*dt;}
+      if (this._dyingAge>1.2) this.dead=true;
+      return;
+    }
+    if (this.dead) return;
+    this._age+=dt;
+
+    // Movimento sinusoidal rápido em direção ao player
+    const dx=player.x-this.x, dy=player.y-this.y;
+    const dist=Math.hypot(dx,dy)||1;
+    this._wobble+=dt*3.5;
+    const perpX=-dy/dist, perpY=dx/dist;
+    const wobbleAmt=30*Math.sin(this._wobble);
+    const tvx=(dx/dist)*this.speed + perpX*wobbleAmt;
+    const tvy=(dy/dist)*this.speed + perpY*wobbleAmt;
+    this.vx+=(tvx-this.vx)*Math.min(1,8*dt);
+    this.vy+=(tvy-this.vy)*Math.min(1,8*dt);
+    this.x+=this.vx*dt; this.y+=this.vy*dt;
+    this.x=Math.max(this.r,Math.min(ARENA_W-this.r,this.x));
+    this.y=Math.max(this.r,Math.min(ARENA_H-this.r,this.y));
+    this.angle=Math.atan2(dy,dx)+Math.PI/2;
+
+    // Tiro
+    this._shootTimer-=dt;
+    if (this._shootTimer<=0&&dist<380) {
+      this._shootTimer=this._shootCd;
+      const noz={x:this.x+Math.sin(this.angle-Math.PI/2)*(-20),y:this.y-Math.cos(this.angle-Math.PI/2)*(-20)};
+      const bspd=400, da=dx/dist, db=dy/dist;
+      bullets.push({x:noz.x,y:noz.y,vx:da*bspd,vy:db*bspd,damage:this.damage,owner:'enemy',life:1.2,owner_color:'#ff8800',dirX:da,dirY:db});
+      this._audio?.playEnemyShoot();
+    }
+  }
+
+  draw(ctx) {
+    if (this._dying) {
+      for (const s of this.shards) {
+        const t=1-s.age/s.maxAge;
+        ctx.save(); ctx.globalAlpha=t*t; ctx.translate(s.x,s.y); ctx.rotate(s.rot);
+        ctx.fillStyle=s.color; ctx.beginPath();
+        ctx.moveTo(s.pts[0].x,s.pts[0].y); ctx.lineTo(s.pts[1].x,s.pts[1].y); ctx.lineTo(s.pts[2].x,s.pts[2].y);
+        ctx.closePath(); ctx.fill(); ctx.restore();
+      }
+      return;
+    }
+    if (this.dead) return;
+
+    ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(this.angle);
+    // Corpo hexagonal pequeno
+    ctx.fillStyle='#331100';
+    ctx.beginPath();
+    for (let i=0;i<6;i++){const a=i*Math.PI/3;ctx.lineTo(Math.cos(a)*this.r,Math.sin(a)*this.r);}
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#ff8800';
+    ctx.beginPath();
+    for (let i=0;i<6;i++){const a=i*Math.PI/3;ctx.lineTo(Math.cos(a)*(this.r-3),Math.sin(a)*(this.r-3));}
+    ctx.closePath(); ctx.fill();
+    // Núcleo brilhante
+    ctx.fillStyle='#ffcc44'; ctx.shadowColor='#ff8800'; ctx.shadowBlur=10;
+    ctx.beginPath(); ctx.arc(0,0,5,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0;
+    // Bico
+    ctx.fillStyle='#ffaa22';
+    ctx.beginPath(); ctx.moveTo(0,-this.r); ctx.lineTo(5,-this.r+7); ctx.lineTo(-5,-this.r+7); ctx.closePath(); ctx.fill();
+    ctx.restore();
+
+    // HP bar
+    const bw=34;
+    ctx.fillStyle='#0d1e32bb'; ctx.fillRect(this.x-bw/2,this.y-this.r-10,bw,4);
+    ctx.fillStyle='#ff8800'; ctx.fillRect(this.x-bw/2,this.y-this.r-10,bw*Math.max(0,this.hp/this.maxHp),4);
+
+    // Label
+    ctx.fillStyle='#ffaa44'; ctx.font='8px system-ui'; ctx.textAlign='center';
+    ctx.fillText('DRONE',this.x,this.y-this.r-14);
+  }
+}
+
+// ── Guardião: defende/ataca as Torres Astrais (modo Teste) ───
+// IA híbrida: ataca torres do jogador quando desprotegidas, recua
+// para perto das próprias torres quando o jogador se aproxima delas.
+export class GuardianEnemy {
+  constructor(x, y, difficulty) {
+    const m=DIFF[difficulty]||1;
+    this.x=x; this.y=y; this.vx=0; this.vy=0; this.angle=0;
+    this.r=43;
+    this.maxHp=140+40*m; this.hp=this.maxHp;
+    this.lives=1; this.maxLives=1;
+    this.speed=170+35*m;
+    this.damage=20*m;
+    this.score=20+5*m;
+    this.color='#ffaa00';
+    this.dead=false; this._age=0;
+    this.isAlien=false;
+    this.shards=[]; this._dying=false; this._dyingAge=0;
+    this._respawnTimer=0; this._respawnDuration=0;
+    this._respawnX=x; this._respawnY=y;
+
+    this._state='advance'; // 'advance' (vai atacar torre) | 'defend' (volta pra perto da própria torre)
+    this._stateTimer=0;
+    this._shootTimer=1+Math.random()*0.6;
+    this._shootCd=1.4-m*0.18;
+    this._targetTower=null;
+    this._homeTower=null;
+
+    this.flames=[]; this._audio=null;
+  }
+
+  setAudio(a) { this._audio=a; }
+  get isRespawning() { return false; }
+  loseLife() { this.dead=true; return false; }
+
+  _getNozzle() { return { x:this.x+Math.sin(this.angle)*(-40.5), y:this.y-Math.cos(this.angle)*(-40.5) }; }
+  _getEngine() { return { x:this.x-Math.sin(this.angle)*(-37.8), y:this.y+Math.cos(this.angle)*(-37.8) }; }
+
+  startDeath() {
+    this._dying=true; this._dyingAge=0;
+    this.shards=createEnemyShards(this.x,this.y);
+  }
+
+  // towers: array de Tower (de towers.js). Escolhe alvo (torre do jogador mais próxima)
+  // e "lar" (própria torre mais próxima) a cada decisão de estado.
+  update(dt, player, bullets, towers) {
+    if (this._dying) {
+      this._dyingAge+=dt;
+      for (const s of this.shards) {
+        s.age+=dt; s.x+=s.vx*dt; s.y+=s.vy*dt;
+        s.vx*=(1-4*dt); s.vy*=(1-4*dt); s.vy+=60*dt; s.rot+=s.vr*dt;
+      }
+      if (this._dyingAge>2.0) this.dead=true;
+      return;
+    }
+    if (this.dead) return;
+    this._age+=dt;
+
+    const ownTowers   = (towers||[]).filter(t=>t.owner==='enemy');
+    const enemyTowers = (towers||[]).filter(t=>t.owner==='player'); // alvo: torres do "lado jogador"
+
+    // Torre mais próxima de cada tipo
+    let nearestOwn=null, ownD=Infinity;
+    for (const t of ownTowers) { const d=Math.hypot(t.x-this.x,t.y-this.y); if (d<ownD){ownD=d;nearestOwn=t;} }
+    let nearestTarget=null, targD=Infinity;
+    for (const t of enemyTowers) { const d=Math.hypot(t.x-this.x,t.y-this.y); if (d<targD){targD=d;nearestTarget=t;} }
+    this._homeTower=nearestOwn;
+    this._targetTower=nearestTarget;
+
+    // ── Decide entre avançar (atacar torre do jogador) ou defender (voltar pra própria) ──
+    this._stateTimer-=dt;
+    if (this._stateTimer<=0) {
+      this._stateTimer=1.2+Math.random()*0.8;
+      let playerNearOwnTower=false;
+      if (nearestOwn) playerNearOwnTower = Math.hypot(player.x-nearestOwn.x,player.y-nearestOwn.y) < 560;
+      this._state = playerNearOwnTower ? 'defend' : 'advance';
+    }
+
+    // ── Define alvo de movimento conforme o estado ──
+    let goal=null;
+    if (this._state==='defend' && nearestOwn) goal={x:nearestOwn.x,y:nearestOwn.y};
+    else if (this._state==='advance' && nearestTarget) goal={x:nearestTarget.x,y:nearestTarget.y};
+    else goal={x:player.x,y:player.y};
+
+    const dx=goal.x-this.x, dy=goal.y-this.y;
+    const dist=Math.hypot(dx,dy)||1;
+    // Mantém uma distância de combate (não empilha em cima do alvo)
+    const standoff = goal===player ? 260 : 240;
+    let tvx=0,tvy=0;
+    if (dist>standoff) { tvx=(dx/dist)*this.speed; tvy=(dy/dist)*this.speed; }
+    else {
+      const perp={x:-dy/dist,y:dx/dist};
+      const dir=Math.sin(this._age*0.7)>0?1:-1;
+      tvx=perp.x*this.speed*0.5*dir; tvy=perp.y*this.speed*0.5*dir;
+    }
+
+    this.vx+=(tvx-this.vx)*Math.min(1,6*dt);
+    this.vy+=(tvy-this.vy)*Math.min(1,6*dt);
+    const sp=Math.hypot(this.vx,this.vy);
+    if (sp>this.speed*1.1) { this.vx=this.vx/sp*this.speed*1.1; this.vy=this.vy/sp*this.speed*1.1; }
+
+    this.x+=this.vx*dt; this.y+=this.vy*dt;
+    this.x=Math.max(this.r,Math.min(ARENA_W-this.r,this.x));
+    this.y=Math.max(this.r,Math.min(ARENA_H-this.r,this.y));
+
+    // Aponta para a ameaça mais relevante: jogador se estiver perto, senão objetivo atual
+    const distToPlayer=Math.hypot(player.x-this.x,player.y-this.y);
+    const aimAt = distToPlayer<420 ? player : goal;
+    this.angle=Math.atan2(aimAt.y-this.y,aimAt.x-this.x)+Math.PI/2;
+
+    // Chama
+    const eng=this._getEngine();
+    spawnFlame(this.flames,eng.x,eng.y,this.angle,this.isAlien);
+    this.flames=updateFlames(this.flames,dt);
+
+    // ── Tiro: ataca o jogador se estiver perto, senão a torre-alvo ──
+    this._shootTimer-=dt;
+    if (this._shootTimer<=0) {
+      this._shootTimer=this._shootCd;
+      if (distToPlayer<460) { this._fireAt(player.x,player.y,bullets); this._audio?.playEnemyShoot(); }
+      else if (this._state==='advance' && nearestTarget && targD<460) { this._fireAt(nearestTarget.x,nearestTarget.y,bullets); this._audio?.playEnemyShoot(); }
+    }
+  }
+
+  _fireAt(tx,ty,bullets) {
+    const bspd=320;
+    const nozzle=this._getNozzle();
+    const dx=tx-nozzle.x, dy=ty-nozzle.y;
+    const d=Math.hypot(dx,dy)||1;
+    bullets.push({ x:nozzle.x,y:nozzle.y, vx:(dx/d)*bspd,vy:(dy/d)*bspd, damage:this.damage, owner:'enemy', life:1.6, owner_color:'#ffaa00', dirX:dx/d,dirY:dy/d });
+  }
+
+  draw(ctx) {
+    if (this._dying) {
+      for (const s of this.shards) {
+        const t=1-s.age/s.maxAge;
+        ctx.save(); ctx.globalAlpha=t*t; ctx.translate(s.x,s.y); ctx.rotate(s.rot);
+        ctx.fillStyle=s.color; ctx.shadowColor='#ffaa00'; ctx.shadowBlur=6;
+        ctx.beginPath();
+        ctx.moveTo(s.pts[0].x,s.pts[0].y);
+        for (let i=1;i<s.pts.length;i++) ctx.lineTo(s.pts[i].x,s.pts[i].y);
+        ctx.closePath(); ctx.fill(); ctx.restore();
+      }
+      return;
+    }
+    if (this.dead) return;
+
+    drawFlames(ctx,this.flames);
+
+    ctx.save();
+    ctx.translate(this.x,this.y);
+    ctx.rotate(this.angle);
+    ctx.scale(1.35,1.35);
+
+    // Fuselagem dourada/laranja — visual de "guardião"
+    ctx.fillStyle='#5a3300';
+    ctx.beginPath(); ctx.moveTo(0,-36); ctx.lineTo(19,22); ctx.lineTo(9.5,28); ctx.lineTo(0,21); ctx.lineTo(-9.5,28); ctx.lineTo(-19,22); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#ffaa00';
+    ctx.beginPath(); ctx.moveTo(0,-30); ctx.lineTo(12,16); ctx.lineTo(0,11); ctx.lineTo(-12,16); ctx.closePath(); ctx.fill();
+    ctx.fillStyle='#3a2200';
+    ctx.beginPath(); ctx.moveTo(-19,14); ctx.lineTo(-38,30); ctx.lineTo(-14,22); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(19,14); ctx.lineTo(38,30); ctx.lineTo(14,22); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle='#ffcc44'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(-19,14); ctx.lineTo(-35,28); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(19,14); ctx.lineTo(35,28); ctx.stroke();
+    // Núcleo / cockpit em destaque (escudo de guardião)
+    ctx.fillStyle='#ffdd8844';
+    ctx.beginPath(); ctx.ellipse(0,-10,5.5,9,0,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle='#ffcc44'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.ellipse(0,-10,5.5,9,0,0,Math.PI*2); ctx.stroke();
+    ctx.restore();
+
+    // HP bar
+    const bw=52;
+    ctx.fillStyle='#0d1e32bb'; ctx.fillRect(this.x-bw/2,this.y-this.r-13,bw,5);
+    ctx.fillStyle='#ffaa00'; ctx.fillRect(this.x-bw/2,this.y-this.r-13,bw*Math.max(0,this.hp/this.maxHp),5);
+
+    // Label + indicador de estado
+    ctx.fillStyle='#ffcc66'; ctx.font='9px system-ui'; ctx.textAlign='center';
+    const stLabel = this._state==='defend' ? 'GUARDIÃO ▣ DEFENDENDO' : 'GUARDIÃO ▶ ATACANDO';
+    ctx.fillText(stLabel,this.x,this.y-this.r-22);
+  }
+}
+
+// ── Gerenciador de inimigos ───────────────────────────────────
+export class EnemyManager {
+  constructor(mode='contra1', difficulty='moderado') {
+    this.mode=mode; this.difficulty=difficulty;
+    this.enemies=[]; this.wave=1;
+    this.waveActive=false; this.waveTimer=4;
+    this.toSpawn=[]; this.spawnTimer=0;
+    this.enemyScore=0;
+    this._audio=null;
+    this._prepareWave();
+
+    // Contra 1: sistema de vidas compartilhado
+    this._enemyLives=MAX_LIVES;
+    this._playerLives=MAX_LIVES;
+    this._livesResult=null; // 'player_win' | 'enemy_win'
+  }
+
+  setAudio(a) { this._audio=a; }
+
+  // Para o modo Contra1: informa quantas vidas o player tem
+  setPlayerLives(n) { this._playerLives=n; }
+
+  get enemyLives() { return this._enemyLives; }
+  get playerLives() { return this._playerLives; }
+  get maxLives() { return MAX_LIVES; }
+  get livesResult() { return this._livesResult; }
+
+  get maxSimultaneous() {
+    return this.mode==='contra1'?1: this.mode==='contra2'?2:4;
+  }
+
+  _prepareWave() {
+    const isContra1=this.mode==='contra1';
+    if (this.mode==='teste') {
+      this.toSpawn=['guardian'];
+    } else if (isContra1) {
+      this.toSpawn=['smart'];
+    } else {
+      const count=Math.min(2+this.wave,6);
+      this.toSpawn=[];
+      for (let i=0;i<count;i++) {
+        // A partir da onda 2, mistura drones (~40%)
+        if (this.wave>=2 && Math.random()<0.4) this.toSpawn.push('drone');
+        else this.toSpawn.push('smart');
+      }
+    }
+    this.waveActive=false; this.waveTimer=isContra1?2:4;
+  }
+
+  _edge() {
+    const side=Math.floor(Math.random()*4);
+    if (side===0) return {x:Math.random()*ARENA_W,y:-40};
+    if (side===1) return {x:ARENA_W+40,y:Math.random()*ARENA_H};
+    if (side===2) return {x:Math.random()*ARENA_W,y:ARENA_H+40};
+    return {x:-40,y:Math.random()*ARENA_H};
+  }
+
+  // Notifica que o player perdeu uma vida (chamado de combat.js)
+  playerLostLife() {
+    if (this.mode!=='contra1') return;
+    this._playerLives--;
+    if (this._playerLives<=0) this._livesResult='enemy_win';
+  }
+
+  // Posição de spawn perto das torres do "lado inimigo" (modo Teste)
+  _guardianSpawnPos(towers) {
+    const enemyTowers=(towers||[]).filter(t=>t.side==='enemy');
+    if (enemyTowers.length) {
+      const t=enemyTowers[Math.floor(Math.random()*enemyTowers.length)];
+      const a=Math.random()*Math.PI*2;
+      return { x:t.x+Math.cos(a)*180, y:t.y+Math.sin(a)*180 };
+    }
+    return this._edge();
+  }
+
+  update(dt, player, bullets, arena, itemMgr, towers=null) {
+    if (!this.waveActive) {
+      this.waveTimer-=dt;
+      if (this.waveTimer<=0) { this.waveActive=true; this._audio?.playWaveStart(); }
+      return null;
+    }
+
+    // Spawn
+    this.spawnTimer-=dt;
+    const alive=this.enemies.filter(e=>!e.dead&&!e.isRespawning).length;
+    if (this.spawnTimer<=0&&this.toSpawn.length>0&&alive<this.maxSimultaneous) {
+      this.spawnTimer=0.5;
+      const type=this.toSpawn.pop();
+      let e;
+      if (type==='guardian') {
+        const {x,y}=this._guardianSpawnPos(towers);
+        e=new GuardianEnemy(x,y,this.difficulty);
+      } else if (type==='drone') {
+        const {x,y}=this._edge();
+        e=new DroneEnemy(x,y,this.difficulty);
+      } else {
+        const {x,y}=this._edge();
+        const lives=this.mode==='contra1'?this._enemyLives:1;
+        e=new SmartEnemy(x,y,this.difficulty,this.wave,lives);
+      }
+      e.setAudio(this._audio);
+      this.enemies.push(e);
+    }
+
+    updateDamageNumbers(dt);
+
+    // Player invisível: passa posição falsa para inimigos (eles perdem o alvo)
+    const visiblePlayer = player.isInvisible
+      ? { ...player, x: player.x + 9999, y: player.y + 9999 }
+      : player;
+    for (const e of this.enemies) {
+      if (e.dead) continue;
+      if (e instanceof GuardianEnemy) e.update(dt, visiblePlayer, bullets, towers);
+      else e.update(dt, visiblePlayer, bullets);
+    }
+
+    // Verifica morte de inimigos
+    const next=[];
+    for (const e of this.enemies) {
+      if (e.dead && !e._dying) {
+        // Aciona animação de morte se ainda não iniciou
+        e.startDeath();
+        if (this.mode==='contra1') {
+          this._enemyLives=0;
+          this._livesResult='player_win';
+          arena.spawnParticles(e.x,e.y,e.color,22,200);
+          itemMgr.spawnAt(e.x,e.y,3);
+          this.enemyScore+=e.score;
+          this._audio?.playExplosion(2);
+        } else {
+          arena.spawnParticles(e.x,e.y,e.color,16,180);
+          itemMgr.spawnAt(e.x,e.y,2);
+          this.enemyScore+=e.score;
+          this._audio?.playExplosion(1.5);
+        }
+        next.push(e); // mantém no array durante animação
+      } else if (e._dying) {
+        if (!e.dead) next.push(e); // ainda animando
+        // se dead=true após animação, descarta
+      } else {
+        next.push(e);
+      }
+    }
+    this.enemies=next;
+
+    // Verifica fim da onda (não-Contra1)
+    if (this.mode!=='contra1'&&this.waveActive&&this.toSpawn.length===0&&this.enemies.length===0) {
+      this.wave++;
+      this._prepareWave();
+      return this.wave-1;
+    }
+
+    return null;
+  }
+
+  // Chamado quando inimigo chega a 0 hp no modo contra1 (mas não morreu — perde vida)
+  enemyLostLife(enemy, arena, itemMgr) {
+    if (this.mode!=='contra1') return;
+    this._enemyLives--;
+    enemy.lives=this._enemyLives;
+    if (this._enemyLives<=0) {
+      enemy.dead=true;
+      // animação de morte completa é acionada no loop principal
+    } else {
+      enemy.loseLife();
+      this._audio?.playExplosion(1);
+      arena.spawnParticles(enemy.x,enemy.y,'#ff4466',12,160);
+    }
+  }
+
+  draw(ctx) {
+    for (const e of this.enemies) e.draw(ctx);
+    drawDamageNumbers(ctx);
+  }
+
+  get currentWave()   { return this.wave; }
+  get isWaveActive()  { return this.waveActive; }
+  get waveCountdown() { return Math.ceil(this.waveTimer); }
+}
