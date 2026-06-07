@@ -22,17 +22,123 @@ const MIME = {
   '.jpg':  'image/jpeg',
   '.ico':  'image/x-icon',
   '.svg':  'image/svg+xml; charset=utf-8',
+  '.mp3':  'audio/mpeg',
   '.json': 'application/json',
 };
 
 // ── Estado do servidor ─────────────────────────────────────────
 const rooms  = new Map();   // roomId → { players: Map<id, {socket, state}>, started }
-const socks  = new Map();   // socket → { id, name, roomId, skinIndex }
+const socks  = new Map();   // socket → { id, name, roomId, skinIndex, team }
 let   nextId = 1;
 
 function getRoomOrCreate(roomId) {
   if (!rooms.has(roomId)) rooms.set(roomId, { players: new Map(), started: false });
   return rooms.get(roomId);
+}
+
+// ── Matchmaking do modo "Equipe Online" (PvP 3x3) ──────────────
+// Salas dedicadas (equipe_online_<n>) com até 6 jogadores, 2 times de 3.
+// Quando a sala enche ou o tempo de espera expira, o servidor sorteia um
+// "anfitrião" (primeiro a entrar) que simula bots localmente para preencher
+// vagas vazias — o servidor continua "burro", apenas repassando mensagens.
+const TEAM_SIZE        = 3;
+const TEAM_ROOM_MAX    = TEAM_SIZE * 2;
+const TEAM_WAIT_MS     = 25_000;
+let   teamRoomSeq      = 1;
+const teamRooms        = new Map(); // roomId → { players:[{id,name,skinIndex,socket,team,isHost}], teamCounts:{red,blue}, started, waitTimer }
+
+function findOpenTeamRoom() {
+  for (const [roomId, tr] of teamRooms) {
+    if (!tr.started && tr.players.length < TEAM_ROOM_MAX) return roomId;
+  }
+  return null;
+}
+
+function assignTeam(tr) {
+  return tr.teamCounts.red <= tr.teamCounts.blue ? 'red' : 'blue';
+}
+
+function startTeamMatch(roomId) {
+  const tr = teamRooms.get(roomId);
+  if (!tr || tr.started) return;
+  tr.started = true;
+  if (tr.waitTimer) { clearTimeout(tr.waitTimer); tr.waitTimer = null; }
+
+  const slotsToFill = TEAM_ROOM_MAX - tr.players.length;
+  const botSlots = [];
+  for (let i = 0; i < slotsToFill; i++) {
+    const team = assignTeam(tr);
+    tr.teamCounts[team]++;
+    const botId = `bot_${roomId}_${i}`;
+    botSlots.push({ id: botId, name: `BOT-${Math.floor(1000+Math.random()*9000)}`, skinIndex: Math.floor(Math.random()*7), profileIcon: 0, team, isBot: true, isHost: false });
+  }
+
+  const playersPayload = tr.players.map((p, idx) => ({
+    id: p.id, name: p.name, skinIndex: p.skinIndex, profileIcon: p.profileIcon, team: p.team,
+    isBot: false, isHost: idx === 0,
+  })).concat(botSlots);
+
+  // Guarda quais IDs de bot pertencem a essa sala e quem é o anfitrião,
+  // para validar e repassar os relatos de estado/eventos simulados (ver
+  // 'bot_state'/'bot_event' em handleMsg) sem permitir spoofing por outros.
+  tr.botIds = new Set(botSlots.map(b => b.id));
+  tr.hostId = tr.players[0]?.id ?? null;
+
+  for (const p of tr.players) {
+    wsSend(p.socket, JSON.stringify({
+      type: 'match_start',
+      roomId,
+      players: playersPayload,
+      you: { id: p.id, team: p.team, isHost: p.id === tr.players[0].id },
+    }));
+  }
+  console.log(`[MATCH] Equipe Online iniciada em "${roomId}" — ${tr.players.length} jogador(es) real(is) + ${botSlots.length} bot(s)`);
+}
+
+function joinTeamQueue(socket, info, name, skinIndex, profileIcon) {
+  let roomId = findOpenTeamRoom();
+  let tr;
+  if (roomId) {
+    tr = teamRooms.get(roomId);
+  } else {
+    roomId = `equipe_online_${teamRoomSeq++}`;
+    tr = { players: [], teamCounts: { red: 0, blue: 0 }, started: false, waitTimer: null };
+    teamRooms.set(roomId, tr);
+  }
+
+  const team = assignTeam(tr);
+  tr.teamCounts[team]++;
+  tr.players.push({ id: info.id, name, skinIndex, profileIcon, socket, team });
+  info.roomId = roomId;
+  info.team   = team;
+  info.name   = name;
+  info.skinIndex = skinIndex;
+
+  // Registra também no mapa "rooms" padrão, para que broadcastRoom()
+  // funcione normalmente para state/event/chat/leave após o match_start.
+  const room = getRoomOrCreate(roomId);
+  room.players.set(info.id, { socket, state: null });
+
+  console.log(`[MATCH] ${name} entrou na fila "Equipe Online" (sala ${roomId}, time ${team}, ${tr.players.length}/${TEAM_ROOM_MAX})`);
+
+  if (tr.players.length >= TEAM_ROOM_MAX) {
+    startTeamMatch(roomId);
+  } else if (!tr.waitTimer) {
+    tr.waitTimer = setTimeout(() => startTeamMatch(roomId), TEAM_WAIT_MS);
+  }
+}
+
+function leaveTeamQueue(socket, info) {
+  const tr = teamRooms.get(info.roomId);
+  if (!tr) return;
+  const idx = tr.players.findIndex(p => p.socket === socket);
+  if (idx === -1) return;
+  const [removed] = tr.players.splice(idx, 1);
+  if (removed && tr.teamCounts[removed.team] > 0) tr.teamCounts[removed.team]--;
+  if (tr.players.length === 0) {
+    if (tr.waitTimer) clearTimeout(tr.waitTimer);
+    teamRooms.delete(info.roomId);
+  }
 }
 
 function broadcastRoom(roomId, data, except = null) {
@@ -89,10 +195,11 @@ server.on('upgrade', (req, socket) => {
   const sessionUser = auth.resolveUserFromCookieHeader(req.headers.cookie);
   socks.set(socket, {
     id,
-    name:      sessionUser ? sessionUser.display_name : `Jogador${id}`,
-    roomId:    'default',
-    skinIndex: sessionUser ? sessionUser.equipped_skin : 0,
-    userId:    sessionUser ? sessionUser.id : null,
+    name:        sessionUser ? sessionUser.display_name : `Jogador${id}`,
+    roomId:      'default',
+    skinIndex:   sessionUser ? sessionUser.equipped_skin : 0,
+    profileIcon: sessionUser ? sessionUser.profile_icon : 0,
+    userId:      sessionUser ? sessionUser.id : null,
   });
 
   let buf = Buffer.alloc(0);
@@ -114,6 +221,7 @@ function onDisconnect(socket) {
   const info = socks.get(socket);
   if (!info) return;
   socks.delete(socket);
+  if (info.roomId && info.roomId.startsWith('equipe_online_')) leaveTeamQueue(socket, info);
   const room = rooms.get(info.roomId);
   if (room) {
     room.players.delete(info.id);
@@ -147,11 +255,25 @@ function handleMsg(socket, raw) {
         .filter(([pid]) => pid !== info.id)
         .map(([pid, p]) => {
           const pi = [...socks.entries()].find(([s]) => s === p.socket)?.[1];
-          return pi ? { id: pid, name: pi.name, skinIndex: pi.skinIndex } : null;
+          return pi ? { id: pid, name: pi.name, skinIndex: pi.skinIndex, profileIcon: pi.profileIcon } : null;
         }).filter(Boolean);
       wsSend(socket, JSON.stringify({ type: 'welcome', id: info.id, peers }));
-      broadcastRoom(info.roomId, { type: 'join', id: info.id, name: info.name, skinIndex: info.skinIndex }, socket);
+      broadcastRoom(info.roomId, { type: 'join', id: info.id, name: info.name, skinIndex: info.skinIndex, profileIcon: info.profileIcon }, socket);
       console.log(`[WS] ${info.name} entrou na sala "${info.roomId}" (${room.players.size} jogadores)`);
+      break;
+    }
+    case 'queue_join': {
+      // Fila de matchmaking do modo "Equipe Online" (PvP 3x3) — substitui
+      // o antigo fluxo cooperativo de sala fixa para esse modo de jogo.
+      if (info.userId === null) {
+        info.name      = msg.name      || info.name;
+        info.skinIndex = msg.skinIndex ?? 0;
+      }
+      joinTeamQueue(socket, info, info.name, info.skinIndex, info.profileIcon);
+      // Avisa o cliente do seu próprio ID — ele precisa antes de "match_start"
+      // chegar (não há snapshot de peers aqui: a lista completa virá em
+      // "match_start" assim que a partida for formada).
+      wsSend(socket, JSON.stringify({ type: 'welcome', id: info.id, peers: [] }));
       break;
     }
     case 'state':
@@ -160,8 +282,28 @@ function handleMsg(socket, raw) {
     case 'event':
       broadcastRoom(info.roomId, { type: 'event', id: info.id, data: msg.data }, socket);
       break;
+    case 'bot_state':
+    case 'bot_event': {
+      // Repasse de estado/evento de bots simulados pelo anfitrião do modo
+      // "Equipe Online". Só aceitamos de quem é realmente o anfitrião da
+      // sala, e só para IDs de bot que o servidor atribuiu a essa sala —
+      // evita spoofing de identidade por outros jogadores.
+      const tr = teamRooms.get(info.roomId);
+      if (!tr || tr.hostId !== info.id || !tr.botIds?.has(msg.botId)) break;
+      broadcastRoom(info.roomId, {
+        type: msg.type === 'bot_state' ? 'state' : 'event',
+        id: msg.botId,
+        data: msg.data,
+      }, socket);
+      break;
+    }
     case 'chat':
       broadcastRoom(info.roomId, { type: 'chat', id: info.id, name: info.name, text: msg.text });
+      break;
+    case 'ping':
+      // Eco simples para medição de latência local — devolve o timestamp
+      // enviado pelo cliente, que calcula o RTT (round-trip time) sozinho.
+      wsSend(socket, JSON.stringify({ type: 'pong', t: msg.t }));
       break;
   }
 }

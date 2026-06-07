@@ -6,10 +6,13 @@ export class NetworkClient {
     this.handlers   = handlers;
     this.myId       = null;
     this.connected  = false;
+    this.ping       = null; // RTT (ms) do jogador local — null até a 1ª medição
     this._ws        = null;
     this._url       = url;
     this._queue     = [];
+    this._pingT     = 0;
     this._connect();
+    this._pingTimer = setInterval(() => this._sendPing(), 4000);
   }
 
   _connect() {
@@ -25,6 +28,7 @@ export class NetworkClient {
       // Envia mensagens enfileiradas
       for (const m of this._queue) this._ws.send(m);
       this._queue = [];
+      this._sendPing();
     });
 
     this._ws.addEventListener('close', () => {
@@ -46,13 +50,26 @@ export class NetworkClient {
   _handle(msg) {
     const h = this.handlers;
     switch (msg.type) {
-      case 'welcome': this.myId = msg.id; h.onWelcome?.(msg); break;
-      case 'join':    h.onJoin?.(msg);    break;
-      case 'leave':   h.onLeave?.(msg);   break;
-      case 'state':   h.onState?.(msg);   break;
-      case 'event':   h.onEvent?.(msg);   break;
-      case 'chat':    h.onChat?.(msg);    break;
+      case 'welcome':     this.myId = msg.id; h.onWelcome?.(msg);     break;
+      case 'join':        h.onJoin?.(msg);                           break;
+      case 'leave':       h.onLeave?.(msg);                          break;
+      case 'state':       h.onState?.(msg);                          break;
+      case 'event':       h.onEvent?.(msg);                          break;
+      case 'chat':        h.onChat?.(msg);                           break;
+      case 'match_start': this.myId = msg.you?.id ?? this.myId; h.onMatchStart?.(msg); break;
+      case 'pong':        this._onPong(msg);                    break;
     }
+  }
+
+  // Mede o RTT (latência) só do jogador local — eco simples ping/pong,
+  // sem broadcast: cada cliente conhece apenas o próprio ping.
+  _sendPing() {
+    this._pingT = performance.now();
+    this.send({ type: 'ping', t: this._pingT });
+  }
+  _onPong(msg) {
+    if (msg.t !== this._pingT) return;
+    this.ping = Math.round(performance.now() - this._pingT);
   }
 
   send(obj) {
@@ -64,26 +81,44 @@ export class NetworkClient {
     }
   }
 
-  join(name, skinIndex, roomId) {
-    this.send({ type: 'join', name, skinIndex, roomId });
+  join(name, skinIndex, roomId, profileIcon=0) {
+    this.send({ type: 'join', name, skinIndex, roomId, profileIcon });
+  }
+
+  // Entra na fila de matchmaking de um modo de equipes (ex: 'equipe_online').
+  // O servidor forma a sala/times e responde com 'match_start'.
+  queueJoin(mode, name, skinIndex, profileIcon=0) {
+    this.send({ type: 'queue_join', mode, name, skinIndex, profileIcon });
   }
 
   sendState(data)  { this.send({ type: 'state', data }); }
   sendEvent(data)  { this.send({ type: 'event', data }); }
   sendChat(text)   { this.send({ type: 'chat', text }); }
 
+  // Anfitrião do modo "Equipe Online" replica estado/eventos de bots
+  // simulados localmente — o servidor valida e repassa com o ID do bot.
+  sendBotState(botId, data) { this.send({ type: 'bot_state', botId, data }); }
+  sendBotEvent(botId, data) { this.send({ type: 'bot_event', botId, data }); }
+
   disconnect() {
+    clearInterval(this._pingTimer);
     this._ws?.close();
   }
 }
 
 // Representa outro jogador online (controlado remotamente)
+const TEAM_COLORS = { red: '#ff4d6a', blue: '#4da6ff' };
+
 export class RemotePlayer {
-  constructor({ id, name, skinIndex, skins }) {
+  constructor({ id, name, skinIndex, skins, team=null, isBot=false, profileIcon=0 }) {
     const { SKINS } = skins;
     this.id   = id;
     this.name = name;
     this.skin = SKINS[skinIndex] || SKINS[0];
+    this.profileIcon = profileIcon;
+    this.team = team;
+    this.isBot = isBot;
+    this.kills = 0;
     this.x    = 800;
     this.y    = 450;
     this.angle = 0;
@@ -102,6 +137,7 @@ export class RemotePlayer {
     this.hp    = s.hp ?? this.hp;
     this.score = s.score ?? this.score;
     this.dead  = s.dead ?? this.dead;
+    if (s.kills !== undefined) this.kills = s.kills;
   }
 
   update(dt) {
@@ -111,21 +147,33 @@ export class RemotePlayer {
 
   draw(ctx) {
     if (this.dead) return;
+    const teamColor = TEAM_COLORS[this.team] || '#aaccff';
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
     this.skin.draw(ctx, 1.35);
     ctx.restore();
+    // Anel de identificação de time (PvP)
+    if (this.team) {
+      ctx.save();
+      ctx.strokeStyle = teamColor;
+      ctx.globalAlpha = 0.55;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, 30, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.restore();
+    }
     // Nome
-    ctx.fillStyle = '#aaccff';
+    ctx.fillStyle = teamColor;
     ctx.font = '11px system-ui';
     ctx.textAlign = 'center';
-    ctx.fillText(this.name, this.x, this.y - 28);
+    ctx.fillText(this.isBot ? `🤖 ${this.name}` : this.name, this.x, this.y - 28);
     // HP bar
     const bw = 30;
     ctx.fillStyle = '#0d1e32';
     ctx.fillRect(this.x - bw/2, this.y - 28, bw, 4);
-    ctx.fillStyle = '#00d4ff';
+    ctx.fillStyle = teamColor;
     ctx.fillRect(this.x - bw/2, this.y - 28, bw * (this.hp/this.maxHp), 4);
   }
 }

@@ -86,6 +86,9 @@ if (!userColumns.includes('reward_hour_count')) {
 if (!userColumns.includes('reward_hour_started')) {
   db.exec(`ALTER TABLE users ADD COLUMN reward_hour_started TEXT`);
 }
+if (!userColumns.includes('profile_icon')) {
+  db.exec(`ALTER TABLE users ADD COLUMN profile_icon INTEGER NOT NULL DEFAULT 0`);
+}
 
 const stmts = {
   insertUser:           db.prepare(`INSERT INTO users (email, display_name, password_hash, google_id) VALUES (?, ?, ?, ?)`),
@@ -97,6 +100,7 @@ const stmts = {
   ownsSkin:             db.prepare(`SELECT 1 AS one FROM owned_skins WHERE user_id = ? AND skin_id = ?`),
   listOwnedSkins:       db.prepare(`SELECT skin_id FROM owned_skins WHERE user_id = ?`),
   setEquippedSkin:      db.prepare(`UPDATE users SET equipped_skin = ? WHERE id = ?`),
+  setProfileIcon:       db.prepare(`UPDATE users SET profile_icon = ? WHERE id = ?`),
   addCredits:           db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ?`),
   spendCredits:         db.prepare(`UPDATE users SET credits = credits - ? WHERE id = ? AND credits >= ?`),
   setRewardState:       db.prepare(`UPDATE users SET reward_progress_count = ?, reward_modes_seen = ? WHERE id = ?`),

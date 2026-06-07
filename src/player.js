@@ -161,6 +161,7 @@ export class Player {
     this.mana=MANA_MAX; this.maxMana=MANA_MAX;
     this.xp=0; this.level=1; this.xpToNext=100;
     this.score=0; this.kills=0; this.itemsCollected=0;
+    this.team=null; // atribuído no modo "Equipe Online" (PvP em times)
     this.itemTypeCounts={}; // { 'HEALTH': 3, 'BOMB': 1, ... }
 
     this.shootCd=0; this.dashCd=0; this.dashTimer=0;

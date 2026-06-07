@@ -66,6 +66,7 @@ function publicUser(user) {
     displayName: user.display_name,
     credits: user.credits,
     equippedSkin: user.equipped_skin,
+    profileIcon: user.profile_icon,
   };
 }
 
@@ -75,6 +76,7 @@ function profileFor(user) {
     user: publicUser(user),
     ownedSkins: owned,
     equippedSkin: user.equipped_skin,
+    profileIcon: user.profile_icon,
     rewardProgress: {
       count: user.reward_progress_count,
       modesSeen: JSON.parse(user.reward_modes_seen || '[]'),
@@ -226,6 +228,22 @@ const ROUTES = [
 
       db.setEquippedSkin.run(skinId, user.id);
       sendJson(res, 200, { ok: true, equippedSkin: skinId });
+    },
+  },
+
+  {
+    method: 'POST', path: '/api/profile/icon',
+    auth: true,
+    rateLimit: rateLimited('profile_icon', 10, 10_000, (req, { user }) => user.id),
+    handler: (req, res, { body, user }) => {
+      const iconId = Number(body.iconId);
+      // Conjunto de ícones de perfil é fixo (definido no client em PROFILE_ICONS) —
+      // 0..PROFILE_ICON_COUNT-1, sem custo nem posse (todo jogador pode trocar livremente).
+      if (!Number.isInteger(iconId) || iconId < 0 || iconId > 23) {
+        return sendJson(res, 400, { error: 'invalid_icon' });
+      }
+      db.setProfileIcon.run(iconId, user.id);
+      sendJson(res, 200, { ok: true, profileIcon: iconId });
     },
   },
 

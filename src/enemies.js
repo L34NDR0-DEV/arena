@@ -385,6 +385,73 @@ export class SmartEnemy {
   }
 }
 
+// ── Bot de equipe (modo "Equipe Online" — PvP 3x3) ─────────────
+// Pilota uma nave-jogador usando a IA já pronta do SmartEnemy (aproximação,
+// retirada, flanco, esquiva, mira preditiva), mas mirando dinamicamente no
+// jogador vivo mais próximo do time adversário — em vez de um único alvo
+// fixo. Para isso alimentamos o SmartEnemy com um "alvo-fantasma" (proxy
+// com x/y/vx/vy do alvo escolhido a cada frame), sem alterar sua classe.
+const TEAM_COLORS = { red:'#ff4d6a', blue:'#4da6ff' };
+
+export class TeamBot {
+  constructor({ id, name, team, x, y, difficulty='moderado', skinIndex=0 }) {
+    this.id = id;
+    this.name = name;
+    this.team = team;
+    this.isBot = true;
+    this.kills = 0;
+    this.score = 0;
+    this.skinIndex = skinIndex;
+    this._brain = new SmartEnemy(x, y, difficulty, 1, 1);
+    this._brain.color = TEAM_COLORS[team] || '#aaccff';
+    this._proxy = { x, y, vx:0, vy:0 };
+  }
+
+  get x() { return this._brain.x; }
+  get y() { return this._brain.y; }
+  get angle() { return this._brain.angle; }
+  get hp() { return this._brain.hp; }
+  get maxHp() { return this._brain.maxHp; }
+  get r() { return this._brain.r; }
+  get dead() { return this._brain.dead; }
+  set hp(v) { this._brain.hp = v; }
+
+  // Escolhe o alvo vivo mais próximo entre uma lista de "jogadores"
+  // (RemotePlayer locais/remotos e outros TeamBots) do time adversário.
+  _pickTarget(players) {
+    let best=null, bestDist=Infinity;
+    for (const p of players) {
+      if (!p || p.dead || p.team===this.team) continue;
+      const d=Math.hypot(p.x-this.x, p.y-this.y);
+      if (d<bestDist) { bestDist=d; best=p; }
+    }
+    return best;
+  }
+
+  startDeath() { this._brain.startDeath(); }
+
+  update(dt, players, bullets) {
+    if (this.dead) return;
+    const target=this._pickTarget(players);
+    if (!target) return;
+    this._proxy.x=target.x; this._proxy.y=target.y;
+    this._proxy.vx=target.vx ?? 0; this._proxy.vy=target.vy ?? 0;
+    this._brain.update(dt, this._proxy, bullets);
+  }
+
+  draw(ctx) {
+    if (this.dead) return;
+    this._brain.draw(ctx);
+    const teamColor=TEAM_COLORS[this.team]||'#aaccff';
+    ctx.save();
+    ctx.strokeStyle=teamColor; ctx.globalAlpha=0.55; ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(this.x,this.y,this.r+14,0,Math.PI*2); ctx.stroke();
+    ctx.restore();
+    ctx.fillStyle=teamColor; ctx.font='11px system-ui'; ctx.textAlign='center';
+    ctx.fillText(`🤖 ${this.name}`, this.x, this.y-this.r-46);
+  }
+}
+
 // ── Drone: inimigo rápido e pequeno ──────────────────────────
 export class DroneEnemy {
   constructor(x, y, difficulty) {
@@ -718,6 +785,12 @@ export class EnemyManager {
 
   _prepareWave() {
     const isContra1=this.mode==='contra1';
+    if (this.mode==='equipe_online') {
+      // PvP entre jogadores — sem ondas de IA inimiga clássica.
+      this.toSpawn=[];
+      this.waveActive=false; this.waveTimer=Infinity;
+      return;
+    }
     if (this.mode==='teste') {
       this.toSpawn=['guardian'];
     } else if (isContra1) {

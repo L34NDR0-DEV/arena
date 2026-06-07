@@ -11,10 +11,44 @@ export class CombatSystem {
     this._enemyMgr=null;
     this._audio=null;
     this._collisionCd=0;
+    this._pvp=null;
   }
 
   setEnemyManager(mgr) { this._enemyMgr=mgr; }
   setAudio(audio) { this._audio=audio; }
+
+  // Contexto do modo "Equipe Online" (PvP): jogadores remotos, bots locais,
+  // time do jogador local e referência de rede para reportar abates.
+  setPvpContext(ctx) { this._pvp=ctx; }
+
+  // Retorna a lista de "alvos PvP" vivos do time adversário ao `team`
+  // (jogadores remotos reais + bots simulados localmente).
+  _pvpTargets(team) {
+    if (!this._pvp) return [];
+    const list=[];
+    for (const rp of Object.values(this._pvp.peers||{})) {
+      if (!rp.dead && rp.team && rp.team!==team) list.push(rp);
+    }
+    for (const bot of (this._pvp.bots||[])) {
+      if (!bot.dead && bot.team!==team) list.push(bot);
+    }
+    return list;
+  }
+
+  // Reporta um abate uma única vez — quem atirou é quem relata. `victim`
+  // pode ser um RemotePlayer (jogador real) ou um TeamBot (simulado pelo
+  // anfitrião). `shooterIsLocalPlayer` indica se foi a nave do jogador local
+  // (vs. um bot do anfitrião) que disparou o tiro fatal.
+  _reportPvpKill(shooterName, shooterTeam, victim, shooterIsBot=false, shooterId=null) {
+    const payload = {
+      type:'kill',
+      killerName: shooterName, killerTeam: shooterTeam,
+      victimName: victim.name, victimTeam: victim.team,
+      isBot: !!victim.isBot,
+    };
+    if (shooterIsBot && shooterId!=null) this._pvp?.net?.sendBotEvent(shooterId, payload);
+    else this._pvp?.net?.sendEvent(payload);
+  }
 
   // Evita spam de som quando várias colisões ocorrem no mesmo frame/sequência
   _playCollisionSfx(strength=1) {
@@ -106,6 +140,44 @@ export class CombatSystem {
           if (died) this._triggerPlayerRebuild(player,isContra1);
           this.spawnExplosion(b.x,b.y,12,b.owner_color||'#ff4466');
           return false;
+        }
+      }
+
+      // ── PvP (modo "Equipe Online"): projétil vs. jogadores adversários ──
+      if (this._pvp?.mode==='equipe_online') {
+        const shooterTeam = b.team ?? (b.owner==='player' ? this._pvp.localTeam : null);
+        if (shooterTeam) {
+          // Vs. jogador local (se o tiro veio de um bot/jogador adversário)
+          if (b.owner!=='player' && shooterTeam!==player.team
+              && !player.dead && !player.rebuilding && player.invincible<=0
+              && Math.hypot(b.x-player.x,b.y-player.y)<player.r+r) {
+            const died=player.takeDamage(b.damage);
+            if (died) {
+              this._triggerPlayerRebuild(player,isContra1);
+              this._reportPvpKill(b.shooter?.name||'Adversário', shooterTeam,
+                { name:player.name, team:player.team, isBot:false },
+                !!b.shooterIsBot, b.shooter?.id);
+            }
+            this.spawnExplosion(b.x,b.y,12,b.owner_color||'#ff4466');
+            return false;
+          }
+          // Vs. jogadores remotos / bots adversários
+          for (const target of this._pvpTargets(shooterTeam)) {
+            if (Math.hypot(b.x-target.x,b.y-target.y)<(target.r||30)+r) {
+              target.hp-=b.damage;
+              spawnDamageNumber(target.x+(Math.random()-0.5)*30, target.y-30, b.damage);
+              if (target.hp<=0 && !target.dead) {
+                target.dead=true;
+                target.startDeath?.();
+                if (b.owner==='player') { player.kills++; player.score+=15; player.addXP(15); }
+                else if (b.shooter) { b.shooter.kills++; b.shooter.score+=15; }
+                this._reportPvpKill(b.owner==='player'?player.name:(b.shooter?.name||'Bot'), shooterTeam,
+                  target, !!b.shooterIsBot, b.shooter?.id);
+              }
+              this.spawnExplosion(b.x,b.y,r*3,b.owner_color||'#ffffff');
+              return false;
+            }
+          }
         }
       }
       return true;

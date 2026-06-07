@@ -1,6 +1,10 @@
 // HUD + minimap + overlay de reconstrução + recarga no canto direito.
 import { ITEM_DEFS } from './items.js';
 
+// Glifos do sistema de ícones de perfil — espelha PROFILE_ICONS (index.html),
+// usado para renderizar o ícone de cada jogador na tela de carregamento.
+const PROFILE_ICON_GLYPHS = ['🙂','😎','🤖','👽','🦊','🐱','🐺','🦅','🐉','👾','🚀','⭐','💀','🔥','⚡','🛡️','🎯','🌙','☄️','🪐','🧊','🦾','🎮','👑'];
+
 // Desenha ícone de item num canvas pequeno
 function _drawItemIconSmall(ctx, type, W, H) {
   ctx.clearRect(0, 0, W, H);
@@ -51,9 +55,58 @@ export class UI {
     this._effectsCanvas= document.getElementById('active-effects-canvas');
     this._notTO  = null;
     this._lastMode = null;
+    this._teamLobby   = document.getElementById('team-lobby');
+    this._teamLobbyCt = document.getElementById('team-lobby-count');
+    this._matchLoading     = document.getElementById('match-loading');
+    this._matchLoadingRoster = document.getElementById('match-loading-roster');
+    this._matchLoadingPing   = document.getElementById('match-loading-ping');
   }
 
-  update(player, timeLeft, enemyScore, pLives, eLives, maxLives, mode) {
+  // Lobby/fila do modo "Equipe Online" — mostrado enquanto aguarda match_start
+  showTeamLobby(text) {
+    if (this._teamLobby) this._teamLobby.classList.add('show');
+    if (this._teamLobbyCt && text) this._teamLobbyCt.textContent = text;
+  }
+  hideTeamLobby() {
+    if (this._teamLobby) this._teamLobby.classList.remove('show');
+  }
+
+  // Tela de carregamento de partida online — mostra os jogadores da sala
+  // (nome, skin equipada, ícone de perfil) e o ping (ms) do jogador local.
+  // `roster`: [{ name, skinName, profileIcon, team, isMe, isBot }]
+  showMatchLoading(roster) {
+    if (!this._matchLoading) return;
+    if (this._matchLoadingRoster) {
+      this._matchLoadingRoster.innerHTML = '';
+      for (const p of roster) {
+        const card = document.createElement('div');
+        card.className = 'ml-card'
+          + (p.isMe ? ' me' : '')
+          + (p.team === 'red' ? ' team-red' : p.team === 'blue' ? ' team-blue' : '');
+        card.innerHTML =
+          `<div class="ml-icon">${PROFILE_ICON_GLYPHS[p.profileIcon] || PROFILE_ICON_GLYPHS[0]}</div>`
+          + `<div class="ml-name">${p.isBot ? '🤖 ' : ''}${p.name}</div>`
+          + `<div class="ml-skin">${p.skinName || ''}</div>`;
+        this._matchLoadingRoster.appendChild(card);
+      }
+    }
+    this._matchLoading.classList.add('show');
+  }
+  updateMatchLoadingPing(ms) {
+    if (!this._matchLoadingPing) return;
+    const span = this._matchLoadingPing.querySelector('span');
+    if (span) span.textContent = (ms == null) ? '--' : String(ms);
+    this._matchLoadingPing.classList.remove('high','mid');
+    if (ms != null) {
+      if (ms >= 150) this._matchLoadingPing.classList.add('high');
+      else if (ms >= 80) this._matchLoadingPing.classList.add('mid');
+    }
+  }
+  hideMatchLoading() {
+    if (this._matchLoading) this._matchLoading.classList.remove('show');
+  }
+
+  update(player, timeLeft, enemyScore, pLives, eLives, maxLives, mode, teamScores=null) {
     if (this._hp)     this._hp.style.width     = Math.max(0,player.hp/player.maxHp*100)+'%';
     if (this._shield) this._shield.style.width = Math.max(0,player.shield/player.maxShield*100)+'%';
     if (this._xp)     this._xp.style.width     = Math.max(0,player.xp/player.xpToNext*100)+'%';
@@ -63,10 +116,22 @@ export class UI {
     // Placar: visível apenas fora do Contra1
     if (this._center) {
       if (mode === 'contra1') { this._center.classList.add('hidden'); }
-      else {
+      else if (mode === 'equipe_online' && teamScores) {
         this._center.classList.remove('hidden');
-        if (this._score)  this._score.textContent  = player.score;
-        if (this._scoreE) this._scoreE.textContent = enemyScore;
+        const redLabel  = this._center.querySelector('.score-box:first-child .score-label');
+        const blueLabel = this._center.querySelector('.score-box:last-child .score-label');
+        if (redLabel)  redLabel.textContent  = 'TIME VERMELHO';
+        if (blueLabel) blueLabel.textContent = 'TIME AZUL';
+        if (this._score)  { this._score.textContent  = teamScores.red;  this._score.style.color  = '#ff4d6a'; }
+        if (this._scoreE) { this._scoreE.textContent = teamScores.blue; this._scoreE.style.color = '#4da6ff'; }
+      } else {
+        this._center.classList.remove('hidden');
+        const redLabel  = this._center.querySelector('.score-box:first-child .score-label');
+        const blueLabel = this._center.querySelector('.score-box:last-child .score-label');
+        if (redLabel)  redLabel.textContent  = 'VOCÊ';
+        if (blueLabel) blueLabel.textContent = 'INIMIGO';
+        if (this._score)  { this._score.textContent  = player.score; this._score.style.color  = ''; }
+        if (this._scoreE) { this._scoreE.textContent = enemyScore;   this._scoreE.style.color = ''; }
       }
     }
 

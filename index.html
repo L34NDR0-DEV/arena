@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
 <title>Tower Defense on the Space</title>
 <link rel="icon" type="image/svg+xml" href="./favicon.svg"/>
 <style>
@@ -34,6 +34,21 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 /* Fundo arcade animado */
 #login-bg-canvas{position:absolute;inset:0;width:100%;height:100%;}
 
+/* Indicador de servidor/ping no canto — estilo "status do servidor" de
+   clientes de jogos online (região + latência em ms). */
+.server-status{
+  position:absolute;top:14px;right:18px;z-index:3;
+  display:flex;align-items:center;gap:8px;
+  background:rgba(6,12,22,.72);border:1px solid var(--gold);border-radius:4px;
+  padding:6px 12px;font-family:'Press Start 2P',monospace;font-size:8px;
+  color:var(--gold);letter-spacing:.5px;backdrop-filter:blur(2px);
+}
+.server-status .ss-dot{width:7px;height:7px;border-radius:50%;background:var(--text2);box-shadow:0 0 6px var(--text2);}
+.server-status.ok .ss-dot{background:var(--green);box-shadow:0 0 6px var(--green);}
+.server-status.mid .ss-dot{background:#ffcc44;box-shadow:0 0 6px #ffcc44;}
+.server-status.high .ss-dot{background:var(--red);box-shadow:0 0 6px var(--red);}
+.server-status .ss-ping{color:var(--text);}
+
 .login-content{
   position:relative;z-index:2;
   display:flex;flex-direction:column;align-items:center;gap:0;
@@ -41,8 +56,8 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 
 /* ── Título arcade ── */
 .arcade-title{
-  display:flex;flex-direction:column;align-items:center;gap:6px;
-  margin-bottom:32px;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  margin-bottom:18px;
 }
 .arcade-title-top{
   font-family:'Press Start 2P',monospace;
@@ -93,8 +108,8 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   border:1px solid var(--border);
   border-top:2px solid var(--cyan);
   border-radius:4px;
-  padding:28px 36px 24px;
-  width:min(420px,90vw);
+  padding:20px 28px 18px;
+  width:min(360px,90vw);
   box-shadow:0 0 40px #00d4ff11,inset 0 0 40px #00000044;
   position:relative;overflow:hidden;
 }
@@ -117,7 +132,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   text-align:center;margin-bottom:22px;
 }
 
-.login-field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;}
+.login-field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;}
 .login-label{
   font-family:'Press Start 2P',monospace;
   font-size:7px;color:var(--cyan);letter-spacing:1px;
@@ -125,7 +140,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .login-input{
   background:#040c18;border:1px solid var(--border);
   border-bottom:2px solid var(--cyan);border-radius:2px;
-  padding:10px 14px;color:#fff;font-size:14px;
+  padding:8px 12px;color:#fff;font-size:13px;
   font-family:'Segoe UI',system-ui;outline:none;
   width:100%;letter-spacing:1px;
   transition:border-color .15s,box-shadow .15s;
@@ -135,11 +150,11 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 
 .login-divider{
   height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);
-  margin:18px 0;
+  margin:12px 0;
 }
 
 /* Abas de autenticação (Entrar / Criar Conta) */
-.auth-tabs{display:flex;gap:6px;margin-bottom:18px;}
+.auth-tabs{display:flex;gap:6px;margin-bottom:14px;}
 .auth-tab{
   flex:1;padding:10px;border-radius:3px;cursor:pointer;
   background:var(--panel2);border:1px solid var(--border);color:var(--text2);
@@ -169,7 +184,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .login-ship-btn canvas{width:40px;height:40px;}
 
 .login-start-btn{
-  width:100%;padding:14px;border:none;border-radius:2px;cursor:pointer;
+  width:100%;padding:11px;border:none;border-radius:2px;cursor:pointer;
   font-family:'Press Start 2P',monospace;font-size:10px;letter-spacing:2px;
   background:linear-gradient(90deg,#006688,var(--cyan),#006688);
   background-size:200%;color:#000;font-weight:900;
@@ -197,6 +212,12 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   font-family:'Press Start 2P',monospace;font-size:8px;color:var(--gold);
   letter-spacing:1px;animation:blink 0.9s step-end infinite;
 }
+.login-support{
+  margin-top:10px;text-align:center;font-size:8px;color:var(--text2);
+  font-family:'Press Start 2P',monospace;line-height:1.9;letter-spacing:.3px;
+}
+.login-support a{color:var(--cyan);text-decoration:none;}
+.login-support a:hover{text-decoration:underline;}
 
 /* ═══ MENU PRINCIPAL ═════════════════════════════════════════ */
 #menu{position:absolute;inset:0;display:none;flex-direction:column;overflow:hidden;}
@@ -220,6 +241,39 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 }
 .pilot-badge svg{width:12px;height:12px;color:var(--cyan);}
 .pilot-name{color:var(--cyan);font-weight:700;}
+.pilot-icon-btn{
+  width:22px;height:22px;border-radius:3px;display:flex;align-items:center;justify-content:center;
+  background:var(--panel);border:1px solid var(--border);font-size:13px;cursor:pointer;
+  padding:0;line-height:1;color:var(--cyan);transition:border-color .15s,transform .15s;
+}
+.pilot-icon-btn:hover{border-color:var(--cyan);transform:scale(1.08);}
+.icon-picker-overlay{
+  position:fixed;inset:0;background:rgba(5,8,16,.78);z-index:260;
+  display:none;align-items:center;justify-content:center;
+}
+.icon-picker-overlay.show{display:flex;}
+.icon-picker{
+  background:var(--panel2);border:1px solid var(--border);border-radius:6px;
+  padding:18px;max-width:300px;width:92vw;
+}
+.icon-picker h3{
+  font-size:11px;color:var(--cyan);text-align:center;margin:0 0 14px;letter-spacing:.5px;
+  font-family:'Press Start 2P',monospace;
+}
+.icon-picker-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;}
+.icon-picker-item{
+  width:100%;aspect-ratio:1;border-radius:4px;display:flex;align-items:center;justify-content:center;
+  font-size:18px;background:var(--panel);border:1px solid var(--border);cursor:pointer;
+  transition:border-color .15s,transform .15s;
+}
+.icon-picker-item:hover{transform:scale(1.1);}
+.icon-picker-item.active{border-color:var(--cyan);box-shadow:0 0 8px var(--cyan);}
+.icon-picker-close{
+  margin-top:14px;width:100%;padding:8px;font-size:9px;letter-spacing:.5px;
+  background:var(--panel);border:1px solid var(--border);border-radius:4px;color:var(--text2);
+  cursor:pointer;font-family:'Press Start 2P',monospace;
+}
+.icon-picker-close:hover{color:var(--cyan);border-color:var(--cyan);}
 .credits-badge svg{color:#ffcc44;}
 .credits-amount{color:#ffcc44;font-weight:700;}
 .credits-label{color:var(--text2);}
@@ -289,7 +343,8 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .mode-btn.active{box-shadow:0 0 12px currentColor;}
 .mode-contra1{border-color:var(--cyan);color:var(--cyan);}
 .mode-contra2{border-color:var(--red);color:var(--red);}
-.mode-duplo{border-color:var(--green);color:var(--green);}
+.mode-equipe-online{border-color:#ff4d6a;color:#ff4d6a;}
+.mode-equipe-online svg path:nth-child(2){stroke:#4da6ff;}
 .mode-livre{border-color:var(--purple);color:var(--purple);}
 .mode-teste{border-color:#445;color:#667;}
 .mode-survivor{border-color:var(--orange);color:var(--orange);}
@@ -632,6 +687,116 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .btn-danger:hover{background:#1a0008;}
 .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text);}
 .btn-ghost:hover{border-color:var(--cyan);color:var(--cyan);}
+
+/* ═══ Aviso de orientação (mobile) ═══════════════════════════ */
+#orientation-warning{
+  position:fixed;inset:0;z-index:9999;display:none;
+  background:radial-gradient(ellipse at 50% 40%,rgba(0,40,60,.95),rgba(2,5,8,.98));
+  flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  padding:24px;gap:18px;
+}
+#orientation-warning.show{display:flex;}
+#team-lobby{
+  position:fixed;inset:0;z-index:9998;display:none;
+  background:radial-gradient(ellipse at 50% 40%,rgba(20,5,20,.95),rgba(2,5,8,.98));
+  flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  padding:24px;gap:14px;
+}
+#team-lobby.show{display:flex;}
+#team-lobby .tl-title{font-family:'Press Start 2P',monospace;font-size:14px;letter-spacing:1px;
+  background:linear-gradient(90deg,#ff4d6a,#4da6ff);-webkit-background-clip:text;background-clip:text;color:transparent;}
+#team-lobby .tl-sub{font-family:'Press Start 2P',monospace;font-size:9px;color:#9fb4c8;line-height:1.8;max-width:380px;}
+#team-lobby .tl-spinner{width:46px;height:46px;border:4px solid #2a2a3a;border-top-color:#ff4d6a;border-right-color:#4da6ff;
+  border-radius:50%;animation:tlSpin 1s linear infinite;}
+@keyframes tlSpin{to{transform:rotate(360deg);}}
+#team-lobby .tl-count{font-family:'Press Start 2P',monospace;font-size:11px;color:#fff;}
+
+/* ═══ Tela de carregamento de partida online ═══════════════ */
+#match-loading{
+  position:fixed;inset:0;z-index:9997;display:none;
+  background:radial-gradient(ellipse at 50% 40%,rgba(8,14,28,.96),rgba(2,5,8,.99));
+  flex-direction:column;align-items:center;justify-content:center;text-align:center;
+  padding:24px;gap:16px;
+}
+#match-loading.show{display:flex;}
+#match-loading .ml-title{font-family:'Press Start 2P',monospace;font-size:13px;letter-spacing:1px;color:var(--cyan);text-shadow:0 0 10px var(--cyan);}
+#match-loading .ml-ping{font-family:'Press Start 2P',monospace;font-size:9px;color:#9fb4c8;}
+#match-loading .ml-ping span{color:var(--green);}
+#match-loading .ml-ping.high span{color:#ff4d6a;}
+#match-loading .ml-ping.mid span{color:#ffcc44;}
+.ml-roster{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;max-width:640px;}
+.ml-card{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  background:var(--panel2);border:1px solid var(--border);border-radius:6px;
+  padding:12px 14px;min-width:104px;
+}
+.ml-card.me{border-color:var(--cyan);box-shadow:0 0 10px rgba(74,217,255,.35);}
+.ml-card .ml-icon{font-size:26px;}
+.ml-card .ml-name{font-family:'Press Start 2P',monospace;font-size:8px;color:#fff;max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ml-card .ml-skin{font-family:'Press Start 2P',monospace;font-size:7px;color:#9fb4c8;}
+.ml-card.team-red{border-color:#ff4d6a;}
+.ml-card.team-blue{border-color:#4da6ff;}
+
+.rotate-icon{width:72px;height:72px;color:var(--cyan);animation:rotateHint 1.6s ease-in-out infinite;filter:drop-shadow(0 0 10px var(--cyan));}
+@keyframes rotateHint{0%,100%{transform:rotate(0deg);}50%{transform:rotate(-90deg);}}
+.rotate-text{font-family:'Press Start 2P',monospace;font-size:11px;color:var(--text);line-height:1.8;letter-spacing:.5px;max-width:340px;}
+.rotate-text span{color:var(--cyan);}
+
+/* ═══ Controles touch (mobile) ═══════════════════════════════ */
+#touch-controls{position:absolute;inset:0;display:none;pointer-events:none;z-index:50;}
+#touch-controls.active{display:block;}
+.touch-stick-zone{
+  position:absolute;left:18px;bottom:18px;width:130px;height:130px;
+  border-radius:50%;background:rgba(91,232,255,.06);border:2px solid rgba(91,232,255,.28);
+  pointer-events:auto;touch-action:none;
+}
+.touch-stick-knob{
+  position:absolute;width:56px;height:56px;border-radius:50%;
+  left:50%;top:50%;transform:translate(-50%,-50%);
+  background:radial-gradient(circle at 35% 35%,#7df3ff,#0090b8);
+  border:2px solid #bdf6ff;box-shadow:0 0 14px var(--cyan);
+  pointer-events:none;
+}
+.touch-actions{position:absolute;right:16px;bottom:16px;display:flex;flex-direction:column;align-items:flex-end;gap:10px;pointer-events:none;}
+.touch-btn{
+  pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:50%;border:2px solid var(--cyan);color:var(--cyan);
+  background:rgba(0,30,46,.55);font-family:'Press Start 2P',monospace;
+  box-shadow:0 0 10px rgba(91,232,255,.35);
+}
+.touch-btn:active,.touch-btn.pressed{background:rgba(91,232,255,.35);box-shadow:0 0 18px var(--cyan);transform:scale(.92);}
+.touch-btn-fire{width:78px;height:78px;font-size:9px;}
+.touch-btn-dash{width:60px;height:60px;font-size:7px;border-color:var(--gold);color:var(--gold);box-shadow:0 0 10px rgba(255,204,68,.35);}
+.touch-btn-dash:active,.touch-btn-dash.pressed{background:rgba(255,204,68,.32);box-shadow:0 0 18px var(--gold);}
+.touch-slots{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:8px;pointer-events:none;}
+.touch-slot{
+  pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;
+  width:38px;height:38px;border-radius:6px;border:1.5px solid rgba(91,232,255,.5);
+  background:rgba(0,20,32,.55);color:var(--text);font-family:'Press Start 2P',monospace;
+  font-size:9px;display:flex;align-items:center;justify-content:center;
+}
+.touch-slot:active,.touch-slot.pressed{border-color:var(--cyan);color:var(--cyan);background:rgba(91,232,255,.22);}
+@media (orientation:landscape) and (max-height:520px){
+  .touch-btn-fire{width:64px;height:64px;}
+  .touch-btn-dash{width:50px;height:50px;}
+  .touch-stick-zone{width:110px;height:110px;}
+}
+
+/* ═══ Adaptação para telas pequenas (celulares) ══════════════ */
+@media (max-width:760px){
+  .login-panel{padding:16px 20px 16px;width:min(340px,92vw);}
+  .arcade-title-main{font-size:clamp(16px,5.5vw,26px);}
+  .arcade-title-top,.arcade-title-sub{font-size:8px;}
+  #hud-left{top:8px;left:8px;}
+  #hud-right{top:8px;right:8px;}
+  #minimap{bottom:96px;right:8px;transform:scale(.8);transform-origin:bottom right;}
+  #hud-bottom{display:none;} /* dicas de teclado não fazem sentido no touch */
+}
+@media (orientation:landscape) and (max-height:520px){
+  #hud-left,#hud-right{transform:scale(.82);transform-origin:top left;}
+  #hud-right{transform-origin:top right;}
+}
 </style>
 </head>
 <body>
@@ -639,6 +804,12 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 <!-- ═══ TELA INICIAL ARCADE ════════════════════════════════ -->
 <div id="login-screen">
   <canvas id="login-bg-canvas"></canvas>
+  <div class="server-status" id="login-server-status">
+    <span class="ss-dot"></span>
+    <span>SERVIDOR BR-1</span>
+    <span class="ss-ping">— <span id="login-ping-value">--</span> ms</span>
+  </div>
+  <audio id="login-music" src="./sound/musicarcade.mp3" preload="auto" loop="false"></audio>
   <div class="login-content">
 
     <div class="arcade-title">
@@ -682,6 +853,10 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
         <div class="login-credits">© LEANDRO · TOWERDEFENSESPACE.COM.BR<br>v2.0 · TODOS OS DIREITOS RESERVADOS</div>
         <div class="coin-insert">INSERT COIN</div>
       </div>
+      <div class="login-support">
+        PRECISA DE AJUDA? FALE COM O SUPORTE:<br>
+        <a href="mailto:Leandro.magalhaess@icloud.com">Leandro.magalhaess@icloud.com</a>
+      </div>
     </div>
   </div>
 </div>
@@ -692,7 +867,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
     <div class="menu-logo-small">TOWER DEFENSE<span>ON THE SPACE</span></div>
     <div class="menu-header-right">
       <div class="pilot-badge">
-        <svg viewBox="0 0 12 12" fill="currentColor"><circle cx="6" cy="4" r="2.5"/><path d="M2 10 Q2 7 6 7 Q10 7 10 10Z"/></svg>
+        <button class="pilot-icon-btn" id="pilot-icon-btn" onclick="openIconPicker()" title="Trocar ícone de perfil">🙂</button>
         <span class="pilot-name" id="menu-pilot-name">JOGADOR</span>
         <button class="change-pilot-btn" onclick="goLoginScreen()">✎</button>
       </div>
@@ -738,9 +913,9 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="12" r="5"/><circle cx="8" cy="12" r="1.5" fill="currentColor"/><circle cx="16" cy="12" r="5"/><circle cx="16" cy="12" r="1.5" fill="currentColor"/></svg>
             <span class="mode-label">Contra 2</span>
           </button>
-          <button class="mode-btn mode-duplo" onclick="selectMode('duplo',this)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 14 L12 5 L16 14" stroke-linejoin="round"/><path d="M4 20 L8 11 L12 20" stroke-linejoin="round" opacity=".45"/></svg>
-            <span class="mode-label">Duplo</span>
+          <button class="mode-btn mode-equipe-online" onclick="selectMode('equipe_online',this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 14 L9 6 L12 14" stroke-linejoin="round" stroke="#ff4d6a"/><path d="M12 14 L15 6 L18 14" stroke-linejoin="round" stroke="#4da6ff"/><line x1="4" y1="19" x2="20" y2="19" opacity=".5"/></svg>
+            <span class="mode-label">Equipe Online</span>
           </button>
           <button class="mode-btn mode-livre" onclick="selectMode('livre',this)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 3 Q16 8 12 12 Q8 16 12 21" stroke-dasharray="2 2"/><path d="M3 12 Q8 8 12 12 Q16 16 21 12" stroke-dasharray="2 2"/></svg>
@@ -791,6 +966,49 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 
 <!-- ═══ JOGO ════════════════════════════════════════════════ -->
 <canvas id="game-canvas"></canvas>
+
+<!-- ═══ Aviso para girar o celular (paisagem) ══════════════════ -->
+<div id="orientation-warning">
+  <svg class="rotate-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+    <rect x="5" y="2" width="14" height="20" rx="2.5"/>
+    <line x1="5" y1="18" x2="19" y2="18"/>
+  </svg>
+  <div class="rotate-text">GIRE SEU DISPOSITIVO<br>PARA O MODO <span>PAISAGEM</span><br>PARA JOGAR</div>
+</div>
+
+<!-- ═══ Lobby/fila do modo "Equipe Online" ═════════════════════ -->
+<div id="team-lobby">
+  <div class="tl-spinner"></div>
+  <div class="tl-title">EQUIPE ONLINE</div>
+  <div class="tl-sub">Procurando jogadores e formando as equipes...<br>Vagas restantes serão preenchidas com bots.</div>
+  <div class="tl-count" id="team-lobby-count">Aguardando...</div>
+</div>
+
+<!-- ═══ Tela de carregamento de partida online (todos os modos) ═ -->
+<div id="match-loading">
+  <div class="ml-title">ENTRANDO NA PARTIDA...</div>
+  <div class="ml-roster" id="match-loading-roster"></div>
+  <div class="ml-ping" id="match-loading-ping">PING: <span>--</span> ms</div>
+</div>
+
+<!-- ═══ Controles touch (mobile) ═══════════════════════════════ -->
+<div id="touch-controls">
+  <div class="touch-stick-zone" id="touch-stick-zone">
+    <div class="touch-stick-knob" id="touch-stick-knob"></div>
+  </div>
+  <div class="touch-actions">
+    <div class="touch-btn touch-btn-fire" id="touch-btn-fire">FOGO</div>
+    <div class="touch-btn touch-btn-dash" id="touch-btn-dash">DASH</div>
+  </div>
+  <div class="touch-slots">
+    <div class="touch-slot" data-slot="1">1</div>
+    <div class="touch-slot" data-slot="2">2</div>
+    <div class="touch-slot" data-slot="3">3</div>
+    <div class="touch-slot" data-slot="4">4</div>
+    <div class="touch-slot" data-slot="5">5</div>
+    <div class="touch-slot" data-slot="x">X</div>
+  </div>
+</div>
 
 <!-- ═══ HUD ════════════════════════════════════════════════ -->
 <div id="hud">
@@ -963,6 +1181,15 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   </div>
 </div>
 
+<!-- ═══ SELETOR DE ÍCONE DE PERFIL ══════════════════════════ -->
+<div id="icon-picker-overlay" class="icon-picker-overlay" onclick="if(event.target===this)closeIconPicker()">
+  <div class="icon-picker">
+    <h3>ESCOLHA SEU ÍCONE</h3>
+    <div class="icon-picker-grid" id="icon-picker-grid"></div>
+    <button class="icon-picker-close" onclick="closeIconPicker()">FECHAR</button>
+  </div>
+</div>
+
 <!-- ═══ LOJA DE SKINS ═══════════════════════════════════════ -->
 <div id="shop-modal" class="changelog-overlay" style="display:none;" onclick="if(event.target===this)closeShop()">
   <div class="changelog-panel shop-panel">
@@ -1073,6 +1300,39 @@ let currentUser = null; // {id,email,displayName,credits,equippedSkin}
 let profile     = null; // {user,ownedSkins,equippedSkin,rewardProgress}
 let authMode    = 'login'; // 'login' | 'register'
 
+// ── Medição de ping na tela de login (estilo "status do servidor") ──
+// Abre uma conexão curta, mede o round-trip de um eco ping/pong e fecha.
+function measureLoginPing(){
+  try{
+    const proto = location.protocol==='https:' ? 'wss' : 'ws';
+    const ws = new WebSocket(`${proto}://${location.host}`);
+    const t0 = performance.now();
+    let done = false;
+    const finish = (ms)=>{
+      if (done) return; done = true;
+      const valEl = document.getElementById('login-ping-value');
+      const boxEl = document.getElementById('login-server-status');
+      if (valEl) valEl.textContent = (ms==null) ? '--' : String(ms);
+      if (boxEl) {
+        boxEl.classList.remove('ok','mid','high');
+        if (ms!=null) boxEl.classList.add(ms<80?'ok':ms<150?'mid':'high');
+      }
+      try{ ws.close(); }catch{}
+    };
+    ws.addEventListener('open', ()=> ws.send(JSON.stringify({ type:'ping', t:t0 })));
+    ws.addEventListener('message', ev=>{
+      try{
+        const msg = JSON.parse(ev.data);
+        if (msg.type==='pong') finish(Math.round(performance.now()-t0));
+      }catch{}
+    });
+    ws.addEventListener('error', ()=> finish(null));
+    setTimeout(()=> finish(null), 5000);
+  }catch{}
+}
+measureLoginPing();
+setInterval(()=>{ if(document.getElementById('login-screen')?.style.display!=='none') measureLoginPing(); }, 12000);
+
 async function apiFetch(path, opts={}){
   const r = await fetch(path, {
     method: opts.method||'GET',
@@ -1094,6 +1354,7 @@ async function refreshProfile(){
   document.getElementById('menu-pilot-name').textContent = pilotName;
   document.getElementById('hud-pname').textContent = pilotName;
   updateCreditsBadge();
+  updatePilotIconBtn();
   renderSkinGrid();
   return true;
 }
@@ -1193,7 +1454,7 @@ setupGoogleSignIn();
 const MODE_TIPS={
   contra1: 'CONTRA 1 — 5 VIDAS CADA. QUEM PERDER TODAS PRIMEIRO PERDE!',
   contra2: 'CONTRA 2 — 2 INIMIGOS. MANTENHA DISTÂNCIA.',
-  duplo:   'DUPLO — JOGUE COM UM AMIGO NA REDE.',
+  equipe_online: 'EQUIPE ONLINE — PvP em times (até 6, 3x3). Primeira equipe a 200 abates vence!',
   livre:   'LIVRE — SEM TIMER. PRATIQUE À VONTADE.',
   teste:   'TESTE — INIMIGOS NÃO ATACAM.',
   survivor:'SURVIVOR — ONDAS INFINITAS. SOBREVIVA!',
@@ -1203,6 +1464,33 @@ const MODE_TIPS={
 const loginBg=document.getElementById('login-bg-canvas');
 function resizeLoginBg(){loginBg.width=window.innerWidth;loginBg.height=window.innerHeight;}
 resizeLoginBg(); window.addEventListener('resize',resizeLoginBg);
+
+// ── Música da tela inicial: toca 1 vez por sessão/carregamento ─
+(function initLoginMusic(){
+  const music = document.getElementById('login-music');
+  if (!music) return;
+  music.volume = 0.5;
+  const FLAG = 'arena_login_music_played';
+
+  function tryPlay(){
+    if (sessionStorage.getItem(FLAG)) return cleanup();
+    const loginScreen = document.getElementById('login-screen');
+    if (loginScreen.style.display === 'none') return cleanup();
+    sessionStorage.setItem(FLAG, '1');
+    music.play().catch(()=>{});
+    cleanup();
+  }
+  function cleanup(){
+    document.removeEventListener('click', tryPlay);
+    document.removeEventListener('keydown', tryPlay);
+    document.removeEventListener('touchstart', tryPlay);
+  }
+
+  if (sessionStorage.getItem(FLAG)) return;
+  document.addEventListener('click', tryPlay, { once:true });
+  document.addEventListener('keydown', tryPlay, { once:true });
+  document.addEventListener('touchstart', tryPlay, { once:true });
+})();
 
 (function animateLoginBg(){
   const ctx=loginBg.getContext('2d');
@@ -1245,52 +1533,56 @@ resizeLoginBg(); window.addEventListener('resize',resizeLoginBg);
     else{ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();}
   }
 
-  // Naves cruzando o fundo (silhuetas neon, em diferentes profundidades/velocidades)
+  // Naves do próprio jogo cruzando o fundo, deixando um rastro luminoso
   if (!animateLoginBg._ships) animateLoginBg._ships = [];
   const ships = animateLoginBg._ships;
-  if (Math.random() < 0.012 && ships.length < 4) {
+  if (Math.random() < 0.012 && ships.length < 4 && SKINS.length) {
     const dir = Math.random()<0.5 ? 1 : -1;
     const depth = 0.5 + Math.random()*0.9; // tamanho/brilho relativo (perspectiva)
     ships.push({
-      x: dir>0 ? -60 : W+60,
+      x: dir>0 ? -70 : W+70,
       y: H*(0.12+Math.random()*0.6),
       dir, depth,
       speed: (40+Math.random()*70)*dir,
-      hue: Math.random()<0.5 ? '#5be8ff' : '#ffcc44',
+      skin: SKINS[Math.floor(Math.random()*SKINS.length)],
       bob: Math.random()*Math.PI*2,
+      trail: [],
     });
   }
   for (let i=ships.length-1;i>=0;i--){
     const s = ships[i];
     s.x += s.speed * (1/60);
     const yy = s.y + Math.sin(t*1.6+s.bob)*6;
-    const sz = 14*s.depth;
+    const sz = 15*s.depth;
+
+    // Memoriza posições recentes para desenhar o rastro
+    s.trail.push({x:s.x,y:yy});
+    if (s.trail.length>16) s.trail.shift();
+
+    const hue = s.skin.color || '#5be8ff';
+    ctx.save();
+    ctx.globalAlpha = 0.3*s.depth + 0.12;
+    for (let k=0;k<s.trail.length;k++){
+      const p=s.trail[k];
+      const a=(k/s.trail.length);
+      ctx.beginPath();
+      ctx.fillStyle=hue;
+      ctx.globalAlpha=(0.3*s.depth+0.12)*a*0.5;
+      ctx.arc(p.x - s.dir*sz*0.9, p.y, sz*0.32*a, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
+
     ctx.save();
     ctx.translate(s.x, yy);
-    ctx.scale(s.dir, 1);
-    ctx.globalAlpha = 0.35*s.depth + 0.15;
-
-    // Rastro luminoso
-    const trail = ctx.createLinearGradient(-sz*3,0,0,0);
-    trail.addColorStop(0,'rgba(0,0,0,0)');
-    trail.addColorStop(1,s.hue);
-    ctx.fillStyle = trail;
-    ctx.fillRect(-sz*3,-1.5*s.depth,sz*3,3*s.depth);
-
-    // Casco triangular
-    ctx.fillStyle = s.hue;
-    ctx.shadowColor = s.hue; ctx.shadowBlur = 10*s.depth;
-    ctx.beginPath();
-    ctx.moveTo(sz, 0);
-    ctx.lineTo(-sz*0.7, -sz*0.55);
-    ctx.lineTo(-sz*0.35, 0);
-    ctx.lineTo(-sz*0.7, sz*0.55);
-    ctx.closePath();
-    ctx.fill();
+    ctx.rotate(s.dir>0 ? Math.PI/2 : -Math.PI/2);
+    ctx.globalAlpha = 0.32*s.depth + 0.16;
+    ctx.shadowColor = hue; ctx.shadowBlur = 9*s.depth;
+    s.skin.drawPreview(ctx, (sz*2)/s.skin._size);
     ctx.restore();
     ctx.globalAlpha = 1;
 
-    if ((s.dir>0 && s.x > W+80) || (s.dir<0 && s.x < -80)) ships.splice(i,1);
+    if ((s.dir>0 && s.x > W+90) || (s.dir<0 && s.x < -90)) ships.splice(i,1);
   }
 
   // Scanlines
@@ -1333,6 +1625,48 @@ function renderSkinGrid(){
 }
 
 // ── Loja: carrossel de naves (esquerda → direita, vitrine na direita) ──
+// ── Ícones de perfil (sistema separado das skins de nave — todo
+// jogador escolhe livremente, sem custo nem posse) ────────────
+const PROFILE_ICONS = ['🙂','😎','🤖','👽','🦊','🐱','🐺','🦅','🐉','👾','🚀','⭐','💀','🔥','⚡','🛡️','🎯','🌙','☄️','🪐','🧊','🦾','🎮','👑'];
+
+function currentProfileIcon(){
+  const id = profile ? (profile.profileIcon||0) : 0;
+  return PROFILE_ICONS[id] || PROFILE_ICONS[0];
+}
+
+function updatePilotIconBtn(){
+  const btn = document.getElementById('pilot-icon-btn');
+  if (btn) btn.textContent = currentProfileIcon();
+}
+
+window.openIconPicker = function(){
+  if (!currentUser) return;
+  const grid = document.getElementById('icon-picker-grid');
+  const equipped = profile ? (profile.profileIcon||0) : 0;
+  grid.innerHTML = '';
+  PROFILE_ICONS.forEach((icon, idx)=>{
+    const item = document.createElement('div');
+    item.className = 'icon-picker-item'+(idx===equipped?' active':'');
+    item.textContent = icon;
+    item.onclick = ()=> setProfileIcon(idx);
+    grid.appendChild(item);
+  });
+  document.getElementById('icon-picker-overlay').classList.add('show');
+};
+
+window.closeIconPicker = function(){
+  document.getElementById('icon-picker-overlay').classList.remove('show');
+};
+
+window.setProfileIcon = async function(iconId){
+  const { ok, data } = await apiFetch('/api/profile/icon', { method:'POST', body:{ iconId } });
+  if (ok && data) {
+    profile.profileIcon = data.profileIcon;
+    updatePilotIconBtn();
+    closeIconPicker();
+  }
+};
+
 let shopSelectedId = null;
 
 window.equipSkin = async function(skinId){
@@ -1884,6 +2218,10 @@ window._saveHistory=saveHistory;
 // ── Telas ──────────────────────────────────────────────────────
 function showScreen(name){
   document.getElementById('login-screen').style.display = name==='login'?'flex':'none';
+  if (name!=='login') {
+    const music = document.getElementById('login-music');
+    if (music && !music.paused) music.pause();
+  }
   document.getElementById('menu').style.display         = name==='menu' ?'flex':'none';
   document.getElementById('game-canvas').style.display  = name==='game' ?'block':'none';
   document.getElementById('hud').style.display          = name==='game' ?'block':'none';
@@ -1948,14 +2286,159 @@ const canvas=document.getElementById('game-canvas');
 function resizeCanvas(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;if(game)game.onResize(canvas.width,canvas.height);}
 resizeCanvas(); window.addEventListener('resize',resizeCanvas);
 
+// ── Detecção de dispositivo móvel / orientação / controles touch ──
+const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent)
+  || (navigator.maxTouchPoints > 0 && window.matchMedia('(pointer:coarse)').matches);
+
+const orientationWarning = document.getElementById('orientation-warning');
+const touchControls      = document.getElementById('touch-controls');
+
+function isPortrait(){ return window.innerHeight > window.innerWidth; }
+
+function updateOrientationUI(){
+  if (!IS_MOBILE) return;
+  const inGame = document.getElementById('game-canvas').style.display !== 'none';
+  const portrait = isPortrait();
+  orientationWarning.classList.toggle('show', inGame && portrait);
+  touchControls.classList.toggle('active', inGame && !portrait);
+  if (game) game._touchActive = inGame && !portrait;
+  const hudBottom = document.getElementById('hud-bottom');
+  if (hudBottom) hudBottom.style.display = 'none';
+}
+window.addEventListener('resize', updateOrientationUI);
+window.addEventListener('orientationchange', updateOrientationUI);
+
+const _origShowScreen = showScreen;
+showScreen = function(name){
+  _origShowScreen(name);
+  updateOrientationUI();
+};
+
+// ── Controles touch personalizados (joystick virtual + botões) ──
+(function setupTouchControls(){
+  if (!IS_MOBILE) return;
+
+  const stickZone = document.getElementById('touch-stick-zone');
+  const stickKnob = document.getElementById('touch-stick-knob');
+  const btnFire   = document.getElementById('touch-btn-fire');
+  const btnDash   = document.getElementById('touch-btn-dash');
+  const slots     = touchControls.querySelectorAll('.touch-slot');
+
+  const STICK_RADIUS = 65;
+  let stickTouchId = null;
+  const stickVec = { x:0, y:0, active:false };
+
+  function stickCenter(){
+    const r = stickZone.getBoundingClientRect();
+    return { cx: r.left + r.width/2, cy: r.top + r.height/2 };
+  }
+  function stickStart(touch){
+    if (stickTouchId !== null) return;
+    stickTouchId = touch.identifier;
+    stickMove(touch);
+  }
+  function stickMove(touch){
+    const { cx, cy } = stickCenter();
+    let dx = touch.clientX - cx, dy = touch.clientY - cy;
+    const dist = Math.hypot(dx, dy);
+    if (dist > STICK_RADIUS) { dx = dx/dist*STICK_RADIUS; dy = dy/dist*STICK_RADIUS; }
+    stickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    stickVec.x = dx / STICK_RADIUS;
+    stickVec.y = dy / STICK_RADIUS;
+    stickVec.active = Math.hypot(stickVec.x, stickVec.y) > 0.12;
+  }
+  function stickEnd(){
+    stickTouchId = null;
+    stickKnob.style.transform = 'translate(-50%,-50%)';
+    stickVec.x = 0; stickVec.y = 0; stickVec.active = false;
+  }
+  stickZone.addEventListener('touchstart', e=>{
+    e.preventDefault();
+    for (const t of e.changedTouches) stickStart(t);
+  }, { passive:false });
+  stickZone.addEventListener('touchmove', e=>{
+    e.preventDefault();
+    for (const t of e.changedTouches) if (t.identifier === stickTouchId) stickMove(t);
+  }, { passive:false });
+  stickZone.addEventListener('touchend', e=>{
+    e.preventDefault();
+    for (const t of e.changedTouches) if (t.identifier === stickTouchId) stickEnd();
+  }, { passive:false });
+  stickZone.addEventListener('touchcancel', stickEnd);
+
+  function bindHold(el, onStart, onEnd){
+    el.addEventListener('touchstart', e=>{ e.preventDefault(); el.classList.add('pressed'); onStart(); }, { passive:false });
+    el.addEventListener('touchend',   e=>{ e.preventDefault(); el.classList.remove('pressed'); onEnd(); }, { passive:false });
+    el.addEventListener('touchcancel',e=>{ e.preventDefault(); el.classList.remove('pressed'); onEnd(); }, { passive:false });
+  }
+
+  const touchState = { firing:false, dashing:false };
+  bindHold(btnFire, ()=>touchState.firing=true,  ()=>touchState.firing=false);
+  bindHold(btnDash, ()=>touchState.dashing=true, ()=>touchState.dashing=false);
+
+  const SLOT_CODE = { '1':'Digit1','2':'Digit2','3':'Digit3','4':'Digit4','5':'Digit5','x':'KeyX' };
+  function fireKey(type, code){
+    window.dispatchEvent(new KeyboardEvent(type, { code, bubbles:true }));
+  }
+  slots.forEach(slot=>{
+    const code = SLOT_CODE[slot.dataset.slot];
+    slot.addEventListener('touchstart', e=>{
+      e.preventDefault(); slot.classList.add('pressed');
+      fireKey('keydown', code);
+    }, { passive:false });
+    slot.addEventListener('touchend', e=>{
+      e.preventDefault(); slot.classList.remove('pressed');
+      fireKey('keyup', code);
+    }, { passive:false });
+    slot.addEventListener('touchcancel', e=>{
+      slot.classList.remove('pressed');
+      fireKey('keyup', code);
+    });
+  });
+
+  window._touchState = touchState;
+  window._touchStick = stickVec;
+
+  // ── Injeta os controles touch no fluxo de input do jogo ──
+  // O jogo usa "mira/movimento até o ponteiro do mouse"; replicamos isso
+  // projetando um alvo à frente do jogador na direção do analógico.
+  const TOUCH_AIM_DIST = 260;
+  const origInput = Game.prototype._input;
+  Game.prototype._input = function(){
+    const base = origInput.call(this);
+    if (!this._touchActive) return base;
+
+    const px = this.player ? this.player.x : base.worldMouseX;
+    const py = this.player ? this.player.y : base.worldMouseY;
+    let wmx = base.worldMouseX, wmy = base.worldMouseY;
+    let holdRight = base.holdRight;
+
+    if (stickVec.active) {
+      wmx = px + stickVec.x * TOUCH_AIM_DIST;
+      wmy = py + stickVec.y * TOUCH_AIM_DIST;
+      holdRight = true;
+    }
+
+    return {
+      shooting:    base.shooting || touchState.firing,
+      space:       base.space    || touchState.firing,
+      holdRight:   holdRight,
+      dash:        base.dash     || touchState.dashing,
+      worldMouseX: wmx,
+      worldMouseY: wmy,
+    };
+  };
+})();
+
 window.startGame=function(){
   const diff=document.getElementById('diff-select').value;
   showScreen('game');
   paused=false;
   if(game)game.destroy();
-  game=new Game(canvas,{skinIndex:selectedSkin,playerName:pilotName,mode:selectedMode,difficulty:diff,roomId:'default'});
+  game=new Game(canvas,{skinIndex:selectedSkin,playerName:pilotName,profileIcon:(profile?(profile.profileIcon||0):0),mode:selectedMode,difficulty:diff,roomId:'default'});
   game.start();
   window._game=game;
+  updateOrientationUI();
 };
 
 window.restartGame=function(){document.getElementById('gameover').style.display='none';startGame();};
@@ -1991,8 +2474,16 @@ window.showGameOver=function(data){
   go.querySelector('.go-icon-win').style.display=data.win?'block':'none';
   go.querySelector('.go-icon-lose').style.display=data.win?'none':'block';
   document.getElementById('go-result-label').textContent=data.win?'VITÓRIA':'DERROTA';
-  document.getElementById('go-title').textContent=data.win?'MISSÃO CUMPRIDA':'NAVE DESTRUÍDA';
-  document.getElementById('go-sub').textContent=data.win?'Você dominou a arena.':'Suas vidas acabaram.';
+  if (selectedMode==='equipe_online' && data.teamWinner) {
+    const teamLabel = t => t==='red' ? 'Time Vermelho' : 'Time Azul';
+    document.getElementById('go-title').textContent = data.win ? 'EQUIPE VENCEDORA!' : 'EQUIPE DERROTADA';
+    const ts=data.teamScores||{red:0,blue:0};
+    document.getElementById('go-sub').textContent =
+      `${teamLabel(data.teamWinner)} venceu por ${ts.red} x ${ts.blue} abates! Você jogou pelo ${teamLabel(data.team)}.`;
+  } else {
+    document.getElementById('go-title').textContent=data.win?'MISSÃO CUMPRIDA':'NAVE DESTRUÍDA';
+    document.getElementById('go-sub').textContent=data.win?'Você dominou a arena.':'Suas vidas acabaram.';
+  }
   document.getElementById('go-kills').textContent=data.kills;
   document.getElementById('go-score').textContent=data.score;
   document.getElementById('go-items').textContent=data.items;

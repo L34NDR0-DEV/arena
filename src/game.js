@@ -1,6 +1,6 @@
 import { Arena, ARENA_W, ARENA_H, ARENA_TYPES, ARENA_W_DEFAULT, ARENA_H_DEFAULT, setArenaSize } from './arena.js';
 import { Player, drawCrosshair }                from './player.js';
-import { EnemyManager }                          from './enemies.js';
+import { EnemyManager, TeamBot }                 from './enemies.js';
 import { ItemManager, BorderEffect }              from './items.js';
 import { CombatSystem }                          from './combat.js';
 import { TowerManager }                          from './towers.js';
@@ -11,9 +11,11 @@ import * as SkinsModule                          from './skins.js';
 
 const MATCH_DURATION = 300;
 const CONTRA1_LIVES  = 5;
+const TEAM_KILL_TARGET = 200;
+const TEAM_SIZE        = 3;
 
 export class Game {
-  constructor(canvas, { skinIndex=0, playerName='Jogador', mode='contra1', difficulty='moderado', roomId='default' } = {}) {
+  constructor(canvas, { skinIndex=0, playerName='Jogador', profileIcon=0, mode='contra1', difficulty='moderado', roomId='default' } = {}) {
     this.canvas=canvas; this.ctx=canvas.getContext('2d');
     this.W=canvas.width; this.H=canvas.height;
     this.mode=mode; this.diff=difficulty;
@@ -33,6 +35,7 @@ export class Game {
     this.combat.setEnemyManager(this.enemyMgr);
     this.ui       = new UI();
     this.player   = new Player({ x:ARENA_W/2, y:ARENA_H/2, skinIndex, name:playerName });
+    this.profileIcon = profileIcon;
 
     // Torres Astrais — disponíveis no modo Teste
     this.towerMgr = mode==='teste' ? new TowerManager() : null;
@@ -52,6 +55,15 @@ export class Game {
     this.timeLeft=MATCH_DURATION;
     this.over=false; this.paused=false;
     this._rafId=null; this._last=0;
+
+    // ── Modo "Equipe Online" — PvP em times (até 6, 2 times de 3) ──
+    this.team=null;          // 'red' | 'blue' — atribuído pelo servidor
+    this.isHost=false;       // anfitrião simula bots locais
+    this.bots=[];            // TeamBot[] (apenas no anfitrião)
+    this._teamScores={red:0, blue:0};
+    this._lobby = (mode==='equipe_online'); // true até chegar match_start
+    this._lobbyCount=1;
+    if (this._lobby) this.ui.showTeamLobby('Procurando jogadores...');
 
     this._keys={}; this._mouse={wx:ARENA_W/2,wy:ARENA_H/2,left:false,right:false};
     this._bindInput();
@@ -170,14 +182,98 @@ export class Game {
   _connectNet(name,skinIndex,roomId) {
     try {
       const proto=location.protocol==='https:'?'wss':'ws';
+      const isTeamMode = this.mode==='equipe_online';
       this.net=new NetworkClient(`${proto}://${location.host}`,{
-        onWelcome:()=>this.net.join(name,skinIndex,roomId),
-        onJoin:msg=>{ const rp=new RemotePlayer({id:msg.id,name:msg.name,skinIndex:msg.skinIndex,skins:SkinsModule}); this.peers[msg.id]=rp; this.ui.killFeed(`${msg.name} entrou`); },
+        onWelcome:msg=>{
+          if (isTeamMode) {
+            this.net.queueJoin('equipe_online', name, skinIndex, this.profileIcon);
+          } else {
+            this.net.join(name,skinIndex,roomId,this.profileIcon);
+            this._showMatchLoadingFor(msg.peers||[]);
+          }
+        },
+        onJoin:msg=>{ const rp=new RemotePlayer({id:msg.id,name:msg.name,skinIndex:msg.skinIndex,profileIcon:msg.profileIcon,skins:SkinsModule}); this.peers[msg.id]=rp; this.ui.killFeed(`${msg.name} entrou`); },
         onLeave:msg=>delete this.peers[msg.id],
         onState:msg=>this.peers[msg.id]?.applyState(msg.data),
-        onEvent:msg=>{ if(msg.data?.type==='kill') this.ui.killFeed(`${msg.data.killerName} eliminou ${msg.data.victimName}`); },
+        onEvent:msg=>{
+          if(msg.data?.type==='kill') {
+            this.ui.killFeed(`${msg.data.killerName} eliminou ${msg.data.victimName}`);
+            if (isTeamMode && msg.data.killerTeam) this._registerTeamKill(msg.data.killerTeam);
+          }
+        },
+        onMatchStart: msg=>this._onMatchStart(msg),
       });
     } catch {}
+  }
+
+  // Tela de carregamento — mostra a escalação da sala (nome, skin, ícone de
+  // perfil de cada jogador) e o ping local; some sozinha após alguns segundos.
+  _showMatchLoadingFor(peers) {
+    const roster = [
+      { name:this.player.name, skinName:this.player.skin.name, profileIcon:this.profileIcon, team:this.team, isMe:true, isBot:false },
+      ...peers.map(p=>({ name:p.name, skinName:(SkinsModule.SKINS[p.skinIndex]||SkinsModule.SKINS[0]).name, profileIcon:p.profileIcon||0, team:p.team||null, isMe:false, isBot:!!p.isBot })),
+    ];
+    this.ui.showMatchLoading(roster);
+    this._loadingHideAt = performance.now() + 3000;
+  }
+
+  // Recebido quando o servidor forma a partida do modo "Equipe Online":
+  // popula peers reais, marca o time/host local e instancia bots (se host).
+  _onMatchStart(msg) {
+    this._lobby=false;
+    this.ui.hideTeamLobby();
+    this.team   = msg.you?.team ?? null;
+    this.isHost = !!msg.you?.isHost;
+    this.player.team = this.team;
+
+    // Limpa peers da fila (não deveria haver, mas por segurança)
+    this.peers={};
+    this.bots=[];
+
+    const roster = [{ name:this.player.name, skinName:this.player.skin.name, profileIcon:this.profileIcon, team:this.team, isMe:true, isBot:false }];
+
+    for (const p of (msg.players||[])) {
+      if (p.id===this.net.myId) continue;
+      const skinName = (SkinsModule.SKINS[p.skinIndex]||SkinsModule.SKINS[0]).name;
+      roster.push({ name:p.name, skinName, profileIcon:p.profileIcon||0, team:p.team, isMe:false, isBot:!!p.isBot });
+      if (p.isBot) {
+        if (this.isHost) {
+          const {x,y}=this._spawnPosFor(p.team);
+          this.bots.push(new TeamBot({ id:p.id, name:p.name, team:p.team, x, y, difficulty:this.diff, skinIndex:p.skinIndex }));
+        } else {
+          // Clientes não-anfitriões representam bots como RemotePlayers comuns
+          // — o anfitrião replica o estado deles via state/event.
+          this.peers[p.id]=new RemotePlayer({id:p.id,name:p.name,skinIndex:p.skinIndex,skins:SkinsModule,team:p.team,isBot:true});
+        }
+      } else {
+        this.peers[p.id]=new RemotePlayer({id:p.id,name:p.name,skinIndex:p.skinIndex,profileIcon:p.profileIcon,skins:SkinsModule,team:p.team,isBot:false});
+      }
+    }
+
+    const {x,y}=this._spawnPosFor(this.team);
+    this.player.x=x; this.player.y=y;
+    this.ui.notify(`Partida formada! Você está no Time ${this.team==='red'?'Vermelho':'Azul'}`, this.team==='red'?'#ff4d6a':'#4da6ff');
+
+    this.ui.showMatchLoading(roster);
+    this._loadingHideAt = performance.now() + 3500;
+  }
+
+  _spawnPosFor(team) {
+    // Times nascem em lados opostos da arena
+    const cx=ARENA_W/2, cy=ARENA_H/2;
+    const off=Math.min(ARENA_W,ARENA_H)*0.32;
+    const jitter=()=> (Math.random()-0.5)*140;
+    if (team==='red')  return { x: cx-off+jitter(), y: cy+jitter() };
+    return                   { x: cx+off+jitter(), y: cy+jitter() };
+  }
+
+  _registerTeamKill(team) {
+    if (!this._teamScores[team]) this._teamScores[team]=0;
+    this._teamScores[team]++;
+    if (this._teamScores[team]>=TEAM_KILL_TARGET && !this.over) {
+      const won = team===this.team;
+      this._endGame(won);
+    }
   }
 
   _input() {
@@ -207,19 +303,35 @@ export class Game {
   }
 
   _update(dt) {
+    // Tela de carregamento de partida online — atualiza o ping local exibido
+    // e some sozinha após alguns segundos (ou quando o ping chega).
+    if (this._loadingHideAt) {
+      this.ui.updateMatchLoadingPing(this.net?.ping ?? null);
+      if (performance.now() >= this._loadingHideAt) {
+        this.ui.hideMatchLoading();
+        this._loadingHideAt = null;
+      }
+    }
+
     // Cooldown de vida do player
     if (this.player._lifeTimer>0) this.player._lifeTimer-=dt;
+
+    // Modo Equipe Online: aguarda formação da partida (lobby/fila)
+    if (this.mode==='equipe_online' && this._lobby) {
+      this.ui.update(this.player,this.timeLeft,0,null,null,0,this.mode);
+      return;
+    }
 
     // Contra1: verificar fim por vidas
     if (this.mode==='contra1') {
       const res=this.enemyMgr.livesResult;
       if (res==='player_win') { this._endGame(true); return; }
       if (res==='enemy_win'||this.enemyMgr.playerLives<=0) { this._endGame(false); return; }
-    } else {
+    } else if (this.mode!=='equipe_online') {
       this.timeLeft-=dt;
       if (this.timeLeft<=0) { this._endGame(true); return; }
     }
-    if (this.player.dead&&this.player.deathTimer<=0&&this.mode!=='contra1') { this._endGame(false); return; }
+    if (this.player.dead&&this.player.deathTimer<=0&&this.mode!=='contra1'&&this.mode!=='equipe_online') { this._endGame(false); return; }
 
     // Torres Astrais: vitória ao capturar as 2 torres do lado adversário
     if (this.towerMgr?.winner) {
@@ -287,16 +399,46 @@ export class Game {
       }
     }
 
+    if (this.mode==='equipe_online') {
+      // Anfitrião simula os bots localmente e replica via state/event
+      const allUnits=[this.player, ...Object.values(this.peers), ...this.bots];
+      if (this.isHost) {
+        for (const bot of this.bots) {
+          if (bot.dead) continue;
+          const before=this.combat.bullets.length;
+          bot.update(dt, allUnits, this.combat.bullets);
+          // Marca os projéteis recém-disparados pelo bot com seu time/origem,
+          // para a colisão PvP creditar o abate corretamente (sem amigo-fogo).
+          for (let i=before;i<this.combat.bullets.length;i++) {
+            const b=this.combat.bullets[i];
+            b.team=bot.team; b.shooter=bot; b.shooterIsBot=true;
+          }
+        }
+      }
+      this.combat.setPvpContext({ peers:this.peers, bots:this.bots, localTeam:this.team, mode:this.mode, isHost:this.isHost, net:this.net });
+    }
+
     this.combat.update(dt,this.player,this.enemyMgr.enemies);
     for (const id in this.peers) this.peers[id].update(dt);
 
-    this._netT-=dt;
-    if (this._netT<=0&&this.net?.connected) { this._netT=0.05; this.net.sendState({x:this.player.x,y:this.player.y,angle:this.player.angle,hp:this.player.hp,score:this.player.score,dead:this.player.dead}); }
+    if (this.mode==='equipe_online' && this.isHost) {
+      this._netT-=dt;
+      if (this._netT<=0&&this.net?.connected) {
+        this._netT=0.05;
+        this.net.sendState({x:this.player.x,y:this.player.y,angle:this.player.angle,hp:this.player.hp,score:this.player.score,dead:this.player.dead,kills:this.player.kills});
+        for (const bot of this.bots) {
+          this.net.sendBotState(bot.id, {x:bot.x,y:bot.y,angle:bot.angle,hp:bot.hp,score:bot.score,dead:bot.dead,kills:bot.kills});
+        }
+      }
+    } else {
+      this._netT-=dt;
+      if (this._netT<=0&&this.net?.connected) { this._netT=0.05; this.net.sendState({x:this.player.x,y:this.player.y,angle:this.player.angle,hp:this.player.hp,score:this.player.score,dead:this.player.dead,kills:this.player.kills}); }
+    }
 
     // Atualiza HUD
     const pLives=this.mode==='contra1'?this.enemyMgr.playerLives:null;
     const eLives=this.mode==='contra1'?this.enemyMgr.enemyLives:null;
-    this.ui.update(this.player,this.timeLeft,this.enemyMgr.enemyScore,pLives,eLives,this.enemyMgr.maxLives,this.mode);
+    this.ui.update(this.player,this.timeLeft,this.enemyMgr.enemyScore,pLives,eLives,this.enemyMgr.maxLives,this.mode,this.mode==='equipe_online'?this._teamScores:null);
   }
 
   // Resolve combate envolvendo Torres Astrais: projéteis e colisões físicas
@@ -390,6 +532,7 @@ export class Game {
     this.itemMgr.draw(ctx);
     this.enemyMgr.draw(ctx);
     for (const id in this.peers) this.peers[id].draw(ctx);
+    if (this.isHost) for (const bot of this.bots) bot.draw(ctx);
     this.combat.draw(ctx);
     this.player.draw(ctx);
     this.arena.drawParticles(ctx);
@@ -464,6 +607,12 @@ export class Game {
       playerLives:this.enemyMgr.playerLives,
       enemyLives:this.enemyMgr.enemyLives,
     };
+    if (this.mode==='equipe_online') {
+      data.team=this.team;
+      data.teamScores={...this._teamScores};
+      data.teamWinner = this._teamScores.red>=TEAM_KILL_TARGET ? 'red'
+                      : this._teamScores.blue>=TEAM_KILL_TARGET ? 'blue' : null;
+    }
     setTimeout(()=>window.showGameOver?.(data),700);
   }
 
@@ -473,5 +622,7 @@ export class Game {
     this._unbindInput();
     this._audio.stopEngine();
     this.net?.disconnect();
+    this.ui.hideTeamLobby();
+    this.ui.hideMatchLoading();
   }
 }
