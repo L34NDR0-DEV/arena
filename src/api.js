@@ -42,9 +42,11 @@ function readJsonBody(req, cb) {
     chunks.push(chunk);
   });
   req.on('end', () => {
+    const raw = Buffer.concat(chunks).toString('utf8');
+    console.log('[DEBUG readJsonBody] bytes recebidos:', total, 'raw:', JSON.stringify(raw));
     if (!chunks.length) return cb(null, {});
-    try { cb(null, JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
-    catch { cb(new Error('invalid_json')); }
+    try { cb(null, JSON.parse(raw)); }
+    catch (e) { console.log('[DEBUG readJsonBody] erro de parse:', e.message); cb(new Error('invalid_json')); }
   });
   req.on('error', cb);
 }
