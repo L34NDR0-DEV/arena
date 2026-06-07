@@ -205,20 +205,8 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 /* ═══ MENU PRINCIPAL ═════════════════════════════════════════ */
 #menu{
   position:absolute;inset:0;display:none;flex-direction:column;overflow:hidden;
-  border:1px solid var(--border2);box-shadow:inset 0 0 60px #00d4ff0c,inset 0 0 0 1px #00d4ff14;
+  border:1px solid var(--border2);
 }
-/* Moldura neon nas bordas externas da tela principal — quatro cantos com
-   brilho pulsante, reforçando a estética arcade sem disputar atenção com o HUD */
-#menu::before{
-  content:'';position:absolute;inset:0;pointer-events:none;z-index:5;
-  background:
-    linear-gradient(90deg,var(--cyan) 0%,transparent 2.5%),
-    linear-gradient(-90deg,var(--cyan) 0%,transparent 2.5%),
-    linear-gradient(180deg,var(--cyan) 0%,transparent 1.5%),
-    linear-gradient(0deg,var(--cyan) 0%,transparent 1.5%);
-  opacity:.35;mix-blend-mode:screen;animation:menuFrameGlow 5s ease-in-out infinite;
-}
-@keyframes menuFrameGlow{0%,100%{opacity:.22;}50%{opacity:.42;}}
 
 .menu-header{
   background:linear-gradient(180deg,#030810,#030810cc);
@@ -237,7 +225,29 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   color:var(--cyan);letter-spacing:2px;
   text-shadow:0 0 8px var(--cyan);line-height:1.5;
 }
-.menu-logo-small span{color:var(--green);font-size:0.75em;display:block;margin-top:2px;}
+.mls-line{display:block;}
+.mls-line-sub{color:var(--green);font-size:0.75em;margin-top:2px;}
+/* Cada letra "atirada" na tela: surge com um lampejo, como um tiro
+   formando o texto — cada <span> recebe um delay individual via JS
+   (--i) para criar o efeito sequencial de disparo. */
+.mls-letter{
+  display:inline-block;opacity:0;transform:translateY(-6px) scale(.4);
+  filter:blur(2px);
+  animation:mlsShotIn .22s cubic-bezier(.2,.9,.3,1.3) forwards;
+  animation-delay:calc(var(--i) * 55ms);
+}
+.mls-letter.is-space{width:.6em;}
+@keyframes mlsShotIn{
+  0%{opacity:0;transform:translateY(-6px) scale(.4);filter:blur(2px) brightness(2.4);text-shadow:0 0 14px currentColor,0 0 28px currentColor;}
+  55%{opacity:1;transform:translateY(1px) scale(1.18);filter:blur(0) brightness(1.6);}
+  100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0) brightness(1);text-shadow:0 0 8px var(--cyan);}
+}
+.mls-line-sub .mls-letter{animation-name:mlsShotInSub;}
+@keyframes mlsShotInSub{
+  0%{opacity:0;transform:translateY(-6px) scale(.4);filter:blur(2px) brightness(2.4);text-shadow:0 0 14px var(--green),0 0 28px var(--green);}
+  55%{opacity:1;transform:translateY(1px) scale(1.18);filter:blur(0) brightness(1.6);}
+  100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0) brightness(1);text-shadow:none;}
+}
 .menu-header-right{display:flex;align-items:center;gap:12px;margin-left:auto;flex-wrap:wrap;row-gap:8px;}
 .pilot-badge{
   display:flex;align-items:center;gap:8px;
@@ -333,6 +343,26 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 }
 .play-btn:hover{box-shadow:0 0 16px var(--cyan);transform:translateY(-1px);}
 .play-btn svg{width:10px;height:10px;}
+
+/* Botão JOGAR da tela inicial: duas animações somadas — um brilho pulsante
+   contínuo (chama atenção sem ser hover) e um brilho que varre o botão
+   periodicamente, como um reflexo de metal arcade. */
+.menu-play-btn{position:relative;overflow:hidden;animation:menuPlayPulse 2.4s ease-in-out infinite;}
+.menu-play-btn:hover{animation-play-state:paused;}
+.menu-play-btn::after{
+  content:'';position:absolute;top:0;bottom:0;left:-60%;width:40%;
+  background:linear-gradient(115deg,transparent,#ffffffb0,transparent);
+  transform:skewX(-20deg);animation:menuPlaySweep 3.6s ease-in-out infinite;
+}
+@keyframes menuPlayPulse{
+  0%,100%{box-shadow:0 0 8px #00d4ff55;transform:translateY(0);}
+  50%{box-shadow:0 0 22px var(--cyan),0 0 40px #00d4ff66;transform:translateY(-1px);}
+}
+@keyframes menuPlaySweep{
+  0%{left:-60%;}
+  35%{left:130%;}
+  100%{left:130%;}
+}
 
 .menu-body{display:flex;flex:1;overflow:hidden;}
 .menu-left{
@@ -1080,7 +1110,10 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 <!-- ═══ MENU ════════════════════════════════════════════════ -->
 <div id="menu">
   <div class="menu-header">
-    <div class="menu-logo-small">TOWER DEFENSE<span>ON THE SPACE</span></div>
+    <div class="menu-logo-small" id="menu-logo-small">
+      <span class="mls-line mls-line-main" id="mls-line-main"></span>
+      <span class="mls-line mls-line-sub" id="mls-line-sub"></span>
+    </div>
     <div class="menu-header-right">
       <div class="pilot-badge">
         <button class="pilot-icon-btn" id="pilot-icon-btn" onclick="openIconPicker()" title="Trocar ícone de perfil"></button>
@@ -1119,7 +1152,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
         <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 2 H3 a1 1 0 0 0 -1 1 v6 a1 1 0 0 0 1 1 h2"/><path d="M5.5 6 H10.5"/><path d="M8.5 4 L10.5 6 L8.5 8"/></svg>
         SAIR
       </button>
-      <button class="play-btn" onclick="startGame()">
+      <button class="play-btn menu-play-btn" onclick="startGame()">
         <svg viewBox="0 0 10 10" fill="currentColor"><polygon points="1,0 10,5 1,10"/></svg>
         JOGAR
       </button>
@@ -1692,6 +1725,29 @@ const MODE_TIPS={
   teste:   'TESTE — INIMIGOS NÃO ATACAM.',
   survivor:'SURVIVOR — ONDAS INFINITAS. SOBREVIVA!',
 };
+
+// Monta o logo do menu letra a letra — cada caractere ganha um delay
+// individual (--i) para que o CSS o "atire" na tela em sequência,
+// como se o nome do jogo fosse formado por uma rajada de tiros.
+function _buildShotText(container, text, startIndex){
+  container.innerHTML='';
+  let i=startIndex;
+  for(const ch of text){
+    const span=document.createElement('span');
+    const isSpace = ch === ' ' || ch === ' ';
+    span.className='mls-letter'+(isSpace?' is-space':'');
+    span.style.setProperty('--i', i);
+    span.textContent = isSpace ? ' ' : ch;
+    container.appendChild(span);
+    i++;
+  }
+  return i;
+}
+{
+  const mainText='TOWER DEFENSE';
+  const next=_buildShotText(document.getElementById('mls-line-main'), mainText, 0);
+  _buildShotText(document.getElementById('mls-line-sub'), 'ON THE SPACE', next+2);
+}
 
 // ── Fundo arcade animado na tela de login ─────────────────────
 const loginBg=document.getElementById('login-bg-canvas');
