@@ -180,6 +180,7 @@ export class Player {
   constructor({ x, y, skinIndex=0, name='Jogador' }) {
     this.x=x; this.y=y; this.vx=0; this.vy=0;
     this.r=38; this.angle=-Math.PI/2;
+    this.skinIndex=skinIndex;
     this.skin=SKINS[skinIndex]||SKINS[0];
     this.name=name;
 

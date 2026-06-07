@@ -625,7 +625,7 @@ export class Game {
       score:this.player.score,
       items:this.player.itemsCollected,
       itemTypeCounts:this.player.itemTypeCounts,
-      skinIndex:this.player.skin.id,
+      skinIndex:this.player.skinIndex,
       skinName:this.player.skin.name,
       playerName:this.player.name,
       level:this.player.level,
