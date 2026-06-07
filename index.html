@@ -34,21 +34,6 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 /* Fundo arcade animado */
 #login-bg-canvas{position:absolute;inset:0;width:100%;height:100%;}
 
-/* Indicador de servidor/ping no canto — estilo "status do servidor" de
-   clientes de jogos online (região + latência em ms). */
-.server-status{
-  position:absolute;top:14px;right:18px;z-index:3;
-  display:flex;align-items:center;gap:8px;
-  background:rgba(6,12,22,.72);border:1px solid var(--gold);border-radius:4px;
-  padding:6px 12px;font-family:'Press Start 2P',monospace;font-size:8px;
-  color:var(--gold);letter-spacing:.5px;backdrop-filter:blur(2px);
-}
-.server-status .ss-dot{width:7px;height:7px;border-radius:50%;background:var(--text2);box-shadow:0 0 6px var(--text2);}
-.server-status.ok .ss-dot{background:var(--green);box-shadow:0 0 6px var(--green);}
-.server-status.mid .ss-dot{background:#ffcc44;box-shadow:0 0 6px #ffcc44;}
-.server-status.high .ss-dot{background:var(--red);box-shadow:0 0 6px var(--red);}
-.server-status .ss-ping{color:var(--text);}
-
 .login-content{
   position:relative;z-index:2;
   display:flex;flex-direction:column;align-items:center;gap:0;
@@ -801,11 +786,6 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   .arcade-title{margin-bottom:12px;}
   .arcade-title-main{font-size:clamp(15px,5.5vw,26px);}
   .arcade-title-top,.arcade-title-sub{font-size:7px;letter-spacing:3px;}
-  .server-status{
-    top:8px;right:8px;left:8px;justify-content:center;
-    padding:5px 8px;font-size:7px;gap:6px;
-  }
-  .server-status span:nth-child(2){display:none;} /* esconde "SERVIDOR BR-1" em telas estreitas */
   #hud-left{top:8px;left:8px;}
   #hud-right{top:8px;right:8px;}
   #minimap{bottom:96px;right:8px;transform:scale(.8);transform-origin:bottom right;}
@@ -825,8 +805,6 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   .login-panel{padding:12px 18px 12px;}
   .login-panel-title{margin-bottom:12px;}
   .login-field{margin-bottom:8px;}
-  .server-status{top:6px;right:6px;left:auto;font-size:6px;padding:4px 7px;}
-  .server-status span:nth-child(2){display:none;}
 }
 </style>
 </head>
@@ -835,11 +813,6 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 <!-- ═══ TELA INICIAL ARCADE ════════════════════════════════ -->
 <div id="login-screen">
   <canvas id="login-bg-canvas"></canvas>
-  <div class="server-status" id="login-server-status">
-    <span class="ss-dot"></span>
-    <span>SERVIDOR BR-1</span>
-    <span class="ss-ping">— <span id="login-ping-value">--</span> ms</span>
-  </div>
   <audio id="login-music" src="./sound/musicarcade.mp3" preload="auto" loop="false"></audio>
   <div class="login-content">
 
@@ -1333,38 +1306,6 @@ let currentUser = null; // {id,email,displayName,credits,equippedSkin}
 let profile     = null; // {user,ownedSkins,equippedSkin,rewardProgress}
 let authMode    = 'login'; // 'login' | 'register'
 
-// ── Medição de ping na tela de login (estilo "status do servidor") ──
-// Abre uma conexão curta, mede o round-trip de um eco ping/pong e fecha.
-function measureLoginPing(){
-  try{
-    const proto = location.protocol==='https:' ? 'wss' : 'ws';
-    const ws = new WebSocket(`${proto}://${location.host}`);
-    const t0 = performance.now();
-    let done = false;
-    const finish = (ms)=>{
-      if (done) return; done = true;
-      const valEl = document.getElementById('login-ping-value');
-      const boxEl = document.getElementById('login-server-status');
-      if (valEl) valEl.textContent = (ms==null) ? '--' : String(ms);
-      if (boxEl) {
-        boxEl.classList.remove('ok','mid','high');
-        if (ms!=null) boxEl.classList.add(ms<80?'ok':ms<150?'mid':'high');
-      }
-      try{ ws.close(); }catch{}
-    };
-    ws.addEventListener('open', ()=> ws.send(JSON.stringify({ type:'ping', t:t0 })));
-    ws.addEventListener('message', ev=>{
-      try{
-        const msg = JSON.parse(ev.data);
-        if (msg.type==='pong') finish(Math.round(performance.now()-t0));
-      }catch{}
-    });
-    ws.addEventListener('error', ()=> finish(null));
-    setTimeout(()=> finish(null), 5000);
-  }catch{}
-}
-measureLoginPing();
-setInterval(()=>{ if(document.getElementById('login-screen')?.style.display!=='none') measureLoginPing(); }, 12000);
 
 async function apiFetch(path, opts={}){
   const r = await fetch(path, {
