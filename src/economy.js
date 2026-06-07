@@ -3,6 +3,29 @@ const db = require('./db');
 
 const SKIN_PRICE       = 500;
 const FREE_SKIN_ID     = 6; // Shadow Roxa — única skin gratuita
+
+// Promoção por tempo limitado: Ponta BR (id 1) e Alien Disc (id 5) saem por
+// metade do preço durante 10 dias — mas o piloto só pode aproveitar a oferta
+// em UMA das duas (escolha exclusiva, para incentivar a decisão rápida).
+const PROMO_SKIN_IDS   = [1, 5];
+const PROMO_PRICE      = 250;
+const PROMO_STARTS_AT  = Date.parse('2026-06-07T00:00:00Z');
+const PROMO_ENDS_AT    = PROMO_STARTS_AT + 10 * 24 * 60 * 60 * 1000;
+
+function isPromoActive(now = Date.now()) {
+  return now >= PROMO_STARTS_AT && now < PROMO_ENDS_AT;
+}
+
+// Preço efetivo de uma skin para um usuário: aplica o preço promocional
+// somente se a skin está na promoção, a janela está ativa, e o usuário ainda
+// não possui a outra skin do par (a oferta vale para uma única escolha).
+function skinPriceFor(skinId, ownedSkinIds) {
+  if (PROMO_SKIN_IDS.includes(skinId) && isPromoActive()) {
+    const otherId = PROMO_SKIN_IDS.find(id => id !== skinId);
+    if (!ownedSkinIds.includes(otherId)) return PROMO_PRICE;
+  }
+  return SKIN_PRICE;
+}
 const REWARD_BLOCK_SIZE = 5;
 const REWARD_AMOUNT     = 10;
 const REWARD_MIN_MODES  = 2;
@@ -57,4 +80,7 @@ function recordMatchAndMaybeReward(userId, { mode, win }) {
   return { rewardGranted, progress: count, modesSeen: modes };
 }
 
-module.exports = { SKIN_PRICE, FREE_SKIN_ID, REWARD_BLOCK_SIZE, REWARD_AMOUNT, REWARD_MIN_MODES, recordMatchAndMaybeReward };
+module.exports = {
+  SKIN_PRICE, FREE_SKIN_ID, REWARD_BLOCK_SIZE, REWARD_AMOUNT, REWARD_MIN_MODES, recordMatchAndMaybeReward,
+  PROMO_SKIN_IDS, PROMO_PRICE, PROMO_STARTS_AT, PROMO_ENDS_AT, isPromoActive, skinPriceFor,
+};

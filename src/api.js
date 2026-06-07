@@ -84,6 +84,11 @@ function profileFor(user) {
       minModes: economy.REWARD_MIN_MODES,
       amount: economy.REWARD_AMOUNT,
     },
+    promo: economy.isPromoActive() ? {
+      skinIds: economy.PROMO_SKIN_IDS,
+      price: economy.PROMO_PRICE,
+      endsAt: economy.PROMO_ENDS_AT,
+    } : null,
   };
 }
 
@@ -202,8 +207,13 @@ const ROUTES = [
       }
       if (db.ownsSkin.get(user.id, skinId)) return sendJson(res, 409, { error: 'already_owned' });
 
+      // Preço considera a promoção por tempo limitado (Ponta BR / Alien Disc) —
+      // calculado no servidor para não confiar em valor enviado pelo client.
+      const owned = db.listOwnedSkins.all(user.id).map(r => r.skin_id);
+      const price = economy.skinPriceFor(skinId, owned);
+
       const ok = db.transaction(() => {
-        const result = db.spendCredits.run(economy.SKIN_PRICE, user.id, economy.SKIN_PRICE);
+        const result = db.spendCredits.run(price, user.id, price);
         if (result.changes === 0) return false;
         db.grantSkin.run(user.id, skinId);
         return true;

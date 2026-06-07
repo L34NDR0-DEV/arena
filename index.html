@@ -50,7 +50,6 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   color:#00d4ff;
   text-shadow:0 0 10px #00d4ff,0 0 20px #00d4ff44,0 0 40px #00d4ff22;
   letter-spacing:4px;
-  animation:titlePulse 3s ease-in-out infinite;
 }
 .arcade-title-main{
   font-family:'Press Start 2P',monospace;
@@ -83,7 +82,6 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   text-shadow:0 0 8px #00ff88;
   animation:blink 1.4s step-end infinite;
 }
-@keyframes titlePulse{0%,100%{opacity:0.9}50%{opacity:1;text-shadow:0 0 14px #00d4ff,0 0 28px #00d4ff66;}}
 @keyframes titleGlow{from{filter:drop-shadow(0 0 10px #00d4ff66)}to{filter:drop-shadow(0 0 20px #00d4ffaa) drop-shadow(0 0 40px #00d4ff44);}}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
 
@@ -446,6 +444,17 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .shop-card-tag{font-size:9px;padding:3px 9px;border-radius:10px;letter-spacing:.5px;}
 .shop-card-tag.owned{color:var(--green);background:#00ff8814;border:1px solid #00ff8833;}
 .shop-card-tag.locked{color:#ffcc44;background:#ffcc4414;border:1px solid #ffcc4433;}
+.shop-card-tag.promo{color:#ff5fa8;background:#ff5fa814;border:1px solid #ff5fa84c;}
+.shop-card-tag-old{color:var(--text2);text-decoration:line-through;opacity:.7;margin-right:3px;}
+.shop-card-promo-badge{
+  position:absolute;top:8px;right:-26px;transform:rotate(40deg);
+  background:linear-gradient(90deg,var(--pink),var(--purple));color:#fff;font-weight:800;
+  font-size:6px;letter-spacing:1.5px;padding:3px 30px;box-shadow:0 2px 8px #00000044;
+  font-family:'Press Start 2P',monospace;animation:promoBadgeGlow 2.4s ease-in-out infinite;
+}
+@keyframes promoBadgeGlow{0%,100%{filter:brightness(1);}50%{filter:brightness(1.3);}}
+.shop-frame-status.promo{color:var(--pink);text-shadow:0 0 10px #ff5fa888;letter-spacing:.5px;}
+.skin-price.promo,#shop-skin-price.promo{color:var(--pink);text-shadow:0 0 10px #ff5fa866;}
 .shop-track-empty{
   flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
   color:var(--text2);font-size:11px;text-align:center;padding:40px 18px;letter-spacing:.5px;
@@ -1506,7 +1515,30 @@ let pilotName='JOGADOR';
 const SHOP_PRICE = 500;
 const economy_FREE_SKIN_ID = 6;
 let currentUser = null; // {id,email,displayName,credits,equippedSkin}
-let profile     = null; // {user,ownedSkins,equippedSkin,rewardProgress}
+let profile     = null; // {user,ownedSkins,equippedSkin,rewardProgress,promo}
+
+// Preço efetivo de uma skin para o piloto atual — considera a promoção
+// (Ponta BR / Alien Disc, escolha exclusiva entre as duas) vinda do servidor.
+function shopPriceFor(skinId){
+  const promo = profile?.promo;
+  if (promo && promo.skinIds.includes(skinId)) {
+    const otherId = promo.skinIds.find(id => id !== skinId);
+    const owned = shopOwnedSet();
+    if (!owned.has(otherId)) return promo.price;
+  }
+  return SHOP_PRICE;
+}
+function shopIsPromo(skinId){
+  return shopPriceFor(skinId) !== SHOP_PRICE;
+}
+function promoTimeLeftLabel(){
+  const promo = profile?.promo;
+  if (!promo) return '';
+  const ms = promo.endsAt - Date.now();
+  if (ms <= 0) return '';
+  const days = Math.ceil(ms / 86400000);
+  return days <= 1 ? 'Termina hoje!' : `Termina em ${days} dias`;
+}
 let authMode    = 'login'; // 'login' | 'register'
 
 
@@ -1906,9 +1938,19 @@ function buildShopTrack(){
     name.className = 'shop-card-name';
     name.textContent = skin.name;
     const tag = document.createElement('div');
-    tag.className = 'shop-card-tag locked';
-    tag.textContent = `${SHOP_PRICE} CR`;
+    const price = shopPriceFor(skin.id);
+    const isPromo = shopIsPromo(skin.id);
+    tag.className = 'shop-card-tag locked' + (isPromo ? ' promo' : '');
+    tag.innerHTML = isPromo
+      ? `<span class="shop-card-tag-old">${SHOP_PRICE} CR</span> ${price} CR`
+      : `${price} CR`;
     card.append(cv, name, tag);
+    if (isPromo) {
+      const badge = document.createElement('div');
+      badge.className = 'shop-card-promo-badge';
+      badge.textContent = 'OFERTA';
+      card.appendChild(badge);
+    }
     card.onclick = () => selectShopSkin(skin.id);
     track.appendChild(card);
   });
@@ -1941,10 +1983,16 @@ window.selectShopSkin = function(skinId){
 
   document.getElementById('shop-skin-name').textContent = skin.name;
   const statusEl = document.getElementById('shop-skin-status');
-  statusEl.textContent = 'BLOQUEADA';
-  statusEl.className = 'shop-frame-status';
-  document.getElementById('shop-skin-price').style.display = 'block';
-  document.getElementById('shop-skin-price').textContent = `${SHOP_PRICE} CR`;
+  const isPromo = shopIsPromo(skin.id);
+  const price = shopPriceFor(skin.id);
+  statusEl.textContent = isPromo ? `OFERTA POR TEMPO LIMITADO — ${promoTimeLeftLabel()}` : 'BLOQUEADA';
+  statusEl.className = 'shop-frame-status' + (isPromo ? ' promo' : '');
+  const priceEl = document.getElementById('shop-skin-price');
+  priceEl.style.display = 'block';
+  priceEl.innerHTML = isPromo
+    ? `<span class="shop-card-tag-old">${SHOP_PRICE} CR</span> ${price} CR`
+    : `${price} CR`;
+  priceEl.classList.toggle('promo', isPromo);
   document.getElementById('shop-buy-btn').style.display = 'flex';
   document.getElementById('shop-equip-btn').style.display = 'none';
   drawShopFrame(skin);

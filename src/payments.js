@@ -9,6 +9,8 @@ const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN || '';
 const PUBLIC_URL      = (process.env.PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '');
 
 const CREDIT_PACKAGES = {
+  pack_1:  { id: 'pack_1',  credits: 100,   priceCents: 100,   label: 'R$ 1,00',  bonus: null   },
+  pack_3:  { id: 'pack_3',  credits: 150,   priceCents: 300,   label: 'R$ 3,00',  bonus: null   },
   pack_5:  { id: 'pack_5',  credits: 250,   priceCents: 500,   label: 'R$ 5,00',  bonus: null   },
   pack_10: { id: 'pack_10', credits: 550,   priceCents: 1000,  label: 'R$ 10,00', bonus: '+10%' },
   pack_20: { id: 'pack_20', credits: 1200,  priceCents: 2000,  label: 'R$ 20,00', bonus: '+20%' },
