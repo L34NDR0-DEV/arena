@@ -214,31 +214,39 @@ export class AudioEngine {
     if (!this._ready || this._engine) return;
     const ac  = this._ctx;
 
-    // Ruído grave contínuo
-    const osc1 = ac.createOscillator();
-    const osc2 = ac.createOscillator();
-    const lfo  = ac.createOscillator();
-    const lfoG = ac.createGain();
+    // Ronco grave e suave do motor — ondas senoidal/triangular (poucos
+    // harmônicos) filtradas em passa-baixa, para um "hum" contínuo em vez
+    // do zumbido áspero que serra/quadrada produziam sem filtro.
+    const osc1   = ac.createOscillator();
+    const osc2   = ac.createOscillator();
+    const lfo    = ac.createOscillator();
+    const lfoG   = ac.createGain();
+    const filter = ac.createBiquadFilter();
     this._engineGain = ac.createGain();
-    this._engineGain.gain.value = intensity * 0.08;
+    this._engineGain.gain.value = intensity * 0.04;
 
-    osc1.type = 'sawtooth'; osc1.frequency.value = 55;
-    osc2.type = 'square';   osc2.frequency.value = 58;
-    lfo.type  = 'sine';     lfo.frequency.value  = 3;
-    lfoG.gain.value = 8;
+    osc1.type = 'sine';     osc1.frequency.value = 50;
+    osc2.type = 'triangle'; osc2.frequency.value = 53;
+    lfo.type  = 'sine';     lfo.frequency.value  = 2.2;
+    lfoG.gain.value = 3;
+
+    filter.type = 'lowpass';
+    filter.frequency.value = 220;
+    filter.Q.value = 0.7;
 
     lfo.connect(lfoG); lfoG.connect(osc1.frequency);
-    osc1.connect(this._engineGain);
-    osc2.connect(this._engineGain);
+    osc1.connect(filter);
+    osc2.connect(filter);
+    filter.connect(this._engineGain);
     this._engineGain.connect(this._master);
 
     osc1.start(); osc2.start(); lfo.start();
-    this._engine = { osc1, osc2, lfo };
+    this._engine = { osc1, osc2, lfo, filter };
   }
 
   setEngineIntensity(v) {
     if (this._engineGain) {
-      this._engineGain.gain.setTargetAtTime(v * 0.10, this._ctx.currentTime, 0.1);
+      this._engineGain.gain.setTargetAtTime(v * 0.05, this._ctx.currentTime, 0.1);
     }
   }
 

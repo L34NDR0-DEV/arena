@@ -149,6 +149,33 @@ export function drawCrosshair(ctx, wx, wy, age) {
   ctx.restore();
 }
 
+// ── Indicador de alvo travado (auto-mira no modo touch) ──────
+// Mira em "cantos" girando ao redor do alvo, em dourado/vermelho para
+// destacar do crosshair ciano de mira livre — comunica "travado" vs "livre".
+export function drawTargetLock(ctx, wx, wy, age) {
+  const t=age*2.4, R=22;
+  ctx.save(); ctx.translate(wx,wy);
+
+  ctx.strokeStyle='rgba(255,77,106,0.85)'; ctx.lineWidth=2; ctx.lineCap='round';
+  ctx.shadowColor='#ff4d6a'; ctx.shadowBlur=8;
+  const cl=9;
+  for (let i=0;i<4;i++){
+    ctx.save(); ctx.rotate(t*0.6 + i*Math.PI/2);
+    ctx.beginPath();
+    ctx.moveTo(R-cl, -R); ctx.lineTo(R, -R); ctx.lineTo(R, -R+cl);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.save(); ctx.rotate(-t*0.5);
+  ctx.strokeStyle='rgba(255,204,68,0.55)'; ctx.lineWidth=1; ctx.setLineDash([4,5]);
+  ctx.beginPath(); ctx.arc(0,0,R-7,0,Math.PI*2); ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+
+  ctx.fillStyle='#ffcc44'; ctx.shadowColor='#ffcc44'; ctx.shadowBlur=8;
+  ctx.beginPath(); ctx.arc(0,0,2,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
 export class Player {
   constructor({ x, y, skinIndex=0, name='Jogador' }) {
     this.x=x; this.y=y; this.vx=0; this.vy=0;
@@ -454,7 +481,11 @@ export class Player {
     // ── Locomoção com mana ────────────────────────────────────
     const canMove = this.mana > 0;
     if (input.holdRight) {
-      this._targetX=input.worldMouseX; this._targetY=input.worldMouseY;
+      // moveTargetX/Y permite desacoplar a direção de movimento da mira
+      // (usado no modo touch: alvo fixo no inimigo mais próximo enquanto
+      // o joystick controla o deslocamento livremente)
+      this._targetX = input.moveTargetX ?? input.worldMouseX;
+      this._targetY = input.moveTargetY ?? input.worldMouseY;
       if (canMove) this._moving=true;
     }
 

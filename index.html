@@ -245,7 +245,9 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   width:22px;height:22px;border-radius:3px;display:flex;align-items:center;justify-content:center;
   background:var(--panel);border:1px solid var(--border);font-size:13px;cursor:pointer;
   padding:0;line-height:1;color:var(--cyan);transition:border-color .15s,transform .15s;
+  overflow:hidden;
 }
+.pilot-icon-btn canvas,.icon-picker-item canvas{display:block;width:100%;height:100%;}
 .pilot-icon-btn:hover{border-color:var(--cyan);transform:scale(1.08);}
 .icon-picker-overlay{
   position:fixed;inset:0;background:rgba(5,8,16,.78);z-index:260;
@@ -770,6 +772,13 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .touch-btn-fire{width:78px;height:78px;font-size:9px;}
 .touch-btn-dash{width:60px;height:60px;font-size:7px;border-color:var(--gold);color:var(--gold);box-shadow:0 0 10px rgba(255,204,68,.35);}
 .touch-btn-dash:active,.touch-btn-dash.pressed{background:rgba(255,204,68,.32);box-shadow:0 0 18px var(--gold);}
+.touch-btn-pause{
+  position:absolute;top:10px;left:50%;transform:translateX(-50%);
+  width:42px;height:42px;font-size:15px;border-radius:8px;
+  border-color:rgba(91,232,255,.6);color:var(--text);
+  background:rgba(0,20,32,.5);z-index:60;pointer-events:auto;
+}
+.touch-btn-pause:active,.touch-btn-pause.pressed{background:rgba(91,232,255,.3);box-shadow:0 0 16px var(--cyan);transform:translateX(-50%) scale(.92);}
 .touch-slots{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:8px;pointer-events:none;}
 .touch-slot{
   pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;
@@ -786,17 +795,38 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 
 /* ═══ Adaptação para telas pequenas (celulares) ══════════════ */
 @media (max-width:760px){
-  .login-panel{padding:16px 20px 16px;width:min(340px,92vw);}
-  .arcade-title-main{font-size:clamp(16px,5.5vw,26px);}
-  .arcade-title-top,.arcade-title-sub{font-size:8px;}
+  #login-screen{overflow-y:auto;align-items:flex-start;}
+  .login-content{width:100%;padding:54px 12px 24px;box-sizing:border-box;}
+  .login-panel{padding:16px 20px 16px;width:min(340px,92vw);margin:0 auto;}
+  .arcade-title{margin-bottom:12px;}
+  .arcade-title-main{font-size:clamp(15px,5.5vw,26px);}
+  .arcade-title-top,.arcade-title-sub{font-size:7px;letter-spacing:3px;}
+  .server-status{
+    top:8px;right:8px;left:8px;justify-content:center;
+    padding:5px 8px;font-size:7px;gap:6px;
+  }
+  .server-status span:nth-child(2){display:none;} /* esconde "SERVIDOR BR-1" em telas estreitas */
   #hud-left{top:8px;left:8px;}
   #hud-right{top:8px;right:8px;}
   #minimap{bottom:96px;right:8px;transform:scale(.8);transform-origin:bottom right;}
   #hud-bottom{display:none;} /* dicas de teclado não fazem sentido no touch */
 }
+@media (max-width:400px){
+  .arcade-title-top{display:none;} /* economiza espaço vertical em telas muito pequenas */
+}
 @media (orientation:landscape) and (max-height:520px){
   #hud-left,#hud-right{transform:scale(.82);transform-origin:top left;}
   #hud-right{transform-origin:top right;}
+  #login-screen{align-items:flex-start;}
+  .login-content{padding:8px 12px 16px;}
+  .arcade-title{margin-bottom:8px;}
+  .arcade-title-top,.arcade-title-sub{display:none;}
+  .arcade-title-main{font-size:clamp(13px,4vw,20px);}
+  .login-panel{padding:12px 18px 12px;}
+  .login-panel-title{margin-bottom:12px;}
+  .login-field{margin-bottom:8px;}
+  .server-status{top:6px;right:6px;left:auto;font-size:6px;padding:4px 7px;}
+  .server-status span:nth-child(2){display:none;}
 }
 </style>
 </head>
@@ -868,7 +898,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
     <div class="menu-logo-small">TOWER DEFENSE<span>ON THE SPACE</span></div>
     <div class="menu-header-right">
       <div class="pilot-badge">
-        <button class="pilot-icon-btn" id="pilot-icon-btn" onclick="openIconPicker()" title="Trocar ícone de perfil">🙂</button>
+        <button class="pilot-icon-btn" id="pilot-icon-btn" onclick="openIconPicker()" title="Trocar ícone de perfil"></button>
         <span class="pilot-name" id="menu-pilot-name">JOGADOR</span>
         <button class="change-pilot-btn" onclick="goLoginScreen()">✎</button>
       </div>
@@ -994,6 +1024,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 
 <!-- ═══ Controles touch (mobile) ═══════════════════════════════ -->
 <div id="touch-controls">
+  <div class="touch-btn touch-btn-pause" id="touch-btn-pause" title="Pausar / Sair">⏸</div>
   <div class="touch-stick-zone" id="touch-stick-zone">
     <div class="touch-stick-knob" id="touch-stick-knob"></div>
   </div>
@@ -1290,6 +1321,7 @@ import { SKINS }          from './src/skins.js';
 import { ARENA_TYPES }    from './src/arena.js';
 import { Game }           from './src/game.js';
 import { CHANGELOG }      from './src/changelog.js';
+import { PROFILE_ICON_DEFS, drawProfileIcon } from './src/profileIcons.js';
 
 let game=null, selectedSkin=0, selectedMode='contra1', paused=false;
 let pilotName='JOGADOR';
@@ -1628,28 +1660,36 @@ function renderSkinGrid(){
 // ── Loja: carrossel de naves (esquerda → direita, vitrine na direita) ──
 // ── Ícones de perfil (sistema separado das skins de nave — todo
 // jogador escolhe livremente, sem custo nem posse) ────────────
-const PROFILE_ICONS = ['🙂','😎','🤖','👽','🦊','🐱','🐺','🦅','🐉','👾','🚀','⭐','💀','🔥','⚡','🛡️','🎯','🌙','☄️','🪐','🧊','🦾','🎮','👑'];
+function currentProfileIconId(){
+  return profile ? (profile.profileIcon||0) : 0;
+}
 
-function currentProfileIcon(){
-  const id = profile ? (profile.profileIcon||0) : 0;
-  return PROFILE_ICONS[id] || PROFILE_ICONS[0];
+// Renderiza o ícone (ilustração canvas) dentro de `el`, substituindo
+// qualquer conteúdo anterior — usado no botão do piloto e no seletor.
+function _renderIconInto(el, iconId, px){
+  el.innerHTML = '';
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = px;
+  cv.style.width = cv.style.height = '100%';
+  drawProfileIcon(cv.getContext('2d'), iconId, px, px);
+  el.appendChild(cv);
 }
 
 function updatePilotIconBtn(){
   const btn = document.getElementById('pilot-icon-btn');
-  if (btn) btn.textContent = currentProfileIcon();
+  if (btn) _renderIconInto(btn, currentProfileIconId(), 44);
 }
 
 window.openIconPicker = function(){
   if (!currentUser) return;
   const grid = document.getElementById('icon-picker-grid');
-  const equipped = profile ? (profile.profileIcon||0) : 0;
+  const equipped = currentProfileIconId();
   grid.innerHTML = '';
-  PROFILE_ICONS.forEach((icon, idx)=>{
+  PROFILE_ICON_DEFS.forEach((_, idx)=>{
     const item = document.createElement('div');
     item.className = 'icon-picker-item'+(idx===equipped?' active':'');
-    item.textContent = icon;
     item.onclick = ()=> setProfileIcon(idx);
+    _renderIconInto(item, idx, 64);
     grid.appendChild(item);
   });
   document.getElementById('icon-picker-overlay').classList.add('show');
@@ -2323,7 +2363,18 @@ showScreen = function(name){
   const stickKnob = document.getElementById('touch-stick-knob');
   const btnFire   = document.getElementById('touch-btn-fire');
   const btnDash   = document.getElementById('touch-btn-dash');
+  const btnPause  = document.getElementById('touch-btn-pause');
   const slots     = touchControls.querySelectorAll('.touch-slot');
+
+  btnPause?.addEventListener('touchstart', e => {
+    e.preventDefault();
+    btnPause.classList.add('pressed');
+    window.togglePause?.();
+  }, { passive:false });
+  btnPause?.addEventListener('touchend', e => {
+    e.preventDefault();
+    btnPause.classList.remove('pressed');
+  }, { passive:false });
 
   const STICK_RADIUS = 65;
   let stickTouchId = null;
@@ -2400,9 +2451,27 @@ showScreen = function(name){
   window._touchState = touchState;
   window._touchStick = stickVec;
 
+  // ── Mira automática no inimigo mais próximo (modo touch) ──
+  // No celular não há "ponteiro do mouse": a nave mira sozinha no inimigo
+  // vivo mais próximo enquanto o jogador só controla o deslocamento (analógico)
+  // e o disparo — evita exigir um segundo analógico de mira.
+  function findNearestEnemy(game){
+    const list = game.enemyMgr ? game.enemyMgr.enemies : null;
+    if (!list || !list.length || !game.player) return null;
+    const px = game.player.x, py = game.player.y;
+    let best = null, bestD = Infinity;
+    for (const e of list) {
+      if (e.dead) continue;
+      const d = (e.x-px)*(e.x-px) + (e.y-py)*(e.y-py);
+      if (d < bestD) { bestD = d; best = e; }
+    }
+    return best;
+  }
+
   // ── Injeta os controles touch no fluxo de input do jogo ──
-  // O jogo usa "mira/movimento até o ponteiro do mouse"; replicamos isso
-  // projetando um alvo à frente do jogador na direção do analógico.
+  // O jogo usa "mira/movimento até o ponteiro do mouse"; no touch, a mira
+  // (worldMouseX/Y) trava no inimigo mais próximo, e o movimento
+  // (moveTargetX/Y) segue a direção do analógico — desacoplados.
   const TOUCH_AIM_DIST = 260;
   const origInput = Game.prototype._input;
   Game.prototype._input = function(){
@@ -2411,12 +2480,26 @@ showScreen = function(name){
 
     const px = this.player ? this.player.x : base.worldMouseX;
     const py = this.player ? this.player.y : base.worldMouseY;
-    let wmx = base.worldMouseX, wmy = base.worldMouseY;
-    let holdRight = base.holdRight;
 
+    // Mira: alvo travado no inimigo mais próximo; sem inimigos, mantém a
+    // direção atual da nave (evita "destravar" a mira para o canto da tela)
+    const target = findNearestEnemy(this);
+    this._autoAimTarget = target;
+    let wmx, wmy;
+    if (target) {
+      wmx = target.x; wmy = target.y;
+    } else if (this.player) {
+      wmx = px + Math.cos(this.player._aimAngle - Math.PI/2) * TOUCH_AIM_DIST;
+      wmy = py + Math.sin(this.player._aimAngle - Math.PI/2) * TOUCH_AIM_DIST;
+    } else {
+      wmx = base.worldMouseX; wmy = base.worldMouseY;
+    }
+
+    // Movimento: projeta um alvo na direção do analógico, independente da mira
+    let moveTargetX, moveTargetY, holdRight = base.holdRight;
     if (stickVec.active) {
-      wmx = px + stickVec.x * TOUCH_AIM_DIST;
-      wmy = py + stickVec.y * TOUCH_AIM_DIST;
+      moveTargetX = px + stickVec.x * TOUCH_AIM_DIST;
+      moveTargetY = py + stickVec.y * TOUCH_AIM_DIST;
       holdRight = true;
     }
 
@@ -2427,6 +2510,8 @@ showScreen = function(name){
       dash:        base.dash     || touchState.dashing,
       worldMouseX: wmx,
       worldMouseY: wmy,
+      moveTargetX: moveTargetX,
+      moveTargetY: moveTargetY,
     };
   };
 })();

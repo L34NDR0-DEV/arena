@@ -1,5 +1,5 @@
 import { Arena, ARENA_W, ARENA_H, ARENA_TYPES, ARENA_W_DEFAULT, ARENA_H_DEFAULT, setArenaSize } from './arena.js';
-import { Player, drawCrosshair }                from './player.js';
+import { Player, drawCrosshair, drawTargetLock } from './player.js';
 import { EnemyManager, TeamBot }                 from './enemies.js';
 import { ItemManager, BorderEffect }              from './items.js';
 import { CombatSystem }                          from './combat.js';
@@ -547,8 +547,15 @@ export class Game {
     this.player.draw(ctx);
     this.arena.drawParticles(ctx);
 
-    // Mira espiral (em coords mundo)
-    if (!this.player.dead&&!this.paused) drawCrosshair(ctx,this._mouse.wx,this._mouse.wy,this.player._age);
+    // Mira espiral (em coords mundo) — no modo touch, mostra indicador de
+    // alvo travado no inimigo mais próximo em vez do crosshair de mouse
+    if (!this.player.dead&&!this.paused) {
+      if (this._touchActive && this._autoAimTarget) {
+        drawTargetLock(ctx, this._autoAimTarget.x, this._autoAimTarget.y, this.player._age);
+      } else if (!this._touchActive) {
+        drawCrosshair(ctx,this._mouse.wx,this._mouse.wy,this.player._age);
+      }
+    }
     ctx.restore();
 
     // Efeito de borda ao usar item (em coords tela)

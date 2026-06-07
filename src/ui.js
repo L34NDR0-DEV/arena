@@ -1,9 +1,6 @@
 // HUD + minimap + overlay de reconstrução + recarga no canto direito.
 import { ITEM_DEFS } from './items.js';
-
-// Glifos do sistema de ícones de perfil — espelha PROFILE_ICONS (index.html),
-// usado para renderizar o ícone de cada jogador na tela de carregamento.
-const PROFILE_ICON_GLYPHS = ['🙂','😎','🤖','👽','🦊','🐱','🐺','🦅','🐉','👾','🚀','⭐','💀','🔥','⚡','🛡️','🎯','🌙','☄️','🪐','🧊','🦾','🎮','👑'];
+import { drawProfileIcon } from './profileIcons.js';
 
 // Desenha ícone de item num canvas pequeno
 function _drawItemIconSmall(ctx, type, W, H) {
@@ -85,9 +82,15 @@ export class UI {
           + (p.isMe ? ' me' : '')
           + (p.team === 'red' ? ' team-red' : p.team === 'blue' ? ' team-blue' : '');
         card.innerHTML =
-          `<div class="ml-icon">${PROFILE_ICON_GLYPHS[p.profileIcon] || PROFILE_ICON_GLYPHS[0]}</div>`
+          `<div class="ml-icon"></div>`
           + `<div class="ml-name">${p.isBot ? '🤖 ' : ''}${p.name}</div>`
           + `<div class="ml-skin">${p.skin ? p.skin.name : ''}</div>`;
+        const iconEl = card.querySelector('.ml-icon');
+        const iconCv = document.createElement('canvas');
+        iconCv.width = iconCv.height = 36;
+        iconCv.style.width = iconCv.style.height = '100%';
+        drawProfileIcon(iconCv.getContext('2d'), p.profileIcon || 0, 36, 36);
+        iconEl.appendChild(iconCv);
         if (p.skin) {
           const cv = document.createElement('canvas');
           cv.width = cv.height = 36;
