@@ -65,6 +65,14 @@ export class Game {
     this._lobbyCount=1;
     if (this._lobby) this.ui.showTeamLobby('Procurando jogadores...');
 
+    // Tela de carregamento — exibida desde já (com o que já sabemos: o
+    // próprio jogador) para cobrir a arena antes que a conexão complete e
+    // o roster real chegue. _refreshMatchLoading() é chamado de novo assim
+    // que os dados dos demais jogadores estiverem disponíveis.
+    this._loadingPeers = [];
+    this._refreshMatchLoading();
+    this._loadingHideAt = performance.now() + 3000;
+
     this._keys={}; this._mouse={wx:ARENA_W/2,wy:ARENA_H/2,left:false,right:false};
     this._bindInput();
     this._connectNet(playerName,skinIndex,roomId);
@@ -189,7 +197,8 @@ export class Game {
             this.net.queueJoin('equipe_online', name, skinIndex, this.profileIcon);
           } else {
             this.net.join(name,skinIndex,roomId,this.profileIcon);
-            this._showMatchLoadingFor(msg.peers||[]);
+            this._refreshMatchLoading(msg.peers||[]);
+            this._loadingHideAt = performance.now() + 3000;
           }
         },
         onJoin:msg=>{ const rp=new RemotePlayer({id:msg.id,name:msg.name,skinIndex:msg.skinIndex,profileIcon:msg.profileIcon,skins:SkinsModule}); this.peers[msg.id]=rp; this.ui.killFeed(`${msg.name} entrou`); },
@@ -206,15 +215,17 @@ export class Game {
     } catch {}
   }
 
-  // Tela de carregamento — mostra a escalação da sala (nome, skin, ícone de
-  // perfil de cada jogador) e o ping local; some sozinha após alguns segundos.
-  _showMatchLoadingFor(peers) {
+  // Tela de carregamento — (re)desenha a escalação da sala (nome, skin
+  // equipada e ícone de perfil de cada jogador, incluindo você) e o ping
+  // local. Chamada já na construção (cobrindo a arena de imediato, com só
+  // os dados do próprio jogador) e de novo assim que os peers chegam.
+  _refreshMatchLoading(peers = this._loadingPeers) {
+    this._loadingPeers = peers;
     const roster = [
-      { name:this.player.name, skinName:this.player.skin.name, profileIcon:this.profileIcon, team:this.team, isMe:true, isBot:false },
-      ...peers.map(p=>({ name:p.name, skinName:(SkinsModule.SKINS[p.skinIndex]||SkinsModule.SKINS[0]).name, profileIcon:p.profileIcon||0, team:p.team||null, isMe:false, isBot:!!p.isBot })),
+      { name:this.player.name, skin:this.player.skin, profileIcon:this.profileIcon, team:this.team, isMe:true, isBot:false },
+      ...peers.map(p=>({ name:p.name, skin:(SkinsModule.SKINS[p.skinIndex]||SkinsModule.SKINS[0]), profileIcon:p.profileIcon||0, team:p.team||null, isMe:false, isBot:!!p.isBot })),
     ];
     this.ui.showMatchLoading(roster);
-    this._loadingHideAt = performance.now() + 3000;
   }
 
   // Recebido quando o servidor forma a partida do modo "Equipe Online":
@@ -230,12 +241,11 @@ export class Game {
     this.peers={};
     this.bots=[];
 
-    const roster = [{ name:this.player.name, skinName:this.player.skin.name, profileIcon:this.profileIcon, team:this.team, isMe:true, isBot:false }];
+    const matchPeers = [];
 
     for (const p of (msg.players||[])) {
       if (p.id===this.net.myId) continue;
-      const skinName = (SkinsModule.SKINS[p.skinIndex]||SkinsModule.SKINS[0]).name;
-      roster.push({ name:p.name, skinName, profileIcon:p.profileIcon||0, team:p.team, isMe:false, isBot:!!p.isBot });
+      matchPeers.push(p);
       if (p.isBot) {
         if (this.isHost) {
           const {x,y}=this._spawnPosFor(p.team);
@@ -254,7 +264,7 @@ export class Game {
     this.player.x=x; this.player.y=y;
     this.ui.notify(`Partida formada! Você está no Time ${this.team==='red'?'Vermelho':'Azul'}`, this.team==='red'?'#ff4d6a':'#4da6ff');
 
-    this.ui.showMatchLoading(roster);
+    this._refreshMatchLoading(matchPeers);
     this._loadingHideAt = performance.now() + 3500;
   }
 

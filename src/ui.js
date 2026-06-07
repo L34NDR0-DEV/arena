@@ -72,8 +72,9 @@ export class UI {
   }
 
   // Tela de carregamento de partida online — mostra os jogadores da sala
-  // (nome, skin equipada, ícone de perfil) e o ping (ms) do jogador local.
-  // `roster`: [{ name, skinName, profileIcon, team, isMe, isBot }]
+  // (nome, prévia da nave/skin equipada, ícone de perfil) e o ping (ms) do
+  // jogador local.
+  // `roster`: [{ name, skin, profileIcon, team, isMe, isBot }]
   showMatchLoading(roster) {
     if (!this._matchLoading) return;
     if (this._matchLoadingRoster) {
@@ -86,7 +87,17 @@ export class UI {
         card.innerHTML =
           `<div class="ml-icon">${PROFILE_ICON_GLYPHS[p.profileIcon] || PROFILE_ICON_GLYPHS[0]}</div>`
           + `<div class="ml-name">${p.isBot ? '🤖 ' : ''}${p.name}</div>`
-          + `<div class="ml-skin">${p.skinName || ''}</div>`;
+          + `<div class="ml-skin">${p.skin ? p.skin.name : ''}</div>`;
+        if (p.skin) {
+          const cv = document.createElement('canvas');
+          cv.width = cv.height = 36;
+          cv.className = 'ml-skin-preview';
+          const cctx = cv.getContext('2d');
+          const draw = ()=>{ cctx.clearRect(0,0,36,36); cctx.save(); cctx.translate(18,18); p.skin.drawPreview(cctx, 36/p.skin._size); cctx.restore(); };
+          if (p.skin.img) { p.skin.img.onload = draw; setTimeout(draw,300); }
+          draw();
+          card.insertBefore(cv, card.querySelector('.ml-name'));
+        }
         this._matchLoadingRoster.appendChild(card);
       }
     }
