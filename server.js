@@ -4,8 +4,14 @@ const crypto = require('crypto');
 const fs     = require('fs');
 const path   = require('path');
 
+const { handleApi } = require('./src/api');
+const auth          = require('./src/auth');
+
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
+// Demais variáveis de ambiente (DB_PATH, SESSION_SECRET, GOOGLE_CLIENT_ID,
+// COOKIE_SECURE) são lidas diretamente em src/db.js, src/auth.js e src/api.js,
+// todas com defaults que funcionam em http://localhost.
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -39,6 +45,9 @@ function broadcastRoom(roomId, data, except = null) {
 // ── HTTP estático ──────────────────────────────────────────────
 const server = http.createServer((req, res) => {
   let urlPath = req.url.split('?')[0];
+
+  if (urlPath.startsWith('/api/')) { handleApi(req, res, urlPath); return; }
+
   if (urlPath === '/') urlPath = '/index.html';
   const filePath = path.join(ROOT, urlPath);
 
@@ -72,7 +81,17 @@ server.on('upgrade', (req, socket) => {
   );
 
   const id = nextId++;
-  socks.set(socket, { id, name: `Jogador${id}`, roomId: 'default', skinIndex: 0 });
+  // Resolve identidade pelo cookie de sessão (enviado automaticamente pelo
+  // navegador no handshake, por ser same-origin). Jogadores autenticados têm
+  // nome e skin equipada vindos do banco — não confiamos no que o client envia.
+  const sessionUser = auth.resolveUserFromCookieHeader(req.headers.cookie);
+  socks.set(socket, {
+    id,
+    name:      sessionUser ? sessionUser.display_name : `Jogador${id}`,
+    roomId:    'default',
+    skinIndex: sessionUser ? sessionUser.equipped_skin : 0,
+    userId:    sessionUser ? sessionUser.id : null,
+  });
 
   let buf = Buffer.alloc(0);
   socket.on('data', chunk => {
@@ -110,8 +129,14 @@ function handleMsg(socket, raw) {
 
   switch (msg.type) {
     case 'join': {
-      info.name      = msg.name      || info.name;
-      info.skinIndex = msg.skinIndex ?? 0;
+      // Para visitantes anônimos (userId null), aceitamos nome/skin enviados
+      // pelo client. Para autenticados, esses dados já vieram do banco no
+      // momento do upgrade — ignoramos o que o client manda para impedir
+      // spoofing de identidade ou uso de skins não compradas.
+      if (info.userId === null) {
+        info.name      = msg.name      || info.name;
+        info.skinIndex = msg.skinIndex ?? 0;
+      }
       info.roomId    = msg.roomId    || 'default';
       const room = getRoomOrCreate(info.roomId);
       room.players.set(info.id, { socket, state: null });

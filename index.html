@@ -137,6 +137,25 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   margin:18px 0;
 }
 
+/* Abas de autenticação (Entrar / Criar Conta) */
+.auth-tabs{display:flex;gap:6px;margin-bottom:18px;}
+.auth-tab{
+  flex:1;padding:10px;border-radius:3px;cursor:pointer;
+  background:var(--panel2);border:1px solid var(--border);color:var(--text2);
+  font-family:'Press Start 2P',monospace;font-size:8px;letter-spacing:1px;
+  transition:all .15s;
+}
+.auth-tab.active{color:var(--cyan);border-color:var(--cyan);background:#061422;box-shadow:0 0 10px #00d4ff22;}
+.auth-tab:hover{color:var(--cyan);}
+.auth-error{
+  font-size:10px;color:var(--red);background:#1a0508;border-left:2px solid var(--red);
+  border-radius:3px;padding:7px 10px;margin-bottom:14px;line-height:1.6;
+}
+.google-divider-label{
+  text-align:center;font-size:9px;color:var(--text2);letter-spacing:2px;
+  margin-bottom:12px;font-family:'Press Start 2P',monospace;
+}
+
 /* Seleção de nave rápida no login */
 .login-ships{display:flex;gap:8px;justify-content:center;margin-bottom:20px;}
 .login-ship-btn{
@@ -200,6 +219,9 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 }
 .pilot-badge svg{width:12px;height:12px;color:var(--cyan);}
 .pilot-name{color:var(--cyan);font-weight:700;}
+.credits-badge svg{color:#ffcc44;}
+.credits-amount{color:#ffcc44;font-weight:700;}
+.credits-label{color:var(--text2);}
 .change-pilot-btn{
   font-size:9px;color:var(--text2);background:none;border:none;cursor:pointer;
   padding:2px 6px;border-radius:3px;
@@ -277,7 +299,10 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .skin-card{background:var(--panel2);border:1.5px solid var(--border);border-radius:4px;padding:7px 5px 5px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s;}
 .skin-card:hover{border-color:var(--border2);}
 .skin-card.active{border-color:var(--cyan);background:#061422;box-shadow:0 0 10px #00d4ff22;}
+.skin-card.locked{filter:grayscale(1);opacity:.55;}
+.skin-card.locked:hover{opacity:.85;}
 .skin-card canvas{flex-shrink:0;}
+.skin-price{color:#ffcc44;}
 .skin-info{flex:1;min-width:0;}
 .skin-name{font-size:8px;color:var(--text);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'Press Start 2P',monospace;line-height:1.6;}
 .skin-sub{font-size:8px;color:var(--text2);}
@@ -421,6 +446,13 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 
 /* Notify */
 #notify{position:absolute;top:44%;left:50%;transform:translate(-50%,-50%);pointer-events:none;text-align:center;}
+.notify-item{
+  background:rgba(4,10,22,.9);border:1px solid #ffcc44;color:#ffcc44;
+  padding:6px 14px;border-radius:4px;font-size:11px;font-weight:700;
+  margin-top:6px;animation:notifyIn .2s,notifyOut .4s 3.6s forwards;
+}
+@keyframes notifyIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes notifyOut{to{opacity:0}}
 .notify-msg{font-size:14px;font-weight:900;text-shadow:0 0 14px currentColor;animation:notAnim 2s forwards;font-family:'Press Start 2P',monospace;}
 @keyframes notAnim{0%{opacity:0;transform:scale(.5)}15%{opacity:1;transform:scale(1.1)}35%{transform:scale(1)}80%{opacity:1}100%{opacity:0}}
 
@@ -503,21 +535,35 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
     </div>
 
     <div class="login-panel">
-      <div class="login-panel-title">— INSERIR PILOTO —</div>
-
-      <div class="login-field">
-        <label class="login-label">NOME DO PILOTO</label>
-        <input class="login-input" id="login-name" type="text" value="JOGADOR" maxlength="14" spellcheck="false" placeholder="SEU NOME"/>
+      <div class="auth-tabs">
+        <button class="auth-tab active" id="auth-tab-login" onclick="switchAuthTab('login')">ENTRAR</button>
+        <button class="auth-tab" id="auth-tab-register" onclick="switchAuthTab('register')">CRIAR CONTA</button>
       </div>
 
-      <div style="margin-bottom:12px;">
-        <div class="login-label" style="margin-bottom:8px;">NAVE</div>
-        <div class="login-ships" id="login-ships"></div>
-      </div>
+      <form id="auth-form" autocomplete="on" onsubmit="return authSubmit(event)">
+        <div class="login-field" id="auth-field-name" style="display:none;">
+          <label class="login-label">NOME DO PILOTO</label>
+          <input class="login-input" id="auth-name" type="text" maxlength="20" spellcheck="false" placeholder="SEU NOME" autocomplete="nickname"/>
+        </div>
+        <div class="login-field">
+          <label class="login-label">E-MAIL</label>
+          <input class="login-input" id="auth-email" type="email" spellcheck="false" placeholder="seu@email.com" autocomplete="email"/>
+        </div>
+        <div class="login-field">
+          <label class="login-label">SENHA</label>
+          <input class="login-input" id="auth-password" type="password" spellcheck="false" placeholder="••••••••" autocomplete="current-password"/>
+        </div>
+
+        <div class="auth-error" id="auth-error" style="display:none;"></div>
+
+        <button class="login-start-btn" type="submit" id="auth-submit-btn">► &nbsp; ENTRAR &nbsp; ◄</button>
+      </form>
 
       <div class="login-divider"></div>
-
-      <button class="login-start-btn" onclick="loginStart()">► &nbsp; INICIAR MISSÃO &nbsp; ◄</button>
+      <div id="google-signin-area" style="display:none;">
+        <div class="google-divider-label">— ou —</div>
+        <div id="g_id_signin_container" style="display:flex;justify-content:center;"></div>
+      </div>
 
       <div class="login-bottom">
         <div class="login-credits">© TDOTS ARCADE<br>v2.0</div>
@@ -536,6 +582,11 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
         <svg viewBox="0 0 12 12" fill="currentColor"><circle cx="6" cy="4" r="2.5"/><path d="M2 10 Q2 7 6 7 Q10 7 10 10Z"/></svg>
         <span class="pilot-name" id="menu-pilot-name">JOGADOR</span>
         <button class="change-pilot-btn" onclick="goLoginScreen()">✎</button>
+      </div>
+      <div class="pilot-badge credits-badge">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="6" cy="6" r="5"/><text x="6" y="8.5" font-size="6" text-anchor="middle" fill="currentColor" stroke="none">$</text></svg>
+        <span class="credits-amount" id="credits-amount">0</span>
+        <span class="credits-label">CR</span>
       </div>
       <button class="changelog-btn" id="howtoplay-btn" onclick="openHowToPlay()" title="Como Jogar">
         <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="5"/><path d="M4.5 4.5 Q4.5 3 6 3 T7.5 4.5 Q7.5 5.5 6 6 L6 7"/><circle cx="6" cy="9" r=".6" fill="currentColor" stroke="none"/></svg>
@@ -740,6 +791,30 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   </div>
 </div>
 
+<!-- ═══ LOJA DE SKINS ═══════════════════════════════════════ -->
+<div id="shop-modal" class="changelog-overlay" style="display:none;" onclick="if(event.target===this)closeShop()">
+  <div class="changelog-panel" style="width:min(360px,90vw);">
+    <div class="changelog-header">
+      <h2>Loja</h2>
+      <button class="changelog-close" onclick="closeShop()">✕</button>
+    </div>
+    <div class="changelog-list" style="align-items:center;">
+      <canvas id="shop-skin-canvas" width="84" height="84" style="align-self:center;"></canvas>
+      <div style="text-align:center;">
+        <div class="changelog-version" id="shop-skin-name" style="color:var(--cyan);">SKIN</div>
+        <div class="skin-price" id="shop-skin-price" style="margin-top:4px;font-size:12px;">500 CR</div>
+      </div>
+      <div style="text-align:center;font-size:10px;color:var(--text2);">
+        Seu saldo: <span class="credits-amount" id="shop-balance" style="color:#ffcc44;">0</span> CR
+      </div>
+      <div class="auth-error" id="shop-error" style="display:none;"></div>
+      <button class="play-btn" id="shop-buy-btn" onclick="confirmPurchase()" style="align-self:center;justify-content:center;width:100%;">
+        ► &nbsp; COMPRAR &nbsp; ◄
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ COMO JOGAR ══════════════════════════════════════════ -->
 <div id="howtoplay-modal" class="changelog-overlay" style="display:none;" onclick="if(event.target===this)closeHowToPlay()">
   <div class="changelog-panel">
@@ -789,6 +864,130 @@ import { CHANGELOG }      from './src/changelog.js';
 
 let game=null, selectedSkin=0, selectedMode='contra1', paused=false;
 let pilotName='JOGADOR';
+
+// ── Conta / perfil (autenticação, créditos, skins) ────────────
+const SHOP_PRICE = 500;
+const economy_FREE_SKIN_ID = 6;
+let currentUser = null; // {id,email,displayName,credits,equippedSkin}
+let profile     = null; // {user,ownedSkins,equippedSkin,rewardProgress}
+let authMode    = 'login'; // 'login' | 'register'
+
+async function apiFetch(path, opts={}){
+  const r = await fetch(path, {
+    method: opts.method||'GET',
+    headers: opts.body ? {'Content-Type':'application/json'} : undefined,
+    credentials: 'same-origin',
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  let data = null;
+  try { data = await r.json(); } catch {}
+  return { ok:r.ok, status:r.status, data };
+}
+
+async function refreshProfile(){
+  const { ok, data } = await apiFetch('/api/me');
+  if (!ok) return false;
+  profile = data;
+  currentUser = data.user;
+  pilotName = currentUser.displayName.toUpperCase();
+  document.getElementById('menu-pilot-name').textContent = pilotName;
+  document.getElementById('hud-pname').textContent = pilotName;
+  updateCreditsBadge();
+  renderSkinGrid();
+  return true;
+}
+
+function updateCreditsBadge(){
+  const el = document.getElementById('credits-amount');
+  if (el && currentUser) el.textContent = currentUser.credits;
+}
+
+function showAuthError(msg){
+  const el = document.getElementById('auth-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function hideAuthError(){
+  document.getElementById('auth-error').style.display='none';
+}
+
+const AUTH_ERROR_MESSAGES = {
+  invalid_email: 'E-mail inválido.',
+  missing_display_name: 'Informe um nome de piloto.',
+  weak_password: 'A senha precisa ter pelo menos 6 caracteres.',
+  email_taken: 'Este e-mail já está cadastrado.',
+  invalid_credentials: 'E-mail ou senha incorretos.',
+  invalid_google_token: 'Falha ao verificar conta Google.',
+};
+
+window.switchAuthTab = function(mode){
+  authMode = mode;
+  hideAuthError();
+  document.getElementById('auth-tab-login').classList.toggle('active', mode==='login');
+  document.getElementById('auth-tab-register').classList.toggle('active', mode==='register');
+  document.getElementById('auth-field-name').style.display = mode==='register' ? 'flex' : 'none';
+  document.getElementById('auth-submit-btn').textContent = mode==='register'
+    ? '►   CRIAR CONTA   ◄' : '►   ENTRAR   ◄';
+  document.getElementById('auth-password').setAttribute('autocomplete', mode==='register' ? 'new-password' : 'current-password');
+};
+
+window.authSubmit = function(ev){
+  ev.preventDefault();
+  hideAuthError();
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const displayName = document.getElementById('auth-name').value.trim();
+
+  const path = authMode==='register' ? '/api/auth/register' : '/api/auth/login';
+  const body = authMode==='register' ? { email, password, displayName } : { email, password };
+
+  apiFetch(path, { method:'POST', body }).then(async ({ok, data})=>{
+    if (!ok) {
+      showAuthError(AUTH_ERROR_MESSAGES[data?.error] || 'Não foi possível continuar. Tente novamente.');
+      return;
+    }
+    await onAuthSuccess();
+  });
+  return false;
+};
+
+window.onGoogleCredential = function(response){
+  hideAuthError();
+  apiFetch('/api/auth/google', { method:'POST', body:{ idToken: response.credential } }).then(async ({ok, data})=>{
+    if (!ok) { showAuthError(AUTH_ERROR_MESSAGES[data?.error] || 'Falha no login com Google.'); return; }
+    await onAuthSuccess();
+  });
+};
+
+async function onAuthSuccess(){
+  await refreshProfile();
+  loadHistory();
+  showScreen('menu');
+}
+
+async function setupGoogleSignIn(){
+  const { data } = await apiFetch('/api/config');
+  const clientId = data && data.googleClientId;
+  if (!clientId) return;
+  const area = document.getElementById('google-signin-area');
+  area.style.display = 'block';
+  const onload = document.createElement('div');
+  onload.id = 'g_id_onload';
+  onload.dataset.client_id = clientId;
+  onload.dataset.callback = 'onGoogleCredential';
+  document.getElementById('g_id_signin_container').appendChild(onload);
+  const btn = document.createElement('div');
+  btn.className = 'g_id_signin';
+  btn.dataset.type = 'standard';
+  btn.dataset.theme = 'filled_black';
+  btn.dataset.size = 'medium';
+  document.getElementById('g_id_signin_container').appendChild(btn);
+  const script = document.createElement('script');
+  script.src = 'https://accounts.google.com/gsi/client';
+  script.async = true; script.defer = true;
+  document.head.appendChild(script);
+}
+setupGoogleSignIn();
 
 const MODE_TIPS={
   contra1: 'CONTRA 1 — 5 VIDAS CADA. QUEM PERDER TODAS PRIMEIRO PERDE!',
@@ -853,51 +1052,98 @@ resizeLoginBg(); window.addEventListener('resize',resizeLoginBg);
   requestAnimationFrame(animateLoginBg);
 })();
 
-// ── Skins na tela de login ────────────────────────────────────
-const loginShips=document.getElementById('login-ships');
-SKINS.forEach((skin,idx)=>{
-  const btn=document.createElement('button');
-  btn.className='login-ship-btn'+(idx===0?' active':'');
-  btn.title=skin.name;
-  const cv=document.createElement('canvas'); cv.width=cv.height=40;
-  const cctx=cv.getContext('2d');
-  function drawIt(){
-    cctx.clearRect(0,0,40,40); cctx.save(); cctx.translate(20,20);
-    skin.drawPreview(cctx,40/skin._size); cctx.restore();
-  }
-  if(skin.img){skin.img.onload=drawIt;setTimeout(drawIt,300);}
-  drawIt();
-  btn.appendChild(cv);
-  btn.onclick=()=>{
-    selectedSkin=skin.id;
-    loginShips.querySelectorAll('.login-ship-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-  };
-  loginShips.appendChild(btn);
-});
-
-// ── Skin grid no menu ─────────────────────────────────────────
+// ── Skin grid no menu (bloqueada/desbloqueada conforme posse) ─
 const grid=document.getElementById('skin-grid');
-SKINS.forEach(skin=>{
-  const card=document.createElement('div');
-  card.className='skin-card'+(skin.id===0?' active':'');
-  card.dataset.id=skin.id;
-  const cv=document.createElement('canvas'); cv.width=cv.height=42;
-  const cctx=cv.getContext('2d');
-  function drawCard(){cctx.clearRect(0,0,42,42);cctx.save();cctx.translate(21,21);skin.drawPreview(cctx,42/skin._size);cctx.restore();}
-  if(skin.img){skin.img.onload=drawCard;setTimeout(drawCard,300);}
-  drawCard();
-  const info=document.createElement('div');
-  info.className='skin-info';
-  info.innerHTML=`<div class="skin-name">${skin.name}</div><div class="skin-sub">${skin.color.toUpperCase()}</div>`;
-  card.append(cv,info);
-  card.onclick=()=>{
-    selectedSkin=skin.id;
-    grid.querySelectorAll('.skin-card').forEach(c=>c.classList.toggle('active',+c.dataset.id===skin.id));
-    loginShips.querySelectorAll('.login-ship-btn').forEach((b,i)=>b.classList.toggle('active',i===skin.id));
-  };
-  grid.appendChild(card);
-});
+function renderSkinGrid(){
+  const owned = new Set(profile ? profile.ownedSkins : [economy_FREE_SKIN_ID]);
+  const equipped = profile ? profile.equippedSkin : economy_FREE_SKIN_ID;
+  grid.innerHTML='';
+  SKINS.forEach(skin=>{
+    const isOwned = owned.has(skin.id);
+    const isEquipped = skin.id===equipped;
+    if (isEquipped) selectedSkin = skin.id;
+    const card=document.createElement('div');
+    card.className='skin-card'+(isEquipped?' active':'')+(isOwned?'':' locked');
+    card.dataset.id=skin.id;
+    const cv=document.createElement('canvas'); cv.width=cv.height=42;
+    const cctx=cv.getContext('2d');
+    function drawCard(){cctx.clearRect(0,0,42,42);cctx.save();cctx.translate(21,21);skin.drawPreview(cctx,42/skin._size);cctx.restore();}
+    if(skin.img){skin.img.onload=drawCard;setTimeout(drawCard,300);}
+    drawCard();
+    const info=document.createElement('div');
+    info.className='skin-info';
+    info.innerHTML = isOwned
+      ? `<div class="skin-name">${skin.name}</div><div class="skin-sub">${skin.color.toUpperCase()}</div>`
+      : `<div class="skin-name">${skin.name}</div><div class="skin-sub skin-price">🔒 ${SHOP_PRICE} CR</div>`;
+    card.append(cv,info);
+    card.onclick=()=> isOwned ? equipSkin(skin.id) : openShopConfirm(skin);
+    grid.appendChild(card);
+  });
+}
+
+// ── Loja: comprar e equipar skins ─────────────────────────────
+let shopSkin = null;
+
+window.equipSkin = async function(skinId){
+  if (!currentUser) return;
+  const { ok, data } = await apiFetch('/api/shop/equip', { method:'POST', body:{ skinId } });
+  if (ok && data) {
+    profile.equippedSkin = data.equippedSkin;
+    currentUser.equippedSkin = data.equippedSkin;
+    renderSkinGrid();
+  }
+};
+
+window.openShopConfirm = function(skin){
+  if (!currentUser) return;
+  shopSkin = skin;
+  const errEl = document.getElementById('shop-error');
+  errEl.style.display = 'none';
+  errEl.textContent = '';
+  document.getElementById('shop-skin-name').textContent = skin.name;
+  document.getElementById('shop-skin-price').textContent = `${SHOP_PRICE} CR`;
+  document.getElementById('shop-balance').textContent = currentUser.credits;
+  const cv = document.getElementById('shop-skin-canvas');
+  const cctx = cv.getContext('2d');
+  function draw(){
+    cctx.clearRect(0,0,cv.width,cv.height);
+    cctx.save();
+    cctx.translate(cv.width/2,cv.height/2);
+    skin.drawPreview(cctx, cv.width/skin._size);
+    cctx.restore();
+  }
+  if (skin.img){ skin.img.onload=draw; setTimeout(draw,300); }
+  draw();
+  document.getElementById('shop-modal').style.display='flex';
+};
+
+window.closeShop = function(){
+  document.getElementById('shop-modal').style.display='none';
+  shopSkin = null;
+};
+
+const SHOP_ERROR_MESSAGES = {
+  insufficient_credits: 'Créditos insuficientes!',
+  already_owned: 'Você já possui esta skin.',
+};
+
+window.confirmPurchase = async function(){
+  if (!shopSkin) return;
+  const errEl = document.getElementById('shop-error');
+  errEl.style.display = 'none';
+  const { ok, status, data } = await apiFetch('/api/shop/buy', { method:'POST', body:{ skinId: shopSkin.id } });
+  if (ok && data) {
+    profile = data;
+    currentUser.credits = data.user.credits;
+    currentUser.equippedSkin = data.equippedSkin;
+    updateCreditsBadge();
+    renderSkinGrid();
+    closeShop();
+    return;
+  }
+  errEl.textContent = (data && SHOP_ERROR_MESSAGES[data.error]) || 'Não foi possível concluir a compra.';
+  errEl.style.display = 'block';
+};
 
 // ── Arena select ──────────────────────────────────────────────
 const arenaSelect=document.getElementById('arena-select');
@@ -1141,19 +1387,17 @@ function showScreen(name){
   document.getElementById('gameover').style.display     = 'none';
 }
 
-window.loginStart=function(){
-  const n=document.getElementById('login-name').value.trim()||'JOGADOR';
-  pilotName=n.toUpperCase();
-  document.getElementById('menu-pilot-name').textContent=pilotName;
-  document.getElementById('hud-pname').textContent=pilotName;
-  loadHistory();
-  showScreen('menu');
-};
-
-window.goLoginScreen=function(){
+window.goLoginScreen=async function(){
   if(game){game.destroy();game=null;}
   paused=false;
-  showScreen('menu');
+  await apiFetch('/api/auth/logout', { method:'POST' });
+  currentUser=null; profile=null;
+  document.getElementById('auth-email').value='';
+  document.getElementById('auth-password').value='';
+  document.getElementById('auth-name').value='';
+  hideAuthError();
+  switchAuthTab('login');
+  showScreen('login');
 };
 
 window.openChangelog=function(){
@@ -1268,13 +1512,40 @@ window.showGameOver=function(data){
     level:data.level??1,
     date:`${pad(now.getDate())}/${pad(now.getMonth()+1)} ${pad(now.getHours())}:${pad(now.getMinutes())}`,
   });
+
+  if (currentUser) {
+    apiFetch('/api/matches', { method:'POST', body:{
+      mode: selectedMode, difficulty: document.getElementById('diff-select').value,
+      win: !!data.win, score: data.score, kills: data.kills, skinId: data.skinIndex??selectedSkin,
+    }}).then(({ok, data:res})=>{
+      if (!ok || !res) return;
+      currentUser.credits = res.creditsBalance;
+      updateCreditsBadge();
+      if (res.rewardGranted) showNotify('+10 Créditos! Recompensa de partidas concedida.');
+    });
+  }
 };
 
-// Iniciar direto no menu
-document.getElementById('menu-pilot-name').textContent=pilotName;
-document.getElementById('hud-pname').textContent=pilotName;
-loadHistory();
-showScreen('menu');
+function showNotify(text){
+  const el=document.getElementById('notify');
+  if(!el) return;
+  const div=document.createElement('div');
+  div.className='notify-item';
+  div.textContent=text;
+  el.appendChild(div);
+  setTimeout(()=>div.remove(),4000);
+}
+
+// ── Inicialização: tenta sessão existente, senão mostra tela de login ──
+(async function boot(){
+  const hasSession = await refreshProfile();
+  if (hasSession) {
+    loadHistory();
+    showScreen('menu');
+  } else {
+    showScreen('login');
+  }
+})();
 </script>
 </body>
 </html>

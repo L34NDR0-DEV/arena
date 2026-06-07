@@ -1,0 +1,268 @@
+'use strict';
+const db   = require('./db');
+const auth = require('./auth');
+const economy = require('./economy');
+
+const COOKIE_SECURE = process.env.COOKIE_SECURE === '1';
+const MAX_BODY_BYTES = 1024 * 1024; // 1MB
+
+// ── Helpers de resposta ────────────────────────────────────────────────────
+function sendJson(res, status, obj) {
+  const body = JSON.stringify(obj);
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
+  res.end(body);
+}
+
+function readJsonBody(req, cb) {
+  let total = 0;
+  const chunks = [];
+  req.on('data', (chunk) => {
+    total += chunk.length;
+    if (total > MAX_BODY_BYTES) { req.destroy(); cb(new Error('payload_too_large')); return; }
+    chunks.push(chunk);
+  });
+  req.on('end', () => {
+    if (!chunks.length) return cb(null, {});
+    try { cb(null, JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
+    catch { cb(new Error('invalid_json')); }
+  });
+  req.on('error', cb);
+}
+
+function setSessionCookie(res, signedToken) {
+  const secure = COOKIE_SECURE ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `arena_session=${signedToken}; HttpOnly; Path=/; SameSite=Lax; Max-Age=2592000${secure}`);
+}
+
+function clearSessionCookie(res) {
+  res.setHeader('Set-Cookie', `arena_session=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0`);
+}
+
+function publicUser(user) {
+  return {
+    id: user.id,
+    email: user.email,
+    displayName: user.display_name,
+    credits: user.credits,
+    equippedSkin: user.equipped_skin,
+  };
+}
+
+function profileFor(user) {
+  const owned = db.listOwnedSkins.all(user.id).map(r => r.skin_id);
+  return {
+    user: publicUser(user),
+    ownedSkins: owned,
+    equippedSkin: user.equipped_skin,
+    rewardProgress: {
+      count: user.reward_progress_count,
+      modesSeen: JSON.parse(user.reward_modes_seen || '[]'),
+      blockSize: economy.REWARD_BLOCK_SIZE,
+      minModes: economy.REWARD_MIN_MODES,
+      amount: economy.REWARD_AMOUNT,
+    },
+  };
+}
+
+function startSessionAndRespond(res, status, userId) {
+  const signed = auth.startSession(userId);
+  setSessionCookie(res, signed);
+  const user = db.findUserById.get(userId);
+  sendJson(res, status, { user: publicUser(user) });
+}
+
+// ── Validação simples ──────────────────────────────────────────────────────
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+function normalizeEmail(v) { return String(v || '').trim().toLowerCase(); }
+function normalizeDisplayName(v) { return String(v || '').trim().slice(0, 20); }
+
+// ── Rotas ──────────────────────────────────────────────────────────────────
+const ROUTES = [
+  {
+    method: 'GET', path: '/api/config',
+    handler: (req, res) => sendJson(res, 200, { googleClientId: auth.GOOGLE_CLIENT_ID }),
+  },
+
+  {
+    method: 'POST', path: '/api/auth/register',
+    handler: (req, res, { body }) => {
+      const email = normalizeEmail(body.email);
+      const displayName = normalizeDisplayName(body.displayName);
+      const password = String(body.password || '');
+
+      if (!EMAIL_RE.test(email))      return sendJson(res, 400, { error: 'invalid_email' });
+      if (!displayName)               return sendJson(res, 400, { error: 'missing_display_name' });
+      if (password.length < 6)        return sendJson(res, 400, { error: 'weak_password' });
+      if (db.findUserByEmail.get(email)) return sendJson(res, 409, { error: 'email_taken' });
+
+      const passwordHash = auth.hashPassword(password);
+      const userId = db.transaction(() => {
+        const info = db.insertUser.run(email, displayName, passwordHash, null);
+        const id = Number(info.lastInsertRowid);
+        db.grantSkin.run(id, economy.FREE_SKIN_ID);
+        return id;
+      });
+      startSessionAndRespond(res, 201, userId);
+    },
+  },
+
+  {
+    method: 'POST', path: '/api/auth/login',
+    handler: (req, res, { body }) => {
+      const email = normalizeEmail(body.email);
+      const password = String(body.password || '');
+      const user = db.findUserByEmail.get(email);
+      if (!user || !auth.verifyPassword(password, user.password_hash)) {
+        return sendJson(res, 401, { error: 'invalid_credentials' });
+      }
+      startSessionAndRespond(res, 200, user.id);
+    },
+  },
+
+  {
+    method: 'POST', path: '/api/auth/google',
+    handler: async (req, res, { body }) => {
+      const idToken = String(body.idToken || '');
+      if (!idToken) return sendJson(res, 400, { error: 'missing_id_token' });
+
+      let payload;
+      try { payload = await auth.verifyGoogleIdToken(idToken); }
+      catch { return sendJson(res, 401, { error: 'invalid_google_token' }); }
+
+      let user = db.findUserByGoogleId.get(payload.googleId);
+      if (!user) {
+        const existingByEmail = db.findUserByEmail.get(normalizeEmail(payload.email));
+        if (existingByEmail) {
+          db.linkGoogleId.run(payload.googleId, existingByEmail.id);
+          user = db.findUserById.get(existingByEmail.id);
+        } else {
+          const userId = db.transaction(() => {
+            const info = db.insertUser.run(normalizeEmail(payload.email), normalizeDisplayName(payload.name) || 'PILOTO', null, payload.googleId);
+            const id = Number(info.lastInsertRowid);
+            db.grantSkin.run(id, economy.FREE_SKIN_ID);
+            return id;
+          });
+          user = db.findUserById.get(userId);
+        }
+      }
+      startSessionAndRespond(res, 200, user.id);
+    },
+  },
+
+  {
+    method: 'POST', path: '/api/auth/logout',
+    handler: (req, res) => {
+      auth.destroySessionFromCookieHeader(req.headers.cookie);
+      clearSessionCookie(res);
+      res.writeHead(204);
+      res.end();
+    },
+  },
+
+  {
+    method: 'GET', path: '/api/me',
+    auth: true,
+    handler: (req, res, { user }) => sendJson(res, 200, profileFor(user)),
+  },
+
+  {
+    method: 'POST', path: '/api/shop/buy',
+    auth: true,
+    handler: (req, res, { body, user }) => {
+      const skinId = Number(body.skinId);
+      if (!Number.isInteger(skinId) || skinId < 0 || skinId > 6) {
+        return sendJson(res, 400, { error: 'invalid_skin' });
+      }
+      if (db.ownsSkin.get(user.id, skinId)) return sendJson(res, 409, { error: 'already_owned' });
+
+      const ok = db.transaction(() => {
+        const result = db.spendCredits.run(economy.SKIN_PRICE, user.id, economy.SKIN_PRICE);
+        if (result.changes === 0) return false;
+        db.grantSkin.run(user.id, skinId);
+        return true;
+      });
+      if (!ok) return sendJson(res, 409, { error: 'insufficient_credits' });
+
+      const fresh = db.findUserById.get(user.id);
+      sendJson(res, 200, profileFor(fresh));
+    },
+  },
+
+  {
+    method: 'POST', path: '/api/shop/equip',
+    auth: true,
+    handler: (req, res, { body, user }) => {
+      const skinId = Number(body.skinId);
+      if (!Number.isInteger(skinId) || skinId < 0 || skinId > 6) {
+        return sendJson(res, 400, { error: 'invalid_skin' });
+      }
+      if (!db.ownsSkin.get(user.id, skinId)) return sendJson(res, 403, { error: 'not_owned' });
+
+      db.setEquippedSkin.run(skinId, user.id);
+      sendJson(res, 200, { ok: true, equippedSkin: skinId });
+    },
+  },
+
+  {
+    method: 'POST', path: '/api/matches',
+    auth: true,
+    handler: (req, res, { body, user }) => {
+      const mode = String(body.mode || 'livre').slice(0, 30);
+      const difficulty = body.difficulty ? String(body.difficulty).slice(0, 20) : null;
+      const win = body.win ? 1 : 0;
+      const score = Number.isFinite(body.score) ? Math.trunc(body.score) : 0;
+      const kills = Number.isFinite(body.kills) ? Math.trunc(body.kills) : 0;
+      const skinId = Number.isInteger(body.skinId) ? body.skinId : null;
+
+      const result = db.transaction(() => {
+        const reward = economy.recordMatchAndMaybeReward(user.id, { mode, win: !!win });
+        db.insertMatch.run(user.id, mode, difficulty, win, score, kills, skinId, reward.rewardGranted ? 1 : (win ? 1 : 0));
+        return reward;
+      });
+
+      const fresh = db.findUserById.get(user.id);
+      sendJson(res, 200, {
+        rewardGranted: result.rewardGranted,
+        creditsBalance: fresh.credits,
+        rewardProgress: { count: result.progress, modesSeen: result.modesSeen },
+      });
+    },
+  },
+
+  {
+    method: 'GET', path: '/api/matches/recent',
+    auth: true,
+    handler: (req, res, { user }) => {
+      const rows = db.recentMatches.all(user.id, 20);
+      sendJson(res, 200, { matches: rows });
+    },
+  },
+];
+
+function matchRoute(method, urlPath) {
+  return ROUTES.find(r => r.method === method && r.path === urlPath);
+}
+
+function handleApi(req, res, urlPath) {
+  const route = matchRoute(req.method, urlPath);
+  if (!route) return sendJson(res, 404, { error: 'not_found' });
+
+  const user = auth.resolveUserFromCookieHeader(req.headers.cookie);
+  if (route.auth && !user) return sendJson(res, 401, { error: 'unauthenticated' });
+
+  if (req.method === 'GET') {
+    try { route.handler(req, res, { user }); }
+    catch (err) { console.error(err); sendJson(res, 500, { error: 'internal_error' }); }
+    return;
+  }
+
+  readJsonBody(req, (err, body) => {
+    if (err) return sendJson(res, 400, { error: 'invalid_body' });
+    Promise.resolve()
+      .then(() => route.handler(req, res, { body, user }))
+      .catch((e) => { console.error(e); sendJson(res, 500, { error: 'internal_error' }); });
+  });
+}
+
+module.exports = { handleApi, sendJson };
