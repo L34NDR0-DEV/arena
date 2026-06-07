@@ -180,7 +180,8 @@ export class Tower {
     }
   }
 
-  // Desenha a estrutura completa da torre em camadas pseudo-3D.
+  // Desenha a estrutura completa da torre — cristal hexagonal facetado com
+  // anéis de energia rotativos, em camadas pseudo-3D.
   // `rise` (0-1) controla quanto da torre já "subiu" do chão (animação de surgimento).
   // `assembly` (0-1) controla o quanto das peças já se encaixaram (escala/opacidade).
   _drawBody(ctx, col, r, rise, assembly) {
@@ -198,17 +199,17 @@ export class Tower {
     ctx.fill();
     ctx.restore();
 
-    // ── Base octogonal "inferior" (face de baixo, mais escura = volume) ──
+    // ── Base hexagonal "inferior" (face de baixo, mais escura = volume) ──
     ctx.save();
     ctx.translate(0, r*0.30);
     ctx.scale(1, 0.62);
     ctx.fillStyle='#050b14';
     ctx.strokeStyle=col; ctx.globalAlpha=0.9*assembly; ctx.lineWidth=3;
-    this._octagon(ctx, r*1.05);
+    this._hexagon(ctx, r*1.05, 0);
     ctx.fill(); ctx.stroke();
     ctx.restore();
 
-    // ── Corpo cilíndrico central (camadas verticais simulam volume) ──
+    // ── Corpo cristalino central (faces facetadas tipo gema) ──
     const bodyH=r*0.95;
     const bodyGrad=ctx.createLinearGradient(-r,0,r,0);
     bodyGrad.addColorStop(0,'#040b16');
@@ -226,31 +227,50 @@ export class Tower {
     ctx.closePath();
     ctx.fill();
 
-    // linhas verticais de painel (dão textura/volume ao cilindro)
-    ctx.strokeStyle=col+'33'; ctx.lineWidth=1.4;
+    // facetas angulares de cristal (linhas convergindo para o ápice central,
+    // como cortes de gema, em vez de painéis verticais retos)
+    ctx.strokeStyle=col+'3a'; ctx.lineWidth=1.4;
+    const apex={x:0, y:bodyH*0.55+r*0.30};
     for (let i=-3;i<=3;i++) {
-      const px=i*r*0.27;
+      if (i===0) continue;
+      const px=i*r*0.30;
       ctx.beginPath();
-      ctx.moveTo(px, -Math.sqrt(Math.max(0,r*r*0.85-px*px))*0.0+0);
-      ctx.lineTo(px*0.97, bodyH*0.55+ (1-Math.abs(i)/3.4)*r*0.20);
+      ctx.moveTo(px, 0);
+      ctx.lineTo(apex.x, apex.y);
       ctx.stroke();
     }
+    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(apex.x,apex.y); ctx.stroke();
     ctx.restore();
 
-    // ── Anel de energia rotativo no meio do corpo (brilho neon) ──
+    // ── Anéis de energia concêntricos e rotativos (brilho neon) ──
+    // Anel externo gira lento em sentido horário, interno gira mais rápido
+    // em sentido anti-horário — reforça a leitura "estrutura cristalina viva".
+    const ringPulse=0.65+0.35*Math.sin(this._ringPulse*2.2);
     ctx.save();
-    ctx.globalAlpha=0.8*assembly;
+    ctx.globalAlpha=0.75*assembly;
     ctx.translate(0, bodyH*0.30);
     ctx.scale(1, 0.34);
-    const ringPulse=0.65+0.35*Math.sin(this._ringPulse*2.2);
+    ctx.rotate(this._ringPulse*0.45);
     ctx.strokeStyle=col;
-    ctx.lineWidth=3.5;
-    ctx.shadowColor=col; ctx.shadowBlur=18*ringPulse;
-    ctx.beginPath(); ctx.arc(0,0, r*0.97, 0, Math.PI*2); ctx.stroke();
-    ctx.shadowBlur=0;
+    ctx.lineWidth=3;
+    ctx.shadowColor=col; ctx.shadowBlur=16*ringPulse;
+    this._hexagon(ctx, r*1.05, 0);
+    ctx.stroke();
     ctx.restore();
 
-    // ── Topo octogonal (face superior, mais clara = recebe "luz") ──
+    ctx.save();
+    ctx.globalAlpha=0.55*assembly;
+    ctx.translate(0, bodyH*0.30);
+    ctx.scale(1, 0.34);
+    ctx.rotate(-this._ringPulse*0.85);
+    ctx.strokeStyle='#ffffff';
+    ctx.lineWidth=1.6;
+    ctx.shadowColor=col; ctx.shadowBlur=10*ringPulse;
+    this._hexagon(ctx, r*0.78, Math.PI/6);
+    ctx.stroke();
+    ctx.restore();
+
+    // ── Topo hexagonal (face superior, mais clara = recebe "luz") ──
     const topY=-bodyH*0.50;
     ctx.save();
     ctx.translate(0, topY);
@@ -260,21 +280,43 @@ export class Tower {
     topGrad.addColorStop(1,'#060f1c');
     ctx.fillStyle=topGrad;
     ctx.strokeStyle=col; ctx.globalAlpha=assembly; ctx.lineWidth=3;
-    this._octagon(ctx, r*1.0);
+    this._hexagon(ctx, r*1.0, 0);
     ctx.fill(); ctx.stroke();
     ctx.restore();
 
-    // ── Núcleo pulsante (esfera de energia no topo) ──
+    // ── Núcleo de cristal pulsante (gema hexagonal brilhante no topo) ──
     const pulse=0.7+0.3*Math.sin(Date.now()*0.005);
     ctx.save();
     ctx.translate(0, topY);
     ctx.globalAlpha=assembly;
     const coreR=r*0.46;
-    const g=ctx.createRadialGradient(0,0,0,0,0,coreR);
-    g.addColorStop(0,'#ffffff'); g.addColorStop(0.35,col+'dd'); g.addColorStop(1,col+'00');
+    // halo de luz por trás da gema
+    const halo=ctx.createRadialGradient(0,0,0,0,0,coreR*1.4);
+    halo.addColorStop(0,'#ffffff'); halo.addColorStop(0.35,col+'dd'); halo.addColorStop(1,col+'00');
     ctx.globalAlpha=pulse*assembly;
-    ctx.fillStyle=g;
-    ctx.beginPath(); ctx.arc(0,0,coreR,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=halo;
+    ctx.beginPath(); ctx.arc(0,0,coreR*1.4,0,Math.PI*2); ctx.fill();
+    // gema hexagonal facetada (gradiente vertical do branco-quente ao tom do dono)
+    ctx.save();
+    ctx.rotate(this._ringPulse*0.6);
+    const gemGrad=ctx.createLinearGradient(0,-coreR,0,coreR);
+    gemGrad.addColorStop(0,'#ffffff');
+    gemGrad.addColorStop(0.45,col);
+    gemGrad.addColorStop(1,col+'aa');
+    ctx.fillStyle=gemGrad;
+    ctx.shadowColor=col; ctx.shadowBlur=20*pulse;
+    this._hexagon(ctx, coreR, 0);
+    ctx.fill();
+    // facetas internas da gema (cortes de luz)
+    ctx.strokeStyle='#ffffff77'; ctx.lineWidth=1;
+    for (let i=0;i<3;i++) {
+      const a=i*Math.PI/3;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a)*coreR, Math.sin(a)*coreR);
+      ctx.lineTo(Math.cos(a+Math.PI)*coreR, Math.sin(a+Math.PI)*coreR);
+      ctx.stroke();
+    }
+    ctx.restore();
     ctx.globalAlpha=assembly;
 
     // ── Canhão/torreta apontando pro alvo (saliência 3D) ──
@@ -292,20 +334,29 @@ export class Tower {
 
     ctx.fillStyle='#ffffff';
     ctx.shadowColor='#fff'; ctx.shadowBlur=10;
-    ctx.beginPath(); ctx.arc(0,0,11,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(0,0,9,0,Math.PI*2); ctx.fill();
     ctx.shadowBlur=0;
     ctx.restore();
 
-    // ── Antenas/detalhes laterais (profundidade extra) ──
+    // ── Espiras de cristal laterais (substituem as antenas mecânicas) ──
     ctx.save();
     ctx.globalAlpha=0.85*assembly;
     ctx.strokeStyle=col; ctx.lineWidth=2.4; ctx.shadowColor=col; ctx.shadowBlur=8;
     for (const side of [-1,1]) {
+      const bx=side*r*0.62, by=topY+r*0.18;
+      const tx=side*r*0.95, ty=topY-r*0.55;
       ctx.beginPath();
-      ctx.moveTo(side*r*0.62, topY+r*0.18);
-      ctx.lineTo(side*r*0.95, topY-r*0.55);
+      ctx.moveTo(bx, by);
+      ctx.lineTo(tx, ty);
       ctx.stroke();
-      ctx.beginPath(); ctx.arc(side*r*0.95, topY-r*0.55, 3.6, 0, Math.PI*2); ctx.fill();
+      // ponta em diamante (espira de cristal) em vez de círculo
+      ctx.save();
+      ctx.translate(tx,ty);
+      ctx.fillStyle=col;
+      ctx.beginPath();
+      ctx.moveTo(0,-4.6); ctx.lineTo(3.2,0); ctx.lineTo(0,4.6); ctx.lineTo(-3.2,0);
+      ctx.closePath(); ctx.fill();
+      ctx.restore();
     }
     ctx.shadowBlur=0;
     ctx.restore();
@@ -322,10 +373,12 @@ export class Tower {
     ctx.restore(); // translate liftY
   }
 
-  _octagon(ctx, radius) {
+  // Hexágono regular; `rotation` permite girar o desenho (usado pelos anéis
+  // rotativos e pela gema do núcleo, que giram em velocidades diferentes).
+  _hexagon(ctx, radius, rotation) {
     ctx.beginPath();
-    for (let i=0;i<8;i++) {
-      const a=i*Math.PI/4 - Math.PI/8;
+    for (let i=0;i<6;i++) {
+      const a=i*Math.PI/3 - Math.PI/6 + rotation;
       const px=Math.cos(a)*radius, py=Math.sin(a)*radius;
       if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
     }
@@ -386,7 +439,13 @@ export class Tower {
       ctx.save();
       ctx.globalAlpha=ease*(1-Math.max(0,(local-0.85)/0.15));
       ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=8;
-      ctx.beginPath(); ctx.arc(px,py,p.size*(0.4+ease*0.6),0,Math.PI*2); ctx.fill();
+      // estilhaços de cristal (diamantes) em vez de partículas circulares
+      const ps=p.size*(0.4+ease*0.6);
+      ctx.translate(px,py);
+      ctx.rotate(ang);
+      ctx.beginPath();
+      ctx.moveTo(0,-ps); ctx.lineTo(ps*0.6,0); ctx.lineTo(0,ps); ctx.lineTo(-ps*0.6,0);
+      ctx.closePath(); ctx.fill();
       ctx.restore();
     }
 
