@@ -143,8 +143,8 @@ export class CombatSystem {
         }
       }
 
-      // ── PvP (modo "Equipe Online"): projétil vs. jogadores adversários ──
-      if (this._pvp?.mode==='equipe_online') {
+      // ── PvP (modos "Equipe Online" e "Tower Defense"): projétil vs. jogadores adversários ──
+      if (this._pvp?.mode==='equipe_online' || this._pvp?.mode==='tower_defense') {
         const shooterTeam = b.team ?? (b.owner==='player' ? this._pvp.localTeam : null);
         if (shooterTeam) {
           // Vs. jogador local (se o tiro veio de um bot/jogador adversário)

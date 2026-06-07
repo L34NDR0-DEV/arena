@@ -16,6 +16,18 @@ function isPromoActive(now = Date.now()) {
   return now >= PROMO_STARTS_AT && now < PROMO_ENDS_AT;
 }
 
+// Torneio "Tower Defense": modo online por tempo limitado, ativo até
+// 21/06/2026 — depois desse prazo o modo desaparece da seleção (mas o
+// código permanece, pronto para reativação futura) e o modo "Teste" volta
+// a ocupar o mesmo slot no menu.
+const TOURNAMENT_SKIN_ID   = 10; // "Hex Champion" — recompensa exclusiva do torneio
+const TOURNAMENT_STARTS_AT = Date.parse('2026-06-07T00:00:00Z');
+const TOURNAMENT_ENDS_AT   = Date.parse('2026-06-21T23:59:59Z');
+
+function isTournamentActive(now = Date.now()) {
+  return now >= TOURNAMENT_STARTS_AT && now < TOURNAMENT_ENDS_AT;
+}
+
 // Preço efetivo de uma skin para um usuário: aplica o preço promocional
 // somente se a skin está na promoção, a janela está ativa, e o usuário ainda
 // não possui a outra skin do par (a oferta vale para uma única escolha).
@@ -83,4 +95,5 @@ function recordMatchAndMaybeReward(userId, { mode, win }) {
 module.exports = {
   SKIN_PRICE, FREE_SKIN_ID, REWARD_BLOCK_SIZE, REWARD_AMOUNT, REWARD_MIN_MODES, recordMatchAndMaybeReward,
   PROMO_SKIN_IDS, PROMO_PRICE, PROMO_STARTS_AT, PROMO_ENDS_AT, isPromoActive, skinPriceFor,
+  TOURNAMENT_SKIN_ID, TOURNAMENT_STARTS_AT, TOURNAMENT_ENDS_AT, isTournamentActive,
 };

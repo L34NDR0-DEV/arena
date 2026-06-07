@@ -57,6 +57,10 @@ export class NetworkClient {
       case 'event':       h.onEvent?.(msg);                          break;
       case 'chat':        h.onChat?.(msg);                           break;
       case 'match_start': this.myId = msg.you?.id ?? this.myId; h.onMatchStart?.(msg); break;
+      case 'td_queue_state':  h.onTdQueueState?.(msg);          break;
+      case 'td_unavailable':  h.onTdUnavailable?.(msg);         break;
+      case 'td_match_start':  this.myId = msg.you?.id ?? this.myId; h.onTdMatchStart?.(msg); break;
+      case 'td_reward_granted': h.onTdRewardGranted?.(msg);     break;
       case 'pong':        this._onPong(msg);                    break;
     }
   }
@@ -90,6 +94,18 @@ export class NetworkClient {
   queueJoin(mode, name, skinIndex, profileIcon=0) {
     this.send({ type: 'queue_join', mode, name, skinIndex, profileIcon });
   }
+
+  // Fila do Torneio "Tower Defense" — fila global única, até 8 jogadores,
+  // partidas 2x2 sequenciais ("turnos revezados"). Servidor responde com
+  // 'td_queue_state' (posição/tamanho da fila) e, quando formar a partida,
+  // 'td_match_start' (equivalente ao match_start do Equipe Online).
+  tdQueueJoin(name, skinIndex, profileIcon=0) {
+    this.send({ type: 'td_queue_join', name, skinIndex, profileIcon });
+  }
+  tdQueueLeave() { this.send({ type: 'td_queue_leave' }); }
+  // Reporta o fim da partida ao destruir/conquistar a torre central —
+  // qualquer jogador da disputa pode reportar (servidor ignora duplicatas).
+  tdReportMatchEnd(winnerTeam) { this.send({ type: 'td_match_end', winnerTeam }); }
 
   sendState(data)  { this.send({ type: 'state', data }); }
   sendEvent(data)  { this.send({ type: 'event', data }); }

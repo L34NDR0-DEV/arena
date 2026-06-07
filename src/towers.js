@@ -14,9 +14,17 @@ const MARGIN        = 360;
 const EMERGE_DUR    = 2.6; // duração da animação de montagem/surgimento
 
 const COLORS = {
-  player: '#00d4ff',
-  enemy:  '#ff3355',
+  player:  '#00d4ff',
+  enemy:   '#ff3355',
+  red:     '#ff3355',
+  blue:    '#00d4ff',
+  neutral: '#a98cff',
 };
+
+// Torre central do Torneio "Tower Defense" — mais resistente que as torres
+// astrais clássicas (é o objetivo de uma partida 2x2 inteira, não uma defesa
+// auxiliar) e nasce neutra ('neutral'), sem dono, no meio da arena.
+const CENTRAL_TOWER_MAX_HP = 520;
 
 export class Tower {
   constructor(x, y, side, corner) {
@@ -558,5 +566,111 @@ export class TowerManager {
       if (t._emergeDelay>0) continue; // ainda não surgiu — invisível
       t.draw(ctx);
     }
+  }
+}
+
+// ── Torre central do Torneio "Tower Defense" ──────────────────────────
+// Objetivo único de uma partida 2x2: nasce neutra no centro da arena, não
+// atira (é um alvo a ser destruído, não uma defesa) e, ao ter o HP zerado,
+// é "conquistada" pelo time atacante — fechando a partida imediatamente.
+// Reaproveita toda a renderização cristalina de `Tower`/`_drawBody`, só
+// substitui a lógica de alvo/disparo (que não se aplica aqui) por nada.
+export class CentralTower extends Tower {
+  constructor(x, y) {
+    super(x, y, 'neutral', -1);
+    this.maxHp=CENTRAL_TOWER_MAX_HP;
+    this.hp=this.maxHp;
+  }
+
+  // Sobrescreve o alvo automático da torre clássica: a torre central é
+  // passiva — só avança a fase de surgimento e os timers visuais.
+  update(dt) {
+    if (this.emerging) {
+      this._emergeT=Math.min(1,this._emergeT+dt/EMERGE_DUR);
+      if (this._emergeT>=1) this.emerging=false;
+      return;
+    }
+    if (this._hitFlash>0) this._hitFlash-=dt;
+    if (this._destroyedFlash>0) this._destroyedFlash-=dt;
+    this._ringPulse+=dt;
+  }
+
+  draw(ctx) {
+    if (this.emerging) { this._drawEmerging(ctx); return; }
+
+    const col=this.color;
+    const r=this.r;
+
+    ctx.save();
+    ctx.translate(this.x,this.y);
+    this._drawBody(ctx, col, r, 1, 1);
+    ctx.restore();
+
+    const w=160,h=11, bx=this.x-w/2, by=this.y-r*1.55-30;
+    ctx.save();
+    ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(bx-2,by-2,w+4,h+4);
+    ctx.fillStyle='#222'; ctx.fillRect(bx,by,w,h);
+    const pct=this.hp/this.maxHp;
+    const hpGrad=ctx.createLinearGradient(bx,0,bx+w,0);
+    hpGrad.addColorStop(0,col+'88'); hpGrad.addColorStop(1,col);
+    ctx.fillStyle=hpGrad; ctx.shadowColor=col; ctx.shadowBlur=10;
+    ctx.fillRect(bx,by,w*pct,h);
+    ctx.shadowBlur=0;
+    ctx.strokeStyle=col+'66'; ctx.lineWidth=1; ctx.strokeRect(bx,by,w,h);
+    ctx.restore();
+
+    ctx.save();
+    ctx.fillStyle=col; ctx.font='bold 15px system-ui'; ctx.textAlign='center';
+    ctx.shadowColor=col; ctx.shadowBlur=8;
+    ctx.fillText('TORRE CENTRAL — DESTRUA PARA CONQUISTAR', this.x, by-12);
+    ctx.shadowBlur=0;
+    ctx.restore();
+
+    if (this._destroyedFlash>0) {
+      ctx.save();
+      ctx.globalAlpha=this._destroyedFlash/0.6*0.5;
+      ctx.fillStyle=col;
+      ctx.beginPath(); ctx.arc(this.x,this.y,r*2.6,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+  }
+}
+
+// Gerencia a única torre central de uma partida do Torneio Tower Defense:
+// nasce neutra, e o time que aplica o golpe fatal a conquista — encerrando
+// a disputa (mecânica "destruir para conquistar", igual à Torre Astral, mas
+// aplicada a 1 alvo central em vez de 4 cantos e a times 'red'/'blue').
+export class TowerDefenseManager {
+  constructor(arenaW, arenaH) {
+    this.tower = new CentralTower(arenaW/2, arenaH/2);
+    this._winnerTeam=null; // 'red' | 'blue' | null
+  }
+
+  get winnerTeam() { return this._winnerTeam; }
+
+  update(dt) {
+    if (this._winnerTeam) return;
+    this.tower.update(dt);
+  }
+
+  // Aplica dano ao alvo central; retorna info do impacto ou null.
+  // `attackerTeam` é 'red' | 'blue' — times opostos no 2x2.
+  damageCentral(x, y, radius, amount, attackerTeam) {
+    const t=this.tower;
+    if (t.dead||t.emerging||this._winnerTeam) return null;
+    const d=Math.hypot(t.x-x,t.y-y);
+    if (d>=t.r+radius) return null;
+
+    const destroyed=t.takeDamage(amount);
+    if (destroyed) {
+      t.captureBy(attackerTeam);
+      this._winnerTeam=attackerTeam;
+      return { tower:t, destroyed:true, winnerTeam:attackerTeam };
+    }
+    return { tower:t, destroyed:false };
+  }
+
+  draw(ctx) {
+    this.tower.draw(ctx);
   }
 }

@@ -395,6 +395,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .mode-equipe-online svg path:nth-child(2){stroke:#4da6ff;}
 .mode-livre{border-color:var(--purple);color:var(--purple);}
 .mode-teste{border-color:#445;color:#667;}
+.mode-tower-defense{border-color:#7a5cff;color:#a98cff;}
 .mode-survivor{border-color:var(--orange);color:var(--orange);}
 .mode-btn:not(.active){opacity:.5;}
 .mode-btn:hover{opacity:1;}
@@ -1181,9 +1182,9 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 3 Q16 8 12 12 Q8 16 12 21" stroke-dasharray="2 2"/><path d="M3 12 Q8 8 12 12 Q16 16 21 12" stroke-dasharray="2 2"/></svg>
             <span class="mode-label">Livre</span>
           </button>
-          <button class="mode-btn mode-teste" onclick="selectMode('teste',this)">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="2" width="6" height="10" rx="1"/><path d="M7 12 L5 20 M17 12 L19 20"/><line x1="5" y1="20" x2="19" y2="20"/></svg>
-            <span class="mode-label">Teste</span>
+          <button class="mode-btn mode-teste" id="mode-slot-teste" onclick="selectMode(this.dataset.mode,this)" data-mode="teste">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" id="mode-slot-teste-icon"><rect x="9" y="2" width="6" height="10" rx="1"/><path d="M7 12 L5 20 M17 12 L19 20"/><line x1="5" y1="20" x2="19" y2="20"/></svg>
+            <span class="mode-label" id="mode-slot-teste-label">Teste</span>
           </button>
           <button class="mode-btn mode-survivor" onclick="selectMode('survivor',this)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3 C7 3 4 7 4 11 C4 14 6 16 8 17 L8 20 L16 20 L16 17 C18 16 20 14 20 11 C20 7 17 3 12 3Z"/><circle cx="9" cy="11" r="1.5" fill="currentColor" stroke="none"/><circle cx="15" cy="11" r="1.5" fill="currentColor" stroke="none"/></svg>
@@ -1559,7 +1560,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 </div>
 
 <script type="module">
-import { SKINS }          from './src/skins.js';
+import { SKINS, REWARD_ONLY_SKIN_IDS } from './src/skins.js';
 import { ARENA_TYPES }    from './src/arena.js';
 import { Game }           from './src/game.js';
 import { CHANGELOG }      from './src/changelog.js';
@@ -1622,7 +1623,38 @@ async function refreshProfile(){
   updateCreditsBadge();
   updatePilotIconBtn();
   renderSkinGrid();
+  applyModeSlotToggle();
   return true;
+}
+
+// O slot de modo "Teste"/"Tower Defense" é compartilhado: enquanto o
+// torneio está ativo (até 21/06), esse slot vira "Tower Defense"; quando o
+// torneio acaba, o slot volta a ser "Teste" automaticamente — sem precisar
+// de ação manual, lendo `profile.tournament.active` vindo do servidor.
+function applyModeSlotToggle(){
+  const btn   = document.getElementById('mode-slot-teste');
+  const icon  = document.getElementById('mode-slot-teste-icon');
+  const label = document.getElementById('mode-slot-teste-label');
+  if (!btn || !icon || !label) return;
+  const tournamentOn = !!(profile && profile.tournament && profile.tournament.active);
+  if (tournamentOn) {
+    btn.dataset.mode = 'tower_defense';
+    btn.classList.add('mode-tower-defense');
+    btn.classList.remove('mode-teste');
+    icon.innerHTML = '<path d="M12 2 L20 7 L20 14 L12 21 L4 14 L4 7 Z"/><path d="M12 2 L12 21 M4 7 L20 14 M20 7 L4 14" opacity=".55"/><circle cx="12" cy="11" r="2.6" fill="currentColor" stroke="none"/>';
+    label.textContent = 'Tower Defense';
+  } else {
+    btn.dataset.mode = 'teste';
+    btn.classList.add('mode-teste');
+    btn.classList.remove('mode-tower-defense');
+    icon.innerHTML = '<rect x="9" y="2" width="6" height="10" rx="1"/><path d="M7 12 L5 20 M17 12 L19 20"/><line x1="5" y1="20" x2="19" y2="20"/>';
+    label.textContent = 'Teste';
+  }
+  // Se o modo selecionado era o do slot que acabou de mudar, realinha a dica.
+  if (selectedMode==='teste' || selectedMode==='tower_defense') {
+    selectedMode = btn.dataset.mode;
+    document.getElementById('mode-tip').textContent = MODE_TIPS[selectedMode]||'';
+  }
 }
 
 function updateCreditsBadge(){
@@ -1723,6 +1755,7 @@ const MODE_TIPS={
   equipe_online: 'EQUIPE ONLINE — PvP em times (até 6, 3x3). Primeira equipe a 200 abates vence!',
   livre:   'LIVRE — SEM TIMER. PRATIQUE À VONTADE.',
   teste:   'TESTE — INIMIGOS NÃO ATACAM.',
+  tower_defense: 'TORNEIO TOWER DEFENSE — destrua a torre central para conquistá-la! 2x2 online, vencedores ganham a skin exclusiva "Hex Champion".',
   survivor:'SURVIVOR — ONDAS INFINITAS. SOBREVIVA!',
 };
 
@@ -2016,8 +2049,9 @@ function shopOwnedSet(){
 
 function shopAvailableSkins(){
   // A vitrine só mostra naves que o piloto ainda não possui — comprar o que já se tem não faz sentido.
+  // Skins de recompensa (ex.: "Hex Champion" do torneio) nunca aparecem para compra.
   const owned = shopOwnedSet();
-  return SKINS.filter(s=>!owned.has(s.id));
+  return SKINS.filter(s=>!owned.has(s.id) && !REWARD_ONLY_SKIN_IDS.includes(s.id));
 }
 
 function buildShopTrack(){
@@ -2877,6 +2911,12 @@ window.showGameOver=function(data){
     const ts=data.teamScores||{red:0,blue:0};
     document.getElementById('go-sub').textContent =
       `${teamLabel(data.teamWinner)} venceu por ${ts.red} x ${ts.blue} abates! Você jogou pelo ${teamLabel(data.team)}.`;
+  } else if (selectedMode==='tower_defense') {
+    const teamLabel = t => t==='red' ? 'Time Vermelho' : 'Time Azul';
+    document.getElementById('go-title').textContent = data.win ? 'TORRE CONQUISTADA!' : 'TORRE PERDIDA';
+    document.getElementById('go-sub').textContent = data.win
+      ? `Seu time destruiu a torre central e venceu o confronto! ${(profile&&profile.tournament&&profile.tournament.active) ? 'Você desbloqueou a skin exclusiva "Hex Champion"!' : ''}`
+      : `${teamLabel(data.teamWinner)} destruiu a torre central primeiro. Tente novamente na fila do torneio!`;
   } else {
     document.getElementById('go-title').textContent=data.win?'MISSÃO CUMPRIDA':'NAVE DESTRUÍDA';
     document.getElementById('go-sub').textContent=data.win?'Você dominou a arena.':'Suas vidas acabaram.';

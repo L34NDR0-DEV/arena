@@ -129,7 +129,7 @@ export class UI {
 
     // Placar: visível apenas fora do Contra1
     if (this._center) {
-      if (mode === 'contra1') { this._center.classList.add('hidden'); }
+      if (mode === 'contra1' || mode === 'tower_defense') { this._center.classList.add('hidden'); }
       else if (mode === 'equipe_online' && teamScores) {
         this._center.classList.remove('hidden');
         const redLabel  = this._center.querySelector('.score-box:first-child .score-label');
@@ -151,7 +151,7 @@ export class UI {
 
     // Timer: oculta no Contra1
     if (this._timer) {
-      if (mode==='contra1') {
+      if (mode==='contra1' || mode==='tower_defense') {
         this._timer.textContent='';
       } else {
         const min=Math.floor(timeLeft/60), sec=Math.floor(timeLeft%60);

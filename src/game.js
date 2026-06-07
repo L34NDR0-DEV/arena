@@ -3,7 +3,7 @@ import { Player, drawCrosshair, drawTargetLock } from './player.js';
 import { EnemyManager, TeamBot }                 from './enemies.js';
 import { ItemManager, BorderEffect }              from './items.js';
 import { CombatSystem }                          from './combat.js';
-import { TowerManager }                          from './towers.js';
+import { TowerManager, TowerDefenseManager }     from './towers.js';
 import { UI }                                    from './ui.js';
 import { AudioEngine }                           from './audio.js';
 import { NetworkClient, RemotePlayer }           from './network.js';
@@ -23,6 +23,7 @@ export class Game {
 
     // Modo Teste: arena bem menor para visualizar os 4 cantos/torres com facilidade
     if (mode==='teste') setArenaSize(Math.round(ARENA_W_DEFAULT*0.35), Math.round(ARENA_H_DEFAULT*0.35));
+    else if (mode==='tower_defense') setArenaSize(Math.round(ARENA_W_DEFAULT*0.6), Math.round(ARENA_H_DEFAULT*0.6));
     else setArenaSize(ARENA_W_DEFAULT, ARENA_H_DEFAULT);
 
     const arenaEl=document.getElementById('arena-select');
@@ -39,6 +40,9 @@ export class Game {
 
     // Torres Astrais — disponíveis no modo Teste
     this.towerMgr = mode==='teste' ? new TowerManager() : null;
+    // Torre central do Torneio "Tower Defense" — nasce neutra no meio da
+    // arena; o time que a destruir a conquista e vence a partida na hora.
+    this.towerDefenseMgr = mode==='tower_defense' ? new TowerDefenseManager(ARENA_W, ARENA_H) : null;
 
     // Sistema de vidas Contra1
     this._playerLives = mode==='contra1' ? CONTRA1_LIVES : Infinity;
@@ -61,9 +65,15 @@ export class Game {
     this.isHost=false;       // anfitrião simula bots locais
     this.bots=[];            // TeamBot[] (apenas no anfitrião)
     this._teamScores={red:0, blue:0};
-    this._lobby = (mode==='equipe_online'); // true até chegar match_start
+    this._lobby = (mode==='equipe_online' || mode==='tower_defense'); // true até chegar match_start
     this._lobbyCount=1;
-    if (this._lobby) this.ui.showTeamLobby('Procurando jogadores...');
+    this._tdQueuePos=-1;
+    this._tdMatchEndReported=false;
+    if (this._lobby) {
+      this.ui.showTeamLobby(mode==='tower_defense'
+        ? 'Entrando na fila do Torneio Tower Defense…'
+        : 'Procurando jogadores...');
+    }
 
     // Tela de carregamento — exibida desde já (com o que já sabemos: o
     // próprio jogador) para cobrir a arena antes que a conexão complete e
@@ -199,10 +209,13 @@ export class Game {
     try {
       const proto=location.protocol==='https:'?'wss':'ws';
       const isTeamMode = this.mode==='equipe_online';
+      const isTdMode   = this.mode==='tower_defense';
       this.net=new NetworkClient(`${proto}://${location.host}`,{
         onWelcome:msg=>{
           if (isTeamMode) {
             this.net.queueJoin('equipe_online', name, skinIndex, this.profileIcon);
+          } else if (isTdMode) {
+            this.net.tdQueueJoin(name, skinIndex, this.profileIcon);
           } else {
             this.net.join(name,skinIndex,roomId,this.profileIcon);
             this._refreshMatchLoading(msg.peers||[]);
@@ -219,6 +232,12 @@ export class Game {
           }
         },
         onMatchStart: msg=>this._onMatchStart(msg),
+        onTdQueueState: msg=>this._onTdQueueState(msg),
+        onTdUnavailable: msg=>this._onTdUnavailable(msg),
+        onTdMatchStart: msg=>this._onTdMatchStart(msg),
+        onTdRewardGranted: msg=>{
+          this.ui.notify('Recompensa do torneio: skin "Hex Champion" desbloqueada!', '#ffcf4d');
+        },
       });
     } catch {}
   }
@@ -271,6 +290,52 @@ export class Game {
     const {x,y}=this._spawnPosFor(this.team);
     this.player.x=x; this.player.y=y;
     this.ui.notify(`Partida formada! Você está no Time ${this.team==='red'?'Vermelho':'Azul'}`, this.team==='red'?'#ff4d6a':'#4da6ff');
+
+    this._refreshMatchLoading(matchPeers);
+    this._loadingHideAt = performance.now() + 3500;
+  }
+
+  // ── Torneio "Tower Defense" — fila global única, partidas 2x2 sequenciais ──
+  _onTdQueueState(msg) {
+    if (this.mode!=='tower_defense' || !this._lobby) return;
+    const waiting = msg.matchActive ? ' — aguardando o turno atual terminar' : '';
+    this.ui.showTeamLobby(`Na fila do Torneio Tower Defense (${msg.queueLength}/8)${waiting}…`);
+  }
+
+  _onTdUnavailable(msg) {
+    if (this.mode!=='tower_defense') return;
+    const reason = msg.reason==='tournament_ended'
+      ? 'O Torneio Tower Defense já encerrou — o modo "Teste" voltou ao normal.'
+      : 'Fila do Torneio Tower Defense está cheia (8/8). Tente novamente em instantes.';
+    this.ui.notify(reason, '#ff5566');
+    this.ui.hideTeamLobby();
+    setTimeout(()=>window.exitToMenu?.(), 1200);
+  }
+
+  // Recebido quando o servidor forma o próximo confronto 2x2 do torneio:
+  // popula peers reais, marca time/host e posiciona times em lados opostos
+  // ao redor da torre central neutra.
+  _onTdMatchStart(msg) {
+    this._lobby=false;
+    this.ui.hideTeamLobby();
+    this.team   = msg.you?.team ?? null;
+    this.isHost = !!msg.you?.isHost;
+    this.player.team = this.team;
+    this._tdMatchEndReported=false;
+
+    this.peers={};
+    this.bots=[];
+
+    const matchPeers = [];
+    for (const p of (msg.players||[])) {
+      if (p.id===this.net.myId) continue;
+      matchPeers.push(p);
+      this.peers[p.id]=new RemotePlayer({id:p.id,name:p.name,skinIndex:p.skinIndex,profileIcon:p.profileIcon,skins:SkinsModule,team:p.team,isBot:false});
+    }
+
+    const {x,y}=this._spawnPosFor(this.team);
+    this.player.x=x; this.player.y=y;
+    this.ui.notify(`Confronto formado! Você está no Time ${this.team==='red'?'Vermelho':'Azul'} — destrua a torre central!`, this.team==='red'?'#ff4d6a':'#4da6ff');
 
     this._refreshMatchLoading(matchPeers);
     this._loadingHideAt = performance.now() + 3500;
@@ -334,8 +399,8 @@ export class Game {
     // Cooldown de vida do player
     if (this.player._lifeTimer>0) this.player._lifeTimer-=dt;
 
-    // Modo Equipe Online: aguarda formação da partida (lobby/fila)
-    if (this.mode==='equipe_online' && this._lobby) {
+    // Modos online em fila: aguardam formação da partida (lobby/fila)
+    if ((this.mode==='equipe_online' || this.mode==='tower_defense') && this._lobby) {
       this.ui.update(this.player,this.timeLeft,0,null,null,0,this.mode);
       return;
     }
@@ -345,11 +410,22 @@ export class Game {
       const res=this.enemyMgr.livesResult;
       if (res==='player_win') { this._endGame(true); return; }
       if (res==='enemy_win'||this.enemyMgr.playerLives<=0) { this._endGame(false); return; }
-    } else if (this.mode!=='equipe_online') {
+    } else if (this.mode!=='equipe_online' && this.mode!=='tower_defense') {
       this.timeLeft-=dt;
       if (this.timeLeft<=0) { this._endGame(true); return; }
     }
-    if (this.player.dead&&this.player.deathTimer<=0&&this.mode!=='contra1'&&this.mode!=='equipe_online') { this._endGame(false); return; }
+    if (this.player.dead&&this.player.deathTimer<=0&&this.mode!=='contra1'&&this.mode!=='equipe_online'&&this.mode!=='tower_defense') { this._endGame(false); return; }
+
+    // Torneio Tower Defense: vitória imediata para o time que destruir/conquistar a torre central
+    if (this.towerDefenseMgr?.winnerTeam && !this.over) {
+      const winnerTeam = this.towerDefenseMgr.winnerTeam;
+      const won = winnerTeam===this.team;
+      this.arena.spawnParticles(this.towerDefenseMgr.tower.x, this.towerDefenseMgr.tower.y, this.towerDefenseMgr.tower.color, 40, 320);
+      this.ui.notify(won ? 'TORRE CONQUISTADA! VITÓRIA!' : 'A torre central caiu para o adversário…', won?'#ffcc00':'#ff5566');
+      if (!this._tdMatchEndReported) { this._tdMatchEndReported=true; this.net?.tdReportMatchEnd(winnerTeam); }
+      this._endGame(won);
+      return;
+    }
 
     // Torres Astrais: vitória ao capturar as 2 torres do lado adversário
     if (this.towerMgr?.winner) {
@@ -385,6 +461,10 @@ export class Game {
     if (this.towerMgr) {
       this.towerMgr.update(dt,this.player,this.enemyMgr.enemies,this.combat.bullets);
       this._resolveTowerCombat(dt);
+    }
+    if (this.towerDefenseMgr) {
+      this.towerDefenseMgr.update(dt);
+      this._resolveCentralTowerCombat(dt);
     }
 
     const hasExtra = this.player.inventory.isExtraFull();
@@ -433,6 +513,8 @@ export class Game {
           }
         }
       }
+      this.combat.setPvpContext({ peers:this.peers, bots:this.bots, localTeam:this.team, mode:this.mode, isHost:this.isHost, net:this.net });
+    } else if (this.mode==='tower_defense') {
       this.combat.setPvpContext({ peers:this.peers, bots:this.bots, localTeam:this.team, mode:this.mode, isHost:this.isHost, net:this.net });
     }
 
@@ -528,6 +610,46 @@ export class Game {
     }
   }
 
+  // Resolve combate contra a torre central do Torneio Tower Defense:
+  // qualquer projétil/colisão de um jogador do time A aplica dano e, ao
+  // zerar o HP, o time A "conquista" a torre — vitória imediata da partida.
+  _resolveCentralTowerCombat(dt) {
+    const mgr=this.towerDefenseMgr;
+    if (!mgr || mgr.winnerTeam) return;
+    const player=this.player;
+    const tower=mgr.tower;
+
+    const handleHit=(hit)=>{
+      if (!hit) return;
+      this.arena.spawnParticles(tower.x,tower.y,tower.color,20,200);
+      this._audio.playExplosion(2);
+      if (hit.destroyed) {
+        this._audio.playExplosion(3);
+        this.arena.spawnParticles(tower.x,tower.y,tower.color,50,360);
+      }
+    };
+
+    // Projéteis de jogadores (locais e remotos) vs torre central
+    this.combat.bullets=this.combat.bullets.filter(b=>{
+      if (b.owner!=='player') return true;
+      const attackerTeam = b.team ?? this.team;
+      if (!attackerTeam) return true;
+      const hit=mgr.damageCentral(b.x,b.y,b.r??5,b.damage,attackerTeam);
+      if (hit) {
+        this.combat.spawnExplosion(b.x,b.y,14,b.owner_color||'#ffffff');
+        handleHit(hit);
+        return false;
+      }
+      return true;
+    });
+
+    // Colisão física: nave do jogador local atravessando a torre central
+    if (this.team) {
+      const hit=mgr.damageCentral(player.x,player.y,player.r,90*dt,this.team);
+      if (hit) handleHit(hit);
+    }
+  }
+
   _triggerTowerKillPlayer() {
     const isContra1=this.mode==='contra1';
     this.combat._triggerPlayerRebuild(this.player,isContra1);
@@ -547,6 +669,7 @@ export class Game {
     this.arena.drawBorder(ctx);
     this.arena.drawAsteroids(ctx);
     this.towerMgr?.draw(ctx);
+    this.towerDefenseMgr?.draw(ctx);
     this.itemMgr.draw(ctx);
     this.enemyMgr.draw(ctx);
     for (const id in this.peers) this.peers[id].draw(ctx);
@@ -637,6 +760,10 @@ export class Game {
       data.teamScores={...this._teamScores};
       data.teamWinner = this._teamScores.red>=TEAM_KILL_TARGET ? 'red'
                       : this._teamScores.blue>=TEAM_KILL_TARGET ? 'blue' : null;
+    }
+    if (this.mode==='tower_defense') {
+      data.team=this.team;
+      data.teamWinner=this.towerDefenseMgr?.winnerTeam ?? null;
     }
     setTimeout(()=>window.showGameOver?.(data),700);
   }

@@ -6,6 +6,8 @@ const path   = require('path');
 
 const { handleApi } = require('./src/api');
 const auth          = require('./src/auth');
+const economy       = require('./src/economy');
+const db            = require('./src/db');
 
 const PORT = process.env.PORT || 3000;
 const ROOT = __dirname;
@@ -141,6 +143,152 @@ function leaveTeamQueue(socket, info) {
   }
 }
 
+// ── Matchmaking do "Torneio Tower Defense" (PvP 2x2, torre central) ──
+// Diferente do "Equipe Online" (várias salas simultâneas), aqui existe UMA
+// fila global de até TD_QUEUE_MAX jogadores e UMA partida 2x2 ativa por vez —
+// "turnos revezados": pares de times jogam em sequência, o restante aguarda.
+// Some/desaparece automaticamente quando isTournamentActive() vira false
+// (ver checagem em joinTdQueue) — sem precisar remover código do servidor.
+const TD_TEAM_SIZE   = 2;
+const TD_MATCH_SIZE  = TD_TEAM_SIZE * 2;
+const TD_QUEUE_MAX   = 8;
+const TD_ROOM_ID     = 'tower_defense_arena';
+let   tdMatchSeq     = 1;
+
+const tdQueue = []; // [{ id, name, skinIndex, profileIcon, socket }] aguardando turno
+let   tdMatch = null; // { roomId, players, teamCounts, started, tournamentEligible }
+
+function tdQueuePosition(userId) {
+  return tdQueue.findIndex(p => p.id === userId);
+}
+
+function tdAssignTeam(counts) {
+  return counts.red <= counts.blue ? 'red' : 'blue';
+}
+
+function tdBroadcastQueueState() {
+  const msg = JSON.stringify({ type: 'td_queue_state', queueLength: tdQueue.length, matchActive: !!tdMatch });
+  for (const p of tdQueue) wsSend(p.socket, msg);
+}
+
+// Forma a próxima partida 2x2 assim que houver jogadores suficientes e
+// nenhuma partida estiver em andamento — "turnos revezados": só roda uma
+// disputa por vez, o resto continua na fila aguardando a vez.
+function tdTryStartMatch() {
+  if (tdMatch || tdQueue.length < TD_MATCH_SIZE) return;
+
+  const chosen = tdQueue.splice(0, TD_MATCH_SIZE);
+  const teamCounts = { red: 0, blue: 0 };
+  const players = chosen.map((p, idx) => {
+    const team = tdAssignTeam(teamCounts);
+    teamCounts[team]++;
+    return { id: p.id, name: p.name, skinIndex: p.skinIndex, profileIcon: p.profileIcon, socket: p.socket, team, isHost: idx === 0 };
+  });
+
+  const roomId = `${TD_ROOM_ID}_${tdMatchSeq++}`;
+  tdMatch = {
+    roomId,
+    players,
+    teamCounts,
+    started: true,
+    // Carimba a elegibilidade no início da partida — garante que uma
+    // disputa iniciada durante a janela do torneio premie o vencedor mesmo
+    // que ela termine logo após o prazo (e vice-versa: não premia se
+    // começou fora da janela mesmo terminando "dentro" por acaso de relógio).
+    tournamentEligible: economy.isTournamentActive(),
+  };
+
+  for (const p of players) {
+    const info = socks.get(p.socket);
+    if (info) { info.roomId = roomId; info.team = p.team; }
+    const room = getRoomOrCreate(roomId);
+    room.players.set(p.id, { socket: p.socket, state: null });
+  }
+
+  const playersPayload = players.map(p => ({
+    id: p.id, name: p.name, skinIndex: p.skinIndex, profileIcon: p.profileIcon, team: p.team, isHost: p.isHost,
+  }));
+
+  for (const p of players) {
+    wsSend(p.socket, JSON.stringify({
+      type: 'td_match_start',
+      roomId,
+      players: playersPayload,
+      you: { id: p.id, team: p.team, isHost: p.isHost },
+    }));
+  }
+
+  console.log(`[TORNEIO] Tower Defense iniciado em "${roomId}" — times: vermelho x azul (2x2)`);
+  tdBroadcastQueueState();
+}
+
+function joinTdQueue(socket, info, name, skinIndex, profileIcon) {
+  if (!economy.isTournamentActive()) {
+    wsSend(socket, JSON.stringify({ type: 'td_unavailable', reason: 'tournament_ended' }));
+    return;
+  }
+  if (tdQueue.length >= TD_QUEUE_MAX || tdQueuePosition(info.id) !== -1) {
+    wsSend(socket, JSON.stringify({ type: 'td_unavailable', reason: 'queue_full' }));
+    return;
+  }
+
+  tdQueue.push({ id: info.id, name, skinIndex, profileIcon, socket });
+  info.name = name;
+  info.skinIndex = skinIndex;
+  console.log(`[TORNEIO] ${name} entrou na fila do Tower Defense (${tdQueue.length}/${TD_QUEUE_MAX})`);
+
+  tdBroadcastQueueState();
+  tdTryStartMatch();
+}
+
+function leaveTdQueue(socket, info) {
+  const idx = tdQueuePosition(info.id);
+  if (idx !== -1) {
+    tdQueue.splice(idx, 1);
+    tdBroadcastQueueState();
+  }
+}
+
+// Encerra a partida ativa e libera o próximo par de times da fila —
+// chamado quando o cliente reporta `td_match_end` (torre conquistada).
+function tdEndMatch(roomId, winnerTeam) {
+  if (!tdMatch || tdMatch.roomId !== roomId) return;
+  const finished = tdMatch;
+  tdMatch = null;
+
+  if (finished.tournamentEligible && (winnerTeam === 'red' || winnerTeam === 'blue')) {
+    for (const p of finished.players) {
+      if (p.team !== winnerTeam) continue;
+      const info = socks.get(p.socket);
+      if (!info || info.userId === null) continue;
+      try {
+        if (!db.ownsSkin.get(info.userId, economy.TOURNAMENT_SKIN_ID)) {
+          db.grantSkin.run(info.userId, economy.TOURNAMENT_SKIN_ID);
+          wsSend(p.socket, JSON.stringify({ type: 'td_reward_granted', skinId: economy.TOURNAMENT_SKIN_ID }));
+          console.log(`[TORNEIO] ${info.name} (time ${winnerTeam}) recebeu a skin "Hex Champion" pela vitória no Tower Defense`);
+        }
+      } catch (e) {
+        console.error('[TORNEIO] Falha ao conceder skin de recompensa:', e.message);
+      }
+    }
+  }
+
+  rooms.delete(roomId);
+  console.log(`[TORNEIO] Tower Defense "${roomId}" encerrado — vencedor: ${winnerTeam || 'ninguém'}`);
+  tdBroadcastQueueState();
+  tdTryStartMatch();
+}
+
+function tdHandleDisconnect(socket, info) {
+  leaveTdQueue(socket, info);
+  if (tdMatch && tdMatch.roomId === info.roomId) {
+    // Jogador saiu durante a partida: o time adversário vence por W.O.
+    const leaver = tdMatch.players.find(p => p.socket === socket);
+    const winnerTeam = leaver ? (leaver.team === 'red' ? 'blue' : 'red') : null;
+    tdEndMatch(info.roomId, winnerTeam);
+  }
+}
+
 function broadcastRoom(roomId, data, except = null) {
   const room = rooms.get(roomId);
   if (!room) return;
@@ -222,6 +370,8 @@ function onDisconnect(socket) {
   if (!info) return;
   socks.delete(socket);
   if (info.roomId && info.roomId.startsWith('equipe_online_')) leaveTeamQueue(socket, info);
+  if (info.roomId && info.roomId.startsWith(TD_ROOM_ID)) tdHandleDisconnect(socket, info);
+  else leaveTdQueue(socket, info);
   const room = rooms.get(info.roomId);
   if (room) {
     room.players.delete(info.id);
@@ -274,6 +424,28 @@ function handleMsg(socket, raw) {
       // chegar (não há snapshot de peers aqui: a lista completa virá em
       // "match_start" assim que a partida for formada).
       wsSend(socket, JSON.stringify({ type: 'welcome', id: info.id, peers: [] }));
+      break;
+    }
+    case 'td_queue_join': {
+      // Fila do Torneio "Tower Defense" (PvP 2x2, torre central, turnos
+      // revezados — só uma disputa ativa por vez, até 8 na fila).
+      if (info.userId === null) {
+        info.name      = msg.name      || info.name;
+        info.skinIndex = msg.skinIndex ?? 0;
+      }
+      joinTdQueue(socket, info, info.name, info.skinIndex, info.profileIcon);
+      wsSend(socket, JSON.stringify({ type: 'welcome', id: info.id, peers: [] }));
+      break;
+    }
+    case 'td_queue_leave':
+      leaveTdQueue(socket, info);
+      break;
+    case 'td_match_end': {
+      // Reportado pelo cliente que presenciou a torre central ser destruída
+      // e conquistada — qualquer jogador da partida pode reportar; o servidor
+      // ignora reportes duplicados (tdMatch já é null após o primeiro).
+      const winnerTeam = msg.winnerTeam === 'red' || msg.winnerTeam === 'blue' ? msg.winnerTeam : null;
+      if (tdMatch && tdMatch.roomId === info.roomId) tdEndMatch(info.roomId, winnerTeam);
       break;
     }
     case 'state':

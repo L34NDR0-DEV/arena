@@ -183,6 +183,19 @@ const skinRosaNeon = makeSprite(9, 'Nebula Rosa', '#ff3d9a', 'Rosa.png', {
   ],
 });
 
+// Hex Champion — recompensa exclusiva do Torneio Tower Defense (não é vendida
+// na loja, só concedida pelo servidor a quem vencer durante a janela ativa).
+// Reaproveita a silhueta angular do Stealthwing sob um tom dourado de campeão.
+const skinHexChampion = makeSprite(10, 'Hex Champion', '#ffcf4d', 'Triangulo.png', {
+  size: 80,
+  nozzle: { x:0, y:-0.72 },
+  engines: [
+    { x:-0.62, y: 0.68 },
+    { x: 0.62, y: 0.68 },
+  ],
+  spinsOnAxis: true,
+});
+
 export const SKINS = [
   skinVermelho,
   skinPonta,
@@ -194,4 +207,9 @@ export const SKINS = [
   skinMarromAzul,
   skinRosaVerde,
   skinRosaNeon,
+  skinHexChampion,
 ];
+
+// IDs de skins que NUNCA aparecem na loja para compra — concedidas apenas
+// por eventos especiais (ex.: recompensa do Torneio Tower Defense).
+export const REWARD_ONLY_SKIN_IDS = [10];

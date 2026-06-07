@@ -785,7 +785,7 @@ export class EnemyManager {
 
   _prepareWave() {
     const isContra1=this.mode==='contra1';
-    if (this.mode==='equipe_online') {
+    if (this.mode==='equipe_online' || this.mode==='tower_defense') {
       // PvP entre jogadores — sem ondas de IA inimiga clássica.
       this.toSpawn=[];
       this.waveActive=false; this.waveTimer=Infinity;
