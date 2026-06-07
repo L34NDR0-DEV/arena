@@ -15,11 +15,10 @@ function clientIp(req) {
 // Aplica um limite de requisições; loga e responde 429 quando estourado.
 // `keyFn` recebe (req, ctx) e retorna a chave de agrupamento (ex: por usuário ou IP).
 function rateLimited(label, max, windowMs, keyFn) {
-  return (req, res, ctx) => {
+  return (req, ctx) => {
     const key = `${label}:${keyFn(req, ctx)}`;
     if (!rateLimit(key, max, windowMs)) {
       console.warn(`[ANTIFRAUDE] rate limit em "${label}" para ${key}`);
-      sendJson(res, 429, { error: 'rate_limited' });
       return false;
     }
     return true;
@@ -42,11 +41,11 @@ function readJsonBody(req, cb) {
     chunks.push(chunk);
   });
   req.on('end', () => {
-    const raw = Buffer.concat(chunks).toString('utf8');
-    console.log('[DEBUG readJsonBody] bytes recebidos:', total, 'raw:', JSON.stringify(raw));
     if (!chunks.length) return cb(null, {});
-    try { cb(null, JSON.parse(raw)); }
-    catch (e) { console.log('[DEBUG readJsonBody] erro de parse:', e.message); cb(new Error('invalid_json')); }
+    let parsed;
+    try { parsed = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
+    catch { return cb(new Error('invalid_json')); }
+    cb(null, parsed);
   });
   req.on('error', cb);
 }
@@ -347,7 +346,7 @@ function handleApi(req, res, urlPath) {
   const query = parseQuery(req);
 
   if (req.method === 'GET') {
-    if (route.rateLimit && !route.rateLimit(req, { user, query })) return;
+    if (route.rateLimit && !route.rateLimit(req, { user, query })) return sendJson(res, 429, { error: 'rate_limited' });
     try { route.handler(req, res, { user, query }); }
     catch (err) { console.error(err); sendJson(res, 500, { error: 'internal_error' }); }
     return;
@@ -355,7 +354,7 @@ function handleApi(req, res, urlPath) {
 
   readJsonBody(req, (err, body) => {
     if (err) return sendJson(res, 400, { error: 'invalid_body' });
-    if (route.rateLimit && !route.rateLimit(req, { user, query, body })) return;
+    if (route.rateLimit && !route.rateLimit(req, { user, query, body })) return sendJson(res, 429, { error: 'rate_limited' });
     Promise.resolve()
       .then(() => route.handler(req, res, { body, user, query }))
       .catch((e) => { console.error(e); sendJson(res, 500, { error: 'internal_error' }); });
