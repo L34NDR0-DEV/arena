@@ -15,12 +15,24 @@ Depois abra [http://localhost:3000](http://localhost:3000) no navegador.
 
 ## Controles
 
-- `WASD` — mover
-- `Mouse` — mirar
-- `Clique` — atirar
+- `Segurar direção` — mover
+- `Espaço` — atirar
 - `Shift` — dash
-- `E` — escudo
-- `ESC` — menu
+- `1-5` — usar item
+- `X` — slot extra
+- `ESC` — pausa
+- `M` — som
+
+## Modos de jogo
+
+- **Contra 1** — 5 vidas cada lado. Quem perder todas primeiro, perde.
+- **Contra 2** — enfrente 2 inimigos ao mesmo tempo. Mantenha distância.
+- **Duplo** — jogue com um amigo na mesma sala (multiplayer).
+- **Livre** — sem timer, para praticar à vontade.
+- **Teste** — inimigos não atacam, ideal para testar mecânicas.
+- **Survivor** — ondas infinitas de inimigos. Sobreviva o máximo possível.
+
+> ⚠️ O jogo está em desenvolvimento — modos, balanceamento e conteúdo podem mudar a qualquer momento.
 
 ## Stack
 

@@ -537,6 +537,10 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
         <span class="pilot-name" id="menu-pilot-name">JOGADOR</span>
         <button class="change-pilot-btn" onclick="goLoginScreen()">✎</button>
       </div>
+      <button class="changelog-btn" id="howtoplay-btn" onclick="openHowToPlay()" title="Como Jogar">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="5"/><path d="M4.5 4.5 Q4.5 3 6 3 T7.5 4.5 Q7.5 5.5 6 6 L6 7"/><circle cx="6" cy="9" r=".6" fill="currentColor" stroke="none"/></svg>
+        COMO JOGAR
+      </button>
       <button class="changelog-btn" id="changelog-btn" onclick="openChangelog()" title="Novidades">
         <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="6" r="5"/><line x1="6" y1="4" x2="6" y2="6.5"/><circle cx="6" cy="8.5" r=".6" fill="currentColor" stroke="none"/></svg>
         NOVIDADES
@@ -733,6 +737,47 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
       <button class="changelog-close" onclick="closeChangelog()">✕</button>
     </div>
     <div class="changelog-list" id="changelog-list"></div>
+  </div>
+</div>
+
+<!-- ═══ COMO JOGAR ══════════════════════════════════════════ -->
+<div id="howtoplay-modal" class="changelog-overlay" style="display:none;" onclick="if(event.target===this)closeHowToPlay()">
+  <div class="changelog-panel">
+    <div class="changelog-header">
+      <h2>Como Jogar</h2>
+      <button class="changelog-close" onclick="closeHowToPlay()">✕</button>
+    </div>
+    <div class="changelog-list">
+      <div class="changelog-entry" style="border-color:var(--gold);">
+        <span class="changelog-version" style="color:var(--gold);">⚠ EM DESENVOLVIMENTO</span>
+        <ul class="changelog-changes">
+          <li>O jogo está em desenvolvimento ativo — modos, balanceamento e conteúdo podem mudar a qualquer momento.</li>
+        </ul>
+      </div>
+      <div class="changelog-entry">
+        <span class="changelog-version">CONTROLES</span>
+        <ul class="changelog-changes">
+          <li>Segurar direção — mover</li>
+          <li>Espaço — atirar</li>
+          <li>Shift — dash</li>
+          <li>1-5 — usar item do inventário</li>
+          <li>X — slot extra</li>
+          <li>ESC — pausa</li>
+          <li>M — ativar/desativar som</li>
+        </ul>
+      </div>
+      <div class="changelog-entry">
+        <span class="changelog-version">MODOS DE JOGO</span>
+        <ul class="changelog-changes">
+          <li><b>Contra 1</b> — 5 vidas cada lado. Quem perder todas primeiro, perde.</li>
+          <li><b>Contra 2</b> — enfrente 2 inimigos ao mesmo tempo. Mantenha distância.</li>
+          <li><b>Duplo</b> — jogue com um amigo na mesma sala (multiplayer).</li>
+          <li><b>Livre</b> — sem timer, pratique à vontade.</li>
+          <li><b>Teste</b> — inimigos não atacam, ideal para testar mecânicas.</li>
+          <li><b>Survivor</b> — ondas infinitas de inimigos. Sobreviva o máximo possível.</li>
+        </ul>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1124,6 +1169,14 @@ window.openChangelog=function(){
 
 window.closeChangelog=function(){
   document.getElementById('changelog-modal').style.display='none';
+};
+
+window.openHowToPlay=function(){
+  document.getElementById('howtoplay-modal').style.display='flex';
+};
+
+window.closeHowToPlay=function(){
+  document.getElementById('howtoplay-modal').style.display='none';
 };
 
 window.selectMode=function(mode,btn){
