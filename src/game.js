@@ -170,12 +170,19 @@ export class Game {
     };
     this._onMouseUp=e=>{ if(e.button===0)this._mouse.left=false; if(e.button===2)this._mouse.right=false; };
     this._onCtx=e=>e.preventDefault();
+    // Desbloqueio do AudioContext por gesto do usuário: no Android, os
+    // controles touch chamam preventDefault() no touchstart, o que suprime
+    // os eventos sintéticos de mousedown — sem este listener dedicado, o
+    // áudio nunca sai do estado "suspended" nesses aparelhos (no iOS Safari
+    // o mousedown sintético ainda dispara, por isso só o Android é afetado).
+    this._onTouchUnlockAudio=()=>{ this._audio.resume(); };
     window.addEventListener('keydown',this._onKey);
     window.addEventListener('keyup',this._onKey);
     this.canvas.addEventListener('mousemove',this._onMouseMove);
     this.canvas.addEventListener('mousedown',this._onMouseDown);
     window.addEventListener('mouseup',this._onMouseUp);
     this.canvas.addEventListener('contextmenu',this._onCtx);
+    window.addEventListener('touchstart',this._onTouchUnlockAudio,{ passive:true });
   }
 
   _unbindInput() {
@@ -185,6 +192,7 @@ export class Game {
     this.canvas.removeEventListener('mousedown',this._onMouseDown);
     window.removeEventListener('mouseup',this._onMouseUp);
     this.canvas.removeEventListener('contextmenu',this._onCtx);
+    window.removeEventListener('touchstart',this._onTouchUnlockAudio);
   }
 
   _connectNet(name,skinIndex,roomId) {
