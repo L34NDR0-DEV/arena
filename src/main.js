@@ -1262,25 +1262,55 @@ function _drawShipIconOnCanvas(cv, skinIndex) {
   ctx.restore();
 }
 
-function loadHistory(){
-  const data=JSON.parse(localStorage.getItem('tdots_history')||'[]');
+// Converte uma linha vinda de GET /api/matches/recent (servidor, sincronizada
+// entre dispositivos) no mesmo formato que _buildHistoryEntry espera.
+function _historyEntryFromServerRow(r){
+  const skin = SKINS.find(s=>s.id===r.skinId);
+  let date = '';
+  if (r.createdAt) {
+    // created_at vem em UTC ("YYYY-MM-DD HH:MM:SS") — converte para hora local.
+    const d = new Date(r.createdAt.replace(' ','T')+'Z');
+    if (!isNaN(d)) {
+      const pad=n=>String(n).padStart(2,'0');
+      date = `${pad(d.getDate())}/${pad(d.getMonth()+1)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+  }
+  return {
+    win: !!r.win, mode: r.mode, date,
+    score: r.score??0, kills: r.kills??0,
+    items: r.items??0,
+    itemTypeCounts: r.itemTypeCounts??{},
+    skinIndex: r.skinId??0,
+    skinName: r.skinName??(skin?.name??'Nave'),
+    level: r.level??1,
+  };
+}
+// Histórico de partidas vem do servidor (tabela `matches`, por user_id) —
+// assim ele é o mesmo em qualquer dispositivo/navegador onde o piloto entrar.
+async function loadHistory(){
   const list=document.getElementById('history-list');
+  const countEl=document.getElementById('history-count');
+  if(!currentUser){
+    list.innerHTML='<div class="history-empty">Faça login para ver seu histórico.</div>';
+    countEl.textContent='';
+    return;
+  }
+  const { ok, data } = await apiFetch('/api/matches/recent');
+  const rows = (ok && data && Array.isArray(data.matches)) ? data.matches : null;
   list.innerHTML='';
-  if(!data.length){list.innerHTML='<div class="history-empty">Sem partidas ainda.</div>';}
+  if(!rows){
+    list.innerHTML='<div class="history-empty">Não foi possível carregar o histórico agora.</div>';
+    countEl.textContent='';
+    return;
+  }
+  if(!rows.length){list.innerHTML='<div class="history-empty">Sem partidas ainda.</div>';}
   else{
-    [...data].reverse().slice(0,15).forEach(e=>{
-      list.appendChild(_buildHistoryEntry(e));
+    rows.slice(0,15).forEach(r=>{
+      list.appendChild(_buildHistoryEntry(_historyEntryFromServerRow(r)));
     });
   }
-  document.getElementById('history-count').textContent=`${data.length} partida(s)`;
+  countEl.textContent=`${rows.length} partida(s)`;
 }
-function saveHistory(entry){
-  const data=JSON.parse(localStorage.getItem('tdots_history')||'[]');
-  data.push(entry); if(data.length>50) data.shift();
-  localStorage.setItem('tdots_history',JSON.stringify(data));
-  loadHistory();
-}
-window._saveHistory=saveHistory;
 
 // ── Telas ──────────────────────────────────────────────────────
 function showScreen(name){
@@ -1655,26 +1685,21 @@ window.showGameOver=function(data){
     }
   } else { livesEl.style.display='none'; }
 
-  const now=new Date(), pad=n=>String(n).padStart(2,'0');
-  window._saveHistory({
-    win:data.win, mode:selectedMode, diff:document.getElementById('diff-select').value,
-    score:data.score, kills:data.kills, items:data.items,
-    itemTypeCounts:data.itemTypeCounts??{},
-    skinIndex:data.skinIndex??selectedSkin,
-    skinName:data.skinName??(SKINS[selectedSkin]?.name??'Nave'),
-    level:data.level??1,
-    date:`${pad(now.getDate())}/${pad(now.getMonth()+1)} ${pad(now.getHours())}:${pad(now.getMinutes())}`,
-  });
-
+  // O resultado é gravado no servidor (tabela `matches`, por user_id) — assim
+  // o histórico aparece igual em qualquer dispositivo onde o piloto entrar.
   if (currentUser) {
     apiFetch('/api/matches', { method:'POST', body:{
       mode: selectedMode, difficulty: document.getElementById('diff-select').value,
       win: !!data.win, score: data.score, kills: data.kills, skinId: data.skinIndex??selectedSkin,
+      items: data.items, itemTypeCounts: data.itemTypeCounts??{},
+      skinName: data.skinName??(SKINS[selectedSkin]?.name??'Nave'),
+      level: data.level??1,
     }}).then(({ok, data:res})=>{
       if (!ok || !res) return;
       currentUser.credits = res.creditsBalance;
       updateCreditsBadge();
       if (res.rewardGranted) showNotify('+10 Créditos! Recompensa de partidas concedida.');
+      loadHistory();
     });
   }
 };

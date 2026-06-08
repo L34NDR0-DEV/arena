@@ -304,9 +304,24 @@ const ROUTES = [
         ? requestedSkin
         : user.equipped_skin;
 
+      // Dados ricos do resultado (itens coletados, nível, nome da skin) não têm
+      // coluna própria — guardamos como JSON em `details` para reconstruir o
+      // histórico completo (igual ao exibido localmente) em qualquer dispositivo.
+      const items = Number.isFinite(body.items) ? Math.trunc(body.items) : 0;
+      const level = Number.isFinite(body.level) ? Math.trunc(body.level) : 1;
+      const skinName = body.skinName ? String(body.skinName).slice(0, 40) : null;
+      let itemTypeCounts = null;
+      if (body.itemTypeCounts && typeof body.itemTypeCounts === 'object') {
+        itemTypeCounts = {};
+        for (const [type, count] of Object.entries(body.itemTypeCounts).slice(0, 40)) {
+          if (Number.isFinite(count)) itemTypeCounts[String(type).slice(0, 30)] = Math.trunc(count);
+        }
+      }
+      const details = JSON.stringify({ items, level, skinName, itemTypeCounts });
+
       const result = db.transaction(() => {
         const reward = economy.recordMatchAndMaybeReward(user.id, { mode, win: !!win });
-        db.insertMatch.run(user.id, mode, difficulty, win, score, kills, skinId, reward.rewardGranted ? 1 : (win ? 1 : 0));
+        db.insertMatch.run(user.id, mode, difficulty, win, score, kills, skinId, reward.rewardGranted ? 1 : (win ? 1 : 0), details);
         return reward;
       });
 
@@ -323,8 +338,17 @@ const ROUTES = [
     method: 'GET', path: '/api/matches/recent',
     auth: true,
     handler: (req, res, { user }) => {
-      const rows = db.recentMatches.all(user.id, 20);
-      sendJson(res, 200, { matches: rows });
+      const matches = db.recentMatches.all(user.id, 20).map(r => {
+        let extra = null;
+        try { extra = r.details ? JSON.parse(r.details) : null; } catch { /* dado antigo/corrompido — ignora */ }
+        return {
+          id: r.id, mode: r.mode, difficulty: r.difficulty, win: r.win,
+          score: r.score, kills: r.kills, skinId: r.skin_id, createdAt: r.created_at,
+          items: extra?.items, level: extra?.level,
+          skinName: extra?.skinName, itemTypeCounts: extra?.itemTypeCounts,
+        };
+      });
+      sendJson(res, 200, { matches });
     },
   },
 

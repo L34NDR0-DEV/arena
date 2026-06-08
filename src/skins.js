@@ -208,6 +208,18 @@ const skinArcadeVerde = makeSprite(11, 'Arcade Verde', '#33cc55', 'Arcadeverde.p
   isArcade: true,
 });
 
+// UFO Dourado — disco blindado dourado com núcleo vermelho, motores nas
+// quatro pontas (mesmo padrão giratório da Hex Champion).
+const skinUfoDourado = makeSprite(12, 'UFO Dourado', '#ffcc33', 'Uforecompensa.png', {
+  size: 80,
+  nozzle: { x:0, y:-0.72 },
+  engines: [
+    { x:-0.62, y: 0.68 },
+    { x: 0.62, y: 0.68 },
+  ],
+  spinsOnAxis: true,
+});
+
 export const SKINS = [
   skinVermelho,
   skinPonta,
@@ -221,6 +233,7 @@ export const SKINS = [
   skinRosaNeon,
   skinArcadeVerde,
   skinHexChampion,
+  skinUfoDourado,
 ];
 
 // IDs de skins que NUNCA aparecem na loja para compra — concedidas apenas

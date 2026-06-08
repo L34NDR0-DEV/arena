@@ -93,6 +93,14 @@ if (!userColumns.includes('tutorial_seen')) {
   db.exec(`ALTER TABLE users ADD COLUMN tutorial_seen INTEGER NOT NULL DEFAULT 0`);
 }
 
+// `details` guarda um JSON com dados ricos da partida (itens coletados, nível,
+// nome da skin, contagem por tipo de item) que não têm coluna própria — usado
+// para reconstruir o histórico completo a partir do servidor em qualquer dispositivo.
+const matchColumns = db.prepare(`PRAGMA table_info(matches)`).all().map(c => c.name);
+if (!matchColumns.includes('details')) {
+  db.exec(`ALTER TABLE matches ADD COLUMN details TEXT`);
+}
+
 const stmts = {
   insertUser:           db.prepare(`INSERT INTO users (email, display_name, password_hash, google_id) VALUES (?, ?, ?, ?)`),
   findUserByEmail:      db.prepare(`SELECT * FROM users WHERE email = ?`),
@@ -110,7 +118,7 @@ const stmts = {
   spendCredits:         db.prepare(`UPDATE users SET credits = credits - ? WHERE id = ? AND credits >= ?`),
   setRewardState:       db.prepare(`UPDATE users SET reward_progress_count = ?, reward_modes_seen = ? WHERE id = ?`),
   setRewardHourState:   db.prepare(`UPDATE users SET reward_hour_count = ?, reward_hour_started = ? WHERE id = ?`),
-  insertMatch:          db.prepare(`INSERT INTO matches (user_id, mode, difficulty, win, score, kills, skin_id, counted_for_reward) VALUES (?,?,?,?,?,?,?,?)`),
+  insertMatch:          db.prepare(`INSERT INTO matches (user_id, mode, difficulty, win, score, kills, skin_id, counted_for_reward, details) VALUES (?,?,?,?,?,?,?,?,?)`),
   recentMatches:        db.prepare(`SELECT * FROM matches WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`),
   createSession:        db.prepare(`INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)`),
   findSession:          db.prepare(`SELECT * FROM sessions WHERE token = ?`),
