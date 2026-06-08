@@ -8,14 +8,20 @@ const db = require('./db');
 const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN || '';
 const PUBLIC_URL      = (process.env.PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '');
 
+// `bonus` agora é a quantidade FIXA de créditos extras (exibida como
+// "+N créditos de bônus" na loja, em vez da porcentagem de antes) —
+// `credits` já é o total final (base + bônus) creditado na compra.
+// Os pacotes 10/50/100 mantêm o mesmo total de antes; o `bonus` aqui é
+// só a conversão das antigas porcentagens (+10/+30/+40%) para valor fixo
+// (ex.: pack_50 → base 2500 × 1.30 = 3250 ⇒ bônus = 750).
 const CREDIT_PACKAGES = {
-  pack_1:  { id: 'pack_1',  credits: 100,   priceCents: 100,   label: 'R$ 1,00',  bonus: null   },
-  pack_3:  { id: 'pack_3',  credits: 150,   priceCents: 300,   label: 'R$ 3,00',  bonus: null   },
-  pack_5:  { id: 'pack_5',  credits: 250,   priceCents: 500,   label: 'R$ 5,00',  bonus: null   },
-  pack_10: { id: 'pack_10', credits: 550,   priceCents: 1000,  label: 'R$ 10,00', bonus: '+10%' },
-  pack_20: { id: 'pack_20', credits: 1200,  priceCents: 2000,  label: 'R$ 20,00', bonus: '+20%' },
-  pack_50: { id: 'pack_50', credits: 3250,  priceCents: 5000,  label: 'R$ 50,00', bonus: '+30%' },
-  pack_100:{ id: 'pack_100',credits: 7000,  priceCents: 10000, label: 'R$ 100,00',bonus: '+40%' },
+  pack_3:  { id: 'pack_3',  credits: 240,   priceCents: 300,   label: 'R$ 3,00',  bonus: 90   },
+  pack_5:  { id: 'pack_5',  credits: 250,   priceCents: 500,   label: 'R$ 5,00',  bonus: null },
+  pack_7:  { id: 'pack_7',  credits: 564,   priceCents: 700,   label: 'R$ 7,00',  bonus: 214  },
+  pack_10: { id: 'pack_10', credits: 550,   priceCents: 1000,  label: 'R$ 10,00', bonus: 50   },
+  pack_20: { id: 'pack_20', credits: 1162,  priceCents: 2000,  label: 'R$ 20,00', bonus: 162  },
+  pack_50: { id: 'pack_50', credits: 3250,  priceCents: 5000,  label: 'R$ 50,00', bonus: 750  },
+  pack_100:{ id: 'pack_100',credits: 7000,  priceCents: 10000, label: 'R$ 100,00',bonus: 2000 },
 };
 
 let mpClient = null;

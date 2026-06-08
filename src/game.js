@@ -23,7 +23,9 @@ export class Game {
 
     // Modo Teste: arena bem menor para visualizar os 4 cantos/torres com facilidade
     if (mode==='teste') setArenaSize(Math.round(ARENA_W_DEFAULT*0.35), Math.round(ARENA_H_DEFAULT*0.35));
-    else if (mode==='tower_defense') setArenaSize(Math.round(ARENA_W_DEFAULT*0.6), Math.round(ARENA_H_DEFAULT*0.6));
+    // Modos online (Equipe Online / Tower Defense): arenas reduzidas — partidas
+    // mais dinâmicas, menos espaço pra "fugir" e mais encontros entre jogadores.
+    else if (mode==='tower_defense' || mode==='equipe_online') setArenaSize(Math.round(ARENA_W_DEFAULT*0.6), Math.round(ARENA_H_DEFAULT*0.6));
     else setArenaSize(ARENA_W_DEFAULT, ARENA_H_DEFAULT);
 
     const arenaEl=document.getElementById('arena-select');

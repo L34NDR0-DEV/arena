@@ -751,9 +751,12 @@ export class Player {
 
     if (this.dead) return;
 
-    // Chamas
-    if (!this.isAlien) drawFlames(ctx,this.flames);
-    else { const e=this.skin.getEngine(this.x,this.y,this.angle,1.76); drawAlienThruster(ctx,e.x,e.y,this._age); }
+    // Chamas — discos "UFO" totalmente blindados (noThruster) não emitem
+    // nenhum rastro de propulsão, nem o clássico nem o thruster alienígena.
+    if (!this.skin.noThruster) {
+      if (!this.isAlien) drawFlames(ctx,this.flames);
+      else { const e=this.skin.getEngine(this.x,this.y,this.angle,1.76); drawAlienThruster(ctx,e.x,e.y,this._age); }
+    }
 
     // Nave
     ctx.save();

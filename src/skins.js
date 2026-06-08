@@ -46,9 +46,12 @@ function makeSprite(id, name, color, file, opts = {}) {
   const isArcade = opts.isArcade ?? false;
 
   const spinsOnAxis = opts.spinsOnAxis ?? false;
+  // Discos "UFO" totalmente blindados — sem chama de propulsão visível
+  // (nem o rastro clássico, nem o thruster de energia alienígena).
+  const noThruster = opts.noThruster ?? false;
 
   return {
-    id, name, color, isAlien, isArcade, spinsOnAxis, hasSprite:true, img,
+    id, name, color, isAlien, isArcade, spinsOnAxis, noThruster, hasSprite:true, img,
     _nozzle:nozzle, _engines:engines, _size:size,
 
     getNozzle(cx, cy, angle, scale=1) {
@@ -131,12 +134,14 @@ const skinTriangulo = makeSprite(4, 'Stealthwing', '#8899aa', 'Triangulo.png', {
   spinsOnAxis: true,
 });
 
-// Alien Disc — disco voador, sem chama convencional (thruster de energia)
+// Alien Disc — disco voador totalmente blindado, sem nenhuma chama de
+// propulsão visível (nem rastro clássico, nem thruster de energia).
 const skinAlien = makeSprite(5, 'Alien Disc', '#aa44ff', 'Alien.png', {
   size: 80,
   nozzle: { x:0, y:0 },           // emite de qualquer direção (disco)
-  engines: [{ x:0, y:0.2 }],      // centro inferior (thruster de energia ao redor)
+  engines: [{ x:0, y:0.2 }],
   isAlien: true,
+  noThruster: true,
 });
 
 // Roxa — caça pesado, motor central + 2 laterais na base das asas
@@ -208,8 +213,8 @@ const skinArcadeVerde = makeSprite(11, 'Arcade Verde', '#33cc55', 'Arcadeverde.p
   isArcade: true,
 });
 
-// UFO Dourado — disco blindado dourado com núcleo vermelho, motores nas
-// quatro pontas (mesmo padrão giratório da Hex Champion).
+// UFO Dourado — disco blindado dourado com núcleo vermelho (mesmo padrão
+// giratório da Hex Champion), totalmente blindado: sem chama de propulsão.
 const skinUfoDourado = makeSprite(12, 'UFO Dourado', '#ffcc33', 'Uforecompensa.png', {
   size: 80,
   nozzle: { x:0, y:-0.72 },
@@ -218,6 +223,7 @@ const skinUfoDourado = makeSprite(12, 'UFO Dourado', '#ffcc33', 'Uforecompensa.p
     { x: 0.62, y: 0.68 },
   ],
   spinsOnAxis: true,
+  noThruster: true,
 });
 
 // Amarela — caça robusto laranja/dourado, opção intermediária/premium
