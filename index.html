@@ -493,6 +493,19 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   animation:shopCardIn .4s cubic-bezier(.34,1.56,.64,1);
 }
 .shop-track-empty svg{width:40px;height:40px;color:var(--green);filter:drop-shadow(0 0 10px var(--green));}
+
+/* Linha divisória entre as naves clássicas e as da linha Arcade */
+.shop-track-divider{
+  flex:none;align-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:8px;width:34px;position:relative;
+}
+.shop-track-divider::before,.shop-track-divider::after{
+  content:'';flex:1;width:2px;background:linear-gradient(to bottom,transparent,var(--gold),transparent);
+}
+.shop-track-divider span{
+  font-family:'Press Start 2P',monospace;font-size:7px;letter-spacing:2px;color:var(--gold);
+  writing-mode:vertical-rl;white-space:nowrap;text-shadow:0 0 8px rgba(255,204,0,.5);
+}
 .shop-frame{
   flex-shrink:0;width:228px;display:flex;flex-direction:column;align-items:center;gap:11px;
   background:linear-gradient(180deg,#0a1d30,#04080f);border:2px solid var(--cyan);
@@ -914,7 +927,9 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 #tutorial-overlay{
   position:fixed;inset:0;z-index:9997;display:none;align-items:center;justify-content:center;
   flex-direction:column;gap:18px;padding:24px;
-  background:radial-gradient(ellipse at 50% 38%,rgba(0,40,60,.94),rgba(2,5,8,.98));
+  /* Fundo 100% opaco — não deixa o cenário do menu/login transparecer atrás,
+     mantendo o foco só no piloto-guia e na nave de exemplo. */
+  background:radial-gradient(ellipse at 50% 38%,#0a2332 0%,#050b14 55%,#02050a 100%);
   animation:srFadeIn .35s ease both;
 }
 #tutorial-ship-canvas{filter:drop-shadow(0 0 22px var(--cyan));animation:tutShipFloat 3.2s ease-in-out infinite;}
@@ -938,8 +953,8 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   transform:rotate(45deg);
 }
 .tut-step-label{font-family:'Press Start 2P',monospace;font-size:7px;letter-spacing:2px;color:var(--cyan);margin-bottom:8px;}
-.tut-title{font-family:'Press Start 2P',monospace;font-size:12px;color:#fff;margin-bottom:10px;letter-spacing:.5px;}
-.tut-text{font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:16px;}
+.tut-title{font-family:'Press Start 2P',monospace;font-size:12px;color:#fff;margin-bottom:12px;letter-spacing:.5px;}
+.tut-text{font-size:13px;color:var(--text);line-height:1.75;margin-bottom:16px;}
 .tut-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;}
 .tut-dots{display:flex;gap:6px;}
 .tut-dot{width:7px;height:7px;border-radius:50%;background:#1a3a5a;transition:background .2s;}
@@ -1863,37 +1878,41 @@ function applyModeSlotToggle(){
 const TUTORIAL_STEPS = [
   {
     title: 'Bem-vindo, piloto!',
-    text: 'Eu sou seu instrutor de voo. Essa é sua nave — você vai pilotá-la pela arena, atirar em inimigos e cumprir objetivos em cada modo de jogo.',
+    text: 'Eu sou seu instrutor de voo. Essa na sua frente é a Shadow Roxa, uma das naves do hangar — repare nos motores na popa: é por ali que sai a propulsão enquanto você voa pela arena.',
   },
   {
-    title: 'Movimento e mira',
-    text: 'No computador, mova-se com WASD ou as setas e mire/atire com o mouse. No celular, use o analógico virtual para mover — sua nave atira automaticamente na direção em que você está se movendo.',
+    title: 'Como mover e atirar',
+    text: 'Segure o BOTÃO DIREITO do mouse: sua nave voa até onde o cursor estiver — solte para parar. Pressione ESPAÇO para atirar; a mira segue automaticamente a posição do cursor, então é só apontar e disparar.',
   },
   {
-    title: 'Itens e poderes',
-    text: 'Durante a partida aparecem itens flutuando pela arena: alguns curam ou fortalecem sua nave, outros são armadilhas dos inimigos. Pegue os bons e evite os ruins!',
+    title: 'Dash — fuga rápida',
+    text: 'Enquanto estiver se movendo, segure SHIFT para disparar um dash: um impulso curto e veloz na direção do movimento, ótimo para escapar de tiros inimigos ou se reposicionar no meio do combate.',
+  },
+  {
+    title: 'Vida, escudo e mana',
+    text: 'A barra VERMELHA é sua vida — não deixe zerar. A AZUL é o escudo, que absorve parte do dano antes de chegar à vida. Já a mana (combustível dos motores) é gasta ao mover e dar dash, e recarrega sozinha quando você fica parado.',
+  },
+  {
+    title: 'Itens e evolução',
+    text: 'Durante a partida aparecem itens flutuando pela arena — use as teclas 1 a 5 (e X pro slot bônus) para ativá-los: curas, escudos, tiros especiais e muito mais. Cada inimigo abatido também rende XP — suba de nível e seus tiros ficam mais fortes.',
   },
   {
     title: 'Modos de jogo',
-    text: 'Escolha entre vários modos no menu: dispute contra a IA (Contra 1/2), sobreviva o quanto puder (Survivor), ou entre em equipes online para batalhas PvP em tempo real contra outros jogadores.',
+    text: 'No menu você escolhe o modo: enfrente a IA em Contra 1/2, sobreviva a ondas infinitas no Survivor, ou entre em batalhas online — Equipe Online (PvP em times de 3) e o Torneio Tower Defense, onde duplas disputam o controle de uma torre.',
   },
   {
     title: 'Pronto para decolar!',
-    text: 'Suba de nível, ganhe créditos jogando e desbloqueie naves novas na loja. Agora é só escolher um modo e começar sua primeira missão. Boa sorte, piloto!',
+    text: 'Jogue para ganhar créditos e desbloquear naves novas na loja — inclusive a nova linha Arcade! Agora é só escolher um modo e iniciar sua primeira missão. Boa sorte, piloto!',
   },
 ];
 let _tutStep = 0;
-
-function _tutRandomShip(){
-  const pool = SKINS.filter(s => !REWARD_ONLY_SKIN_IDS?.includes(s.id));
-  return pool[Math.floor(Math.random()*pool.length)] || SKINS[0];
-}
+const TUTORIAL_SHIP_ID = 6; // Shadow Roxa — nave de exemplo do guia
 
 function _drawTutorialShip(){
   const cv = document.getElementById('tutorial-ship-canvas');
   if (!cv) return;
   const cctx = cv.getContext('2d');
-  const skin = window._tutShip || (window._tutShip = _tutRandomShip());
+  const skin = SKINS.find(s=>s.id===TUTORIAL_SHIP_ID) || SKINS[0];
   function draw(){
     cctx.clearRect(0,0,cv.width,cv.height);
     cctx.save();
@@ -1939,7 +1958,6 @@ function finishTutorial(){
 function maybeShowTutorial(){
   if (!profile || profile.tutorialSeen) return;
   _tutStep = 0;
-  window._tutShip = _tutRandomShip();
   _renderTutorialStep();
   document.getElementById('tutorial-overlay').style.display = 'flex';
   _drawTutorialShip();
@@ -2137,8 +2155,12 @@ resizeLoginBg(); window.addEventListener('resize',resizeLoginBg);
 
   function tryPlay(){
     if (sessionStorage.getItem(FLAG)) return cleanup();
-    const loginScreen = document.getElementById('login-screen');
-    if (loginScreen.style.display === 'none') return;
+    // Não checamos mais se a tela de login está visível: contas com sessão
+    // salva pulam direto pro menu (showScreen pausa a música antes do 1º
+    // gesto) — bloquear aqui faria a música nunca tocar nesses casos, que
+    // são a maioria no Android/desktop (no iPhone a sessão raramente
+    // persiste, por isso só lá o piloto sempre passava pela tela de login).
+    // music.play() funciona normalmente mesmo após showScreen() pausá-la.
     // Só marca como "tocada" e limpa os listeners se o play() realmente
     // for aceito — navegadores como Chrome/Android podem rejeitar a
     // primeira tentativa (gesto não qualificado); deixamos outros gestos
@@ -2429,11 +2451,16 @@ function buildShopTrack(){
     return;
   }
 
-  available.forEach((skin, i)=>{
+  // Agrupa: linha clássica primeiro, depois — separadas por uma divisória —
+  // as naves da linha Arcade (novidade, com seu próprio visual de motores).
+  const classics = available.filter(s=>!s.isArcade);
+  const arcades  = available.filter(s=>s.isArcade);
+  let i = 0;
+  function appendCard(skin){
     const card = document.createElement('div');
     card.className = 'shop-card' + (skin.id===shopSelectedId ? ' selected' : '');
     card.dataset.id = skin.id;
-    card.style.setProperty('--i', i);
+    card.style.setProperty('--i', i++);
     const cv = document.createElement('canvas'); cv.width = cv.height = 56;
     const cctx = cv.getContext('2d');
     function draw(){
@@ -2463,7 +2490,15 @@ function buildShopTrack(){
     }
     card.onclick = () => selectShopSkin(skin.id);
     track.appendChild(card);
-  });
+  }
+  classics.forEach(appendCard);
+  if (classics.length && arcades.length) {
+    const divider = document.createElement('div');
+    divider.className = 'shop-track-divider';
+    divider.innerHTML = '<span>LINHA ARCADE</span>';
+    track.appendChild(divider);
+  }
+  arcades.forEach(appendCard);
 }
 
 function drawShopFrame(skin){

@@ -44,11 +44,12 @@ function makeSprite(id, name, color, file, opts = {}) {
   const engines = opts.engines ?? [{ x:0, y:0.85 }];
   const previewAngle = opts.previewAngle ?? 0;
   const isAlien = opts.isAlien ?? false;
+  const isArcade = opts.isArcade ?? false;
 
   const spinsOnAxis = opts.spinsOnAxis ?? false;
 
   return {
-    id, name, color, isAlien, spinsOnAxis, hasSprite:true, img,
+    id, name, color, isAlien, isArcade, spinsOnAxis, hasSprite:true, img,
     _nozzle:nozzle, _engines:engines, _size:size,
 
     getNozzle(cx, cy, angle, scale=1) {
@@ -207,6 +208,7 @@ const skinArcadeVerde = makeSprite(11, 'Arcade Verde', '#33cc55', 'Arcadeverde.p
     { x:-0.16, y: 0.86 },   // motor esquerdo
     { x: 0.16, y: 0.86 },   // motor direito
   ],
+  isArcade: true,
 });
 
 export const SKINS = [
