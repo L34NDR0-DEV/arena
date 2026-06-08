@@ -311,6 +311,9 @@ async function onAuthSuccess(){
   if (!profile || profile.tutorialSeen) maybeShowNewModeAlert();
 }
 
+// Carrega o botão Google Sign-In apenas quando necessário (tela de login).
+// Chamada só pelo boot() quando não há sessão ativa — evita requisições
+// desnecessárias ao Google e o auto-prompt (One Tap) para usuários já logados.
 async function setupGoogleSignIn(){
   const { data } = await apiFetch('/api/config');
   const clientId = data && data.googleClientId;
@@ -321,6 +324,7 @@ async function setupGoogleSignIn(){
   onload.id = 'g_id_onload';
   onload.dataset.client_id = clientId;
   onload.dataset.callback = 'onGoogleCredential';
+  onload.dataset.auto_prompt = 'false'; // nunca dispara One Tap automático
   document.getElementById('g_id_signin_container').appendChild(onload);
   const btn = document.createElement('div');
   btn.className = 'g_id_signin';
@@ -333,7 +337,7 @@ async function setupGoogleSignIn(){
   script.async = true; script.defer = true;
   document.head.appendChild(script);
 }
-setupGoogleSignIn();
+// NÃO chama setupGoogleSignIn() aqui — é chamada pelo boot() apenas se não houver sessão.
 
 const MODE_TIPS={
   contra1: 'CONTRA 1 — 5 VIDAS CADA. QUEM PERDER TODAS PRIMEIRO PERDE!',
@@ -1845,6 +1849,8 @@ function showNotify(text){
 }
 
 // ── Inicialização: tenta sessão existente, senão mostra tela de login ──
+// setupGoogleSignIn() só é chamada aqui, quando não há sessão, para evitar
+// requisições desnecessárias ao Google e o One Tap automático para logados.
 (async function boot(){
   const hasSession = await refreshProfile();
   if (hasSession) {
@@ -1855,5 +1861,6 @@ function showNotify(text){
     if (!profile || profile.tutorialSeen) maybeShowNewModeAlert();
   } else {
     showScreen('login');
+    setupGoogleSignIn();
   }
 })();

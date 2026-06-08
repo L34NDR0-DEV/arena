@@ -613,7 +613,15 @@ export class Game {
     // ── Portais e Buracos Negros ──────────────────────────────
     if (this.portalMgr) {
       const allEntities = [this.player, ...this.enemyMgr.enemies.filter(e=>!e.dead), ...Object.values(this.peers), ...this.bots];
-      this.portalMgr.update(dt, allEntities);
+      const teleported = this.portalMgr.update(dt, allEntities);
+      // Bônus de teleporte ao player: +20 mana e +15 hp
+      for (const { entity } of teleported) {
+        if (entity === this.player) {
+          this.player.addMana(20);
+          this.player.heal(15);
+          this.arena.spawnParticles(this.player.x, this.player.y, '#00cfff', 10, 120);
+        }
+      }
       // Dano dos buracos negros ao player
       if (!this.player.dead && !this.player.rebuilding) {
         const bh = this.portalMgr.applyBlackHoles(this.player, dt);

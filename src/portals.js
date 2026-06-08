@@ -522,6 +522,8 @@ export class PortalManager {
     return this.portals.find(p => p.pairId === portal.pairId && p.role !== portal.role);
   }
 
+  // Retorna o portal usado (ou null) para que o chamador aplique bônus
+  // específicos de entidade (ex: mana+hp apenas para o player).
   tryTeleport(entity) {
     for (const portal of this.portals) {
       if (!portal.tryEnter(entity)) continue;
@@ -532,18 +534,22 @@ export class PortalManager {
       if ('vx' in entity) { entity.vx *= 0.3; entity.vy *= 0.3; }
       portal.triggerCooldown();
       dest.triggerCooldown();
-      return true;
+      return portal;
     }
-    return false;
+    return null;
   }
 
+  // Retorna lista de { entity, portal } para cada teleporte ocorrido neste frame
   update(dt, entities=[]) {
     for (const p of this.portals)    p.update(dt);
     for (const b of this.blackHoles) b.update(dt);
+    const teleported = [];
     for (const e of entities) {
       if (e.dead) continue;
-      this.tryTeleport(e);
+      const p = this.tryTeleport(e);
+      if (p) teleported.push({ entity: e, portal: p });
     }
+    return teleported;
   }
 
   // Retorna { dmg, destroyed } agregado de todos os buracos negros para uma entidade
