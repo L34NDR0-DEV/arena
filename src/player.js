@@ -233,7 +233,7 @@ export class Player {
     this.xp=0; this.level=1; this.xpToNext=100;
     this.score=0; this.kills=0; this.itemsCollected=0;
     this.team=null; // atribuído no modo "Equipe Online" (PvP em times)
-    this.itemTypeCounts={}; // { 'HEALTH': 3, 'BOMB': 1, ... }
+    this.itemTypeCounts={}; // { 'HEALTH': 3, 'MINE': 1, ... }
 
     this.shootCd=0; this.dashCd=0; this.dashTimer=0;
     this.dashDx=0; this.dashDy=0; this.dashing=false; this.invincible=0;
@@ -378,8 +378,8 @@ export class Player {
       case 'BOOST':
         this.boostTimer = track('BOOST', Math.round(6*m));
         return { type:'used', itemType:type, color:'#00ff88' };
-      case 'BOMB':
-        return { type:'bomb', itemType:type, color:'#ff4400' };
+      case 'MINE':
+        return { type:'mine', itemType:type, color:'#ff4400' };
       case 'NUKE':
         return { type:'nuke', itemType:type, color:'#ff2200' };
       case 'FREEZE':

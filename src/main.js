@@ -586,8 +586,12 @@ function renderSkinGrid(){
   const owned = new Set(profile ? profile.ownedSkins : [economy_FREE_SKIN_ID]);
   const equipped = profile ? profile.equippedSkin : economy_FREE_SKIN_ID;
   grid.innerHTML='';
-  // A nave equipada aparece primeiro — é a que o piloto está usando agora.
-  const ordered = [...SKINS].sort((a,b)=> (b.id===equipped) - (a.id===equipped));
+  // Agrupa: equipada primeiro, depois as demais já desbloqueadas (compradas
+  // ou ganhas — ficam lado a lado nas primeiras linhas), por fim as bloqueadas.
+  // Assim, toda skin nova que o piloto destrava aparece junto das outras já
+  // ativas, em vez de espalhada entre as bloqueadas.
+  const rank = (s)=> s.id===equipped ? 0 : (owned.has(s.id) ? 1 : 2);
+  const ordered = [...SKINS].sort((a,b)=> rank(a)-rank(b));
   ordered.forEach(skin=>{
     const isOwned = owned.has(skin.id);
     const isEquipped = skin.id===equipped;
@@ -1103,8 +1107,12 @@ function _drawItemIconSmall(ctx, type, color, s) {
       ctx.beginPath(); ctx.moveTo(0,-s); ctx.lineTo(s,-s*.4); ctx.lineTo(s,s*.1); ctx.quadraticCurveTo(s,s*.8,0,s); ctx.quadraticCurveTo(-s,s*.8,-s,s*.1); ctx.lineTo(-s,-s*.4); ctx.closePath(); ctx.fill(); break;
     case 'MANA': case 'MANA_FULL':
       ctx.beginPath(); ctx.moveTo(0,-s); ctx.bezierCurveTo(s*.8,-s*.2,s*.8,s*.5,0,s); ctx.bezierCurveTo(-s*.8,s*.5,-s*.8,-s*.2,0,-s); ctx.closePath(); ctx.fill(); break;
-    case 'BOMB': case 'NUKE':
+    case 'NUKE':
       ctx.beginPath(); ctx.arc(0,s*.15,s*.6,0,Math.PI*2); ctx.fill(); break;
+    case 'MINE':
+      ctx.beginPath(); ctx.arc(0,s*.1,s*.5,0,Math.PI*2); ctx.fill();
+      for(let i=0;i<6;i++){const a=i*Math.PI/3; ctx.beginPath(); ctx.moveTo(Math.cos(a)*s*.5,s*.1+Math.sin(a)*s*.5); ctx.lineTo(Math.cos(a)*s*.85,s*.1+Math.sin(a)*s*.85); ctx.stroke();}
+      break;
     case 'MISSILE':
       ctx.beginPath(); ctx.moveTo(0,-s); ctx.lineTo(s*.3,-s*.2); ctx.lineTo(s*.2,s*.5); ctx.lineTo(-s*.2,s*.5); ctx.lineTo(-s*.3,-s*.2); ctx.closePath(); ctx.fill(); break;
     case 'FREEZE':
@@ -1197,7 +1205,7 @@ function _buildHistoryEntry(e) {
         HEALTH:'#ff3366',HEALTH_BIG:'#ff6699',SHIELD:'#00aaee',SHIELD_BIG:'#44ccff',
         MANA:'#4488ff',MANA_FULL:'#88aaff',RAPID:'#ff8800',MULTISHOT:'#ffaa22',
         PIERCING:'#ff6600',MAGNET:'#00ffee',BOOST:'#00ff88',DASH_BOOST:'#00ffaa',
-        BOMB:'#ff4400',NUKE:'#ff2200',FREEZE:'#88ddff',REGEN:'#ff88aa',
+        MINE:'#ff4400',NUKE:'#ff2200',FREEZE:'#88ddff',REGEN:'#ff88aa',
         SHIELD_AURA:'#00ccff',OVERCLOCK:'#ffdd00',INVISIBLE:'#aaaacc',
         GODMODE:'#ffd700',NOVA:'#ff00ff',VAMPIRO:'#cc0044',WARP:'#aa44ff',
         MISSILE:'#ff6600',SLOW:'#cc44aa',DRAIN:'#aa2200',BLIND:'#6622aa',POISON:'#336600',
@@ -1214,7 +1222,7 @@ function _buildHistoryEntry(e) {
         HEALTH:'HP+',HEALTH_BIG:'HP++',SHIELD:'Escudo',SHIELD_BIG:'Escudo++',
         MANA:'Mana+',MANA_FULL:'Mana Max',RAPID:'Turbo',MULTISHOT:'3-Way',
         PIERCING:'Pierce',MAGNET:'Ímã',BOOST:'Boost',DASH_BOOST:'Dash+',
-        BOMB:'Bomba',NUKE:'Nuke',FREEZE:'Freeze',REGEN:'Regen',
+        MINE:'Mina',NUKE:'Nuke',FREEZE:'Freeze',REGEN:'Regen',
         SHIELD_AURA:'Aura',OVERCLOCK:'Ovrclk',INVISIBLE:'Cloak',
         GODMODE:'Deus',NOVA:'Nova',VAMPIRO:'Vampiro',WARP:'Warp',
         MISSILE:'Míssil',SLOW:'Slow',DRAIN:'Drain',BLIND:'Cego',POISON:'Veneno',

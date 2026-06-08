@@ -446,6 +446,7 @@ export class TeamBot {
   get maxHp() { return this._brain.maxHp; }
   get r() { return this._brain.r; }
   get dead() { return this._brain.dead; }
+  set dead(v) { this._brain.dead = v; }
   set hp(v) { this._brain.hp = v; }
 
   // Escolhe o alvo vivo mais próximo entre uma lista de "jogadores"
@@ -462,13 +463,54 @@ export class TeamBot {
 
   startDeath() { this._brain.startDeath(); }
 
+  // Define o objetivo do modo (ex.: torre central do Tower Defense) — quando
+  // não há inimigo por perto para engajar, o bot avança e atira nela, agindo
+  // como um jogador de verdade perseguindo a vitória, não só caçando naves.
+  setObjective(tower) { this._objective=tower; }
+
   update(dt, players, bullets) {
     if (this.dead) return;
     const target=this._pickTarget(players);
-    if (!target) return;
-    this._proxy.x=target.x; this._proxy.y=target.y;
-    this._proxy.vx=target.vx ?? 0; this._proxy.vy=target.vy ?? 0;
-    this._brain.update(dt, this._proxy, bullets);
+
+    // Há um inimigo por perto: engaja normalmente via IA da nave (esquiva,
+    // flanco, tiro preditivo etc.)
+    if (target && Math.hypot(target.x-this.x,target.y-this.y) < 460) {
+      this._proxy.x=target.x; this._proxy.y=target.y;
+      this._proxy.vx=target.vx ?? 0; this._proxy.vy=target.vy ?? 0;
+      this._brain.update(dt, this._proxy, bullets);
+      return;
+    }
+
+    // Sem inimigo próximo: avança e atira no objetivo (torre central) —
+    // mantém o bot relevante para o resultado da partida mesmo sozinho.
+    if (this._objective && !this._objective.dead) {
+      const obj=this._objective;
+      const dx=obj.x-this.x, dy=obj.y-this.y;
+      const dist=Math.hypot(dx,dy)||1;
+      this._proxy.x=obj.x; this._proxy.y=obj.y; this._proxy.vx=0; this._proxy.vy=0;
+      this._brain.update(dt, this._proxy, bullets);
+      // Tiro extra direto na torre quando dentro de alcance — o `_brain` mira
+      // em "jogadores", então disparamos manualmente contra o objetivo aqui.
+      this._objShootTimer = (this._objShootTimer ?? 0) - dt;
+      if (dist < 480 && this._objShootTimer <= 0) {
+        this._objShootTimer = 1.0;
+        const bspd=340;
+        this._brain._audio?.playEnemyShoot?.();
+        bullets.push({
+          x:this.x, y:this.y,
+          vx:(dx/dist)*bspd, vy:(dy/dist)*bspd,
+          damage:this._brain.damage, owner:'player', team:this.team, shooter:this, shooterIsBot:true,
+          life:1.6, owner_color:TEAM_COLORS[this.team]||'#ffaa66', dirX:dx/dist, dirY:dy/dist, r:5,
+        });
+      }
+      return;
+    }
+
+    if (target) {
+      this._proxy.x=target.x; this._proxy.y=target.y;
+      this._proxy.vx=target.vx ?? 0; this._proxy.vy=target.vy ?? 0;
+      this._brain.update(dt, this._proxy, bullets);
+    }
   }
 
   draw(ctx) {

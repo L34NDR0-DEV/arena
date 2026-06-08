@@ -118,9 +118,9 @@ export class Game {
             const bonus = slot===5 ? ' (BÔNUS!)' : '';
             const px=this.player.x, py=this.player.y;
             const en=this.enemyMgr.enemies;
-            if (result.type==='bomb') {
-              this.combat.triggerBomb(px,py,en,this.player);
-              this.ui.notify('BOMBA!'+bonus,'#ff4400'); this._audio.playBomb?.();
+            if (result.type==='mine') {
+              this.combat.deployMine(px,py,this.player);
+              this.ui.notify('MINA ARMADA!'+bonus,'#ff4400');
             } else if (result.type==='nuke') {
               this.combat.triggerBomb(px,py,en,this.player,420);
               this.arena.spawnParticles(px,py,'#ff4400',30,280);
@@ -301,7 +301,7 @@ export class Game {
     this.ui.notify(`Partida formada! Você está no Time ${this.team==='red'?'Vermelho':'Azul'}`, this.team==='red'?'#ff4d6a':'#4da6ff');
 
     this._refreshMatchLoading(matchPeers);
-    this._loadingHideAt = performance.now() + 3500;
+    this._loadingHideAt = performance.now() + 7000;
   }
 
   // ── Torneio "Tower Defense" — fila global única, partidas 2x2 sequenciais ──
@@ -342,7 +342,12 @@ export class Game {
       if (p.isBot) {
         if (this.isHost) {
           const {x,y}=this._spawnPosFor(p.team);
-          this.bots.push(new TeamBot({ id:p.id, name:p.name, team:p.team, x, y, difficulty:this.diff, skinIndex:p.skinIndex }));
+          // Bots do Torneio Tower Defense são sempre "difíceis" — independente
+          // da dificuldade escolhida pelo jogador — para a disputa pela torre
+          // central exigir mais estratégia e trabalho em equipe real.
+          const bot = new TeamBot({ id:p.id, name:p.name, team:p.team, x, y, difficulty:'dificil', skinIndex:p.skinIndex });
+          bot.setObjective(this.towerDefenseMgr?.tower);
+          this.bots.push(bot);
         } else {
           // Clientes não-anfitriões representam bots como RemotePlayers comuns
           // — o anfitrião replica o estado deles via state/event.
@@ -355,10 +360,10 @@ export class Game {
 
     const {x,y}=this._spawnPosFor(this.team);
     this.player.x=x; this.player.y=y;
-    this.ui.notify(`Confronto formado! Você está no Time ${this.team==='red'?'Vermelho':'Azul'} — destrua a torre central!`, this.team==='red'?'#ff4d6a':'#4da6ff');
+    this.ui.notify(`Confronto formado! Você está no Time ${this.team==='red'?'Vermelho':'Azul'} — destrua a torre central (agora ela revida)!`, this.team==='red'?'#ff4d6a':'#4da6ff');
 
     this._refreshMatchLoading(matchPeers);
-    this._loadingHideAt = performance.now() + 3500;
+    this._loadingHideAt = performance.now() + 7000;
   }
 
   _spawnPosFor(team) {
@@ -483,7 +488,7 @@ export class Game {
       this._resolveTowerCombat(dt);
     }
     if (this.towerDefenseMgr) {
-      this.towerDefenseMgr.update(dt);
+      this.towerDefenseMgr.update(dt, this.combat.bullets, this._tdAttackers());
       this._resolveCentralTowerCombat(dt);
     }
 
@@ -626,6 +631,16 @@ export class Game {
       const hit=towers.damageNearest(e.x,e.y,e.r,70*dt,'enemy');
       if (hit) handleCapture(hit, false);
     }
+  }
+
+  // Lista de naves vivas (jogador local + remotos + bots locais) que servem
+  // de alvo para a defesa automática da torre central — ela ataca qualquer
+  // time, então não filtramos por `team`.
+  _tdAttackers() {
+    const list=[this.player];
+    for (const id in this.peers) list.push(this.peers[id]);
+    if (this.isHost) for (const bot of this.bots) list.push(bot);
+    return list;
   }
 
   // Resolve combate contra a torre central do Torneio Tower Defense:

@@ -115,11 +115,17 @@ function _drawItemIcon(ctx, type, s) {
       break;
     }
 
-    // ── Bomba ─────────────────────────────────────────────────
-    case 'BOMB': {
-      ctx.beginPath(); ctx.arc(0,s*0.15,s*0.7,0,Math.PI*2); ctx.fill();
-      ctx.lineWidth = s*0.22; ctx.strokeStyle = ctx.fillStyle;
-      ctx.beginPath(); ctx.moveTo(s*0.4,-s*0.35); ctx.quadraticCurveTo(s*0.6,-s*0.8,s*0.2,-s); ctx.stroke();
+    // ── Mina de proximidade ───────────────────────────────────
+    case 'MINE': {
+      ctx.beginPath(); ctx.arc(0,s*0.1,s*0.55,0,Math.PI*2); ctx.fill();
+      ctx.lineWidth = s*0.16; ctx.strokeStyle = ctx.fillStyle;
+      for (let i=0;i<6;i++) {
+        const a = i*Math.PI/3;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a)*s*0.55, s*0.1+Math.sin(a)*s*0.55);
+        ctx.lineTo(Math.cos(a)*s*0.95, s*0.1+Math.sin(a)*s*0.95);
+        ctx.stroke();
+      }
       break;
     }
 

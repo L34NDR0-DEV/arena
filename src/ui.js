@@ -23,7 +23,12 @@ function _drawItemIconSmall(ctx, type, W, H) {
     case 'RAPID': { for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(i*s*.28-s*.4,-s*.5);ctx.lineTo(i*s*.28,0);ctx.lineTo(i*s*.28-s*.4,s*.5);ctx.stroke();} break; }
     case 'MAGNET': { ctx.lineWidth=s*.3; ctx.strokeStyle=def.color; ctx.beginPath(); ctx.moveTo(-s*.8,s*.2); ctx.lineTo(-s*.8,-s*.3); ctx.arc(0,-s*.3,s*.8,Math.PI,0,false); ctx.lineTo(s*.8,s*.2); ctx.stroke(); break; }
     case 'BOOST': { ctx.beginPath(); ctx.moveTo(0,-s); ctx.lineTo(s*.6,s*.4); ctx.lineTo(0,s*.1); ctx.lineTo(-s*.6,s*.4); ctx.closePath(); ctx.fill(); break; }
-    case 'BOMB': { ctx.beginPath(); ctx.arc(0,s*.15,s*.65,0,Math.PI*2); ctx.fill(); break; }
+    case 'MINE': {
+      ctx.beginPath(); ctx.arc(0,s*.1,s*.5,0,Math.PI*2); ctx.fill();
+      ctx.lineWidth=s*.12;
+      for(let i=0;i<6;i++){const a=i*Math.PI/3; ctx.beginPath(); ctx.moveTo(Math.cos(a)*s*.5,s*.1+Math.sin(a)*s*.5); ctx.lineTo(Math.cos(a)*s*.9,s*.1+Math.sin(a)*s*.9); ctx.stroke();}
+      break;
+    }
     case 'FREEZE': { for(let i=0;i<6;i++){ctx.save();ctx.rotate(i*Math.PI/3);ctx.lineWidth=s*.15;ctx.strokeStyle=def.color;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,-s);ctx.stroke();ctx.restore();} break; }
     case 'SLOW': { ctx.beginPath(); ctx.arc(0,0,s*.65,0,Math.PI*2); ctx.lineWidth=s*.18; ctx.stroke(); ctx.beginPath(); ctx.moveTo(0,-s*.45); ctx.lineTo(0,0); ctx.lineTo(s*.3,s*.3); ctx.stroke(); break; }
     case 'DRAIN': { ctx.beginPath(); ctx.moveTo(0,-s); ctx.lineTo(s*.3,-s*.2); ctx.lineTo(s*.15,-s*.2); ctx.lineTo(s*.15,s); ctx.lineTo(-s*.15,s); ctx.lineTo(-s*.15,-s*.2); ctx.lineTo(-s*.3,-s*.2); ctx.closePath(); ctx.fill(); break; }

@@ -25,7 +25,7 @@ export const ITEM_DEFS = {
   MAGNET:     { color:'#00ffee', glow:'#00ffee55', rarity:'rare',      label:'MAG',    desc:'Ímã 10s',               usable:true,  harmful:false, legendary:false },
   BOOST:      { color:'#00ff88', glow:'#00ff8855', rarity:'rare',      label:'BOOST',  desc:'Vel +50% 6s',           usable:true,  harmful:false, legendary:false },
   DASH_BOOST: { color:'#00ffaa', glow:'#00ffaa44', rarity:'epic',      label:'DASH+',  desc:'Dash carrega 2x 8s',    usable:true,  harmful:false, legendary:false },
-  BOMB:       { color:'#ff4400', glow:'#ff440055', rarity:'rare',      label:'BOMB',   desc:'Explosão AoE',          usable:true,  harmful:false, legendary:false },
+  MINE:       { color:'#ff4400', glow:'#ff440055', rarity:'rare',      label:'MINA',   desc:'Mina de proximidade',   usable:true,  harmful:false, legendary:false },
   NUKE:       { color:'#ff2200', glow:'#ff220077', rarity:'epic',      label:'NUKE',   desc:'Explosão enorme',       usable:true,  harmful:false, legendary:false },
   FREEZE:     { color:'#88ddff', glow:'#88ddff44', rarity:'rare',      label:'FREEZE', desc:'Congela inimigos 4s',   usable:true,  harmful:false, legendary:false },
   REGEN:      { color:'#ff88aa', glow:'#ff88aa44', rarity:'rare',      label:'REGEN',  desc:'Regen HP 8s',           usable:true,  harmful:false, legendary:false },
@@ -73,7 +73,7 @@ const SPAWN_TABLE = [
   ['RAPID',        7, 10],
   ['MAGNET',       6,  9],
   ['BOOST',        6,  9],
-  ['BOMB',         5,  7],
+  ['MINE',         5,  7],
   ['FREEZE',       5,  7],
   ['REGEN',        4,  6],
   // epics

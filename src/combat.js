@@ -7,6 +7,7 @@ export class CombatSystem {
     this.arena=arena;
     this.bullets=[];
     this.missiles=[];
+    this.mines=[];
     this.explosions=[];
     this._enemyMgr=null;
     this._audio=null;
@@ -154,7 +155,8 @@ export class CombatSystem {
             const died=player.takeDamage(b.damage);
             if (died) {
               this._triggerPlayerRebuild(player,isContra1);
-              this._reportPvpKill(b.shooter?.name||'Adversário', shooterTeam,
+              const killerName = b.owner==='tower' ? 'Torre Central' : (b.shooter?.name||'Adversário');
+              this._reportPvpKill(killerName, shooterTeam,
                 { name:player.name, team:player.team, isBot:false },
                 !!b.shooterIsBot, b.shooter?.id);
             }
@@ -171,8 +173,10 @@ export class CombatSystem {
                 target.startDeath?.();
                 if (b.owner==='player') { player.kills++; player.score+=15; player.addXP(15); }
                 else if (b.shooter) { b.shooter.kills++; b.shooter.score+=15; }
-                this._reportPvpKill(b.owner==='player'?player.name:(b.shooter?.name||'Bot'), shooterTeam,
-                  target, !!b.shooterIsBot, b.shooter?.id);
+                const killerName = b.owner==='player' ? player.name
+                  : b.owner==='tower' ? 'Torre Central'
+                  : (b.shooter?.name||'Bot');
+                this._reportPvpKill(killerName, shooterTeam, target, !!b.shooterIsBot, b.shooter?.id);
               }
               this.spawnExplosion(b.x,b.y,r*3,b.owner_color||'#ffffff');
               return false;
@@ -257,6 +261,9 @@ export class CombatSystem {
 
     this.explosions=this.explosions.filter(ex=>{ex.life-=dt*2.8;return ex.life>0;});
 
+    // ── Minas de proximidade ─────────────────────────────────
+    this._updateMines(dt, enemies, player);
+
     // ── Mísseis teleguiados ──────────────────────────────────
     this.missiles = this.missiles.filter(m => {
       m._age += dt;
@@ -333,6 +340,7 @@ export class CombatSystem {
   draw(ctx) {
     for (const b of this.bullets) this._drawTracer(ctx,b);
     for (const m of this.missiles) this._drawMissile(ctx, m);
+    for (const mine of this.mines) this._drawMine(ctx, mine);
     for (const ex of this.explosions) {
       ctx.save();
       ctx.globalAlpha=ex.life*0.55;
@@ -407,6 +415,66 @@ export class CombatSystem {
     ctx.fillStyle = '#ffcc44';
     ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 14;
     ctx.beginPath(); ctx.moveTo(2,6); ctx.lineTo(-2,6); ctx.lineTo(0,6+flameLen); ctx.closePath(); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+
+  // Mina de proximidade: fica armada no local onde foi solta e detona quando
+  // um inimigo chega perto (ou expira sozinha) — diferente do NUKE (explosão
+  // instantânea), recompensa posicionamento/atrair inimigos para a área.
+  deployMine(x,y,player) {
+    this.mines.push({
+      x, y, player,
+      armTimer: 0.6,   // tempo até a mina ficar ativa (evita auto-detonação imediata)
+      life: 14,        // some sozinha se nada se aproximar
+      triggerR: 70,    // raio de detecção que detona a mina
+      blastR: 200,     // raio de dano da explosão
+      pulse: 0,
+    });
+  }
+
+  _updateMines(dt, enemies, player) {
+    this.mines = this.mines.filter(mine => {
+      mine.life -= dt;
+      mine.pulse += dt;
+      if (mine.armTimer > 0) { mine.armTimer -= dt; if (mine.life<=0) return false; return true; }
+      if (mine.life <= 0) return false;
+
+      for (const e of enemies) {
+        if (e.dead||e.isRespawning) continue;
+        if (Math.hypot(e.x-mine.x, e.y-mine.y) < mine.triggerR + e.r) {
+          this.triggerBomb(mine.x, mine.y, enemies, mine.player||player, mine.blastR);
+          this._audio?.playBomb?.();
+          return false;
+        }
+      }
+      return true;
+    });
+  }
+
+  _drawMine(ctx, mine) {
+    const armed = mine.armTimer <= 0;
+    const pulse = 0.5 + Math.sin(mine.pulse*5)*0.5;
+    ctx.save();
+    ctx.translate(mine.x, mine.y);
+    // Anel de detecção (só quando armada)
+    if (armed) {
+      ctx.globalAlpha = 0.18 + pulse*0.12;
+      ctx.strokeStyle = '#ff4400';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(0,0,mine.triggerR,0,Math.PI*2); ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    // Corpo da mina
+    ctx.fillStyle = '#552200';
+    ctx.beginPath(); ctx.arc(0,0,11,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle = '#ff8800'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0,0,11,0,Math.PI*2); ctx.stroke();
+    // Luz central piscante (vermelha = armada, amarela = armando)
+    ctx.shadowColor = armed ? '#ff2200' : '#ffaa00';
+    ctx.shadowBlur = 10 + pulse*8;
+    ctx.fillStyle = armed ? `rgba(255,${Math.round(40+pulse*60)},0,1)` : '#ffaa00';
+    ctx.beginPath(); ctx.arc(0,0,4,0,Math.PI*2); ctx.fill();
     ctx.shadowBlur = 0;
     ctx.restore();
   }

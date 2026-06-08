@@ -207,7 +207,7 @@ const ROUTES = [
     rateLimit: rateLimited('shop_buy', 5, 10_000, (req, { user }) => user.id),
     handler: (req, res, { body, user }) => {
       const skinId = Number(body.skinId);
-      if (!Number.isInteger(skinId) || skinId < 0 || skinId > 9) {
+      if (!Number.isInteger(skinId) || skinId < 0 || skinId > 12) {
         return sendJson(res, 400, { error: 'invalid_skin' });
       }
       if (db.ownsSkin.get(user.id, skinId)) return sendJson(res, 409, { error: 'already_owned' });
@@ -236,7 +236,7 @@ const ROUTES = [
     rateLimit: rateLimited('shop_equip', 5, 10_000, (req, { user }) => user.id),
     handler: (req, res, { body, user }) => {
       const skinId = Number(body.skinId);
-      if (!Number.isInteger(skinId) || skinId < 0 || skinId > 9) {
+      if (!Number.isInteger(skinId) || skinId < 0 || skinId > 12) {
         return sendJson(res, 400, { error: 'invalid_skin' });
       }
       if (!db.ownsSkin.get(user.id, skinId)) return sendJson(res, 403, { error: 'not_owned' });

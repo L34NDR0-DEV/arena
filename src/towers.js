@@ -21,10 +21,15 @@ const COLORS = {
   neutral: '#a98cff',
 };
 
-// Torre central do Torneio "Tower Defense" — mais resistente que as torres
-// astrais clássicas (é o objetivo de uma partida 2x2 inteira, não uma defesa
-// auxiliar) e nasce neutra ('neutral'), sem dono, no meio da arena.
-const CENTRAL_TOWER_MAX_HP = 520;
+// Torre central do Torneio "Tower Defense" — núcleo vivo que defende a si
+// mesmo: muito mais resistente que as torres astrais clássicas (é o objetivo
+// de uma partida 2x2 inteira) e agora REAGE a quem se aproxima — atira em
+// qualquer nave (de qualquer time) que entrar no seu raio de alcance, com
+// dano alto e cadência rápida. Nasce neutra ('neutral'), sem dono, no centro.
+const CENTRAL_TOWER_MAX_HP   = 950;
+const CENTRAL_TOWER_RANGE    = 640;
+const CENTRAL_TOWER_DAMAGE   = 26;
+const CENTRAL_TOWER_SHOOT_CD = 0.62;
 
 export class Tower {
   constructor(x, y, side, corner) {
@@ -580,11 +585,14 @@ export class CentralTower extends Tower {
     super(x, y, 'neutral', -1);
     this.maxHp=CENTRAL_TOWER_MAX_HP;
     this.hp=this.maxHp;
+    this._shootCd=Math.random()*CENTRAL_TOWER_SHOOT_CD;
   }
 
-  // Sobrescreve o alvo automático da torre clássica: a torre central é
-  // passiva — só avança a fase de surgimento e os timers visuais.
-  update(dt) {
+  // A torre central é um núcleo VIVO que se defende: mira e atira na nave
+  // mais próxima dentre todas as fornecidas (de ambos os times — ela não tem
+  // lado, hostiliza qualquer um que se aproxime). `attackers` é uma lista de
+  // objetos com {x,y,r,dead,team}; passada pelo TowerDefenseManager a cada frame.
+  update(dt, attackers=[]) {
     if (this.emerging) {
       this._emergeT=Math.min(1,this._emergeT+dt/EMERGE_DUR);
       if (this._emergeT>=1) this.emerging=false;
@@ -593,6 +601,41 @@ export class CentralTower extends Tower {
     if (this._hitFlash>0) this._hitFlash-=dt;
     if (this._destroyedFlash>0) this._destroyedFlash-=dt;
     this._ringPulse+=dt;
+    if (this.dead) return;
+
+    let target=null, bestD=CENTRAL_TOWER_RANGE;
+    for (const a of attackers) {
+      if (!a || a.dead) continue;
+      const d=Math.hypot(a.x-this.x, a.y-this.y);
+      if (d<bestD) { bestD=d; target=a; }
+    }
+
+    if (target) {
+      this._turretAngle=Math.atan2(target.y-this.y,target.x-this.x);
+      this._shootCd-=dt;
+      if (this._shootCd<=0) {
+        this._shootCd=CENTRAL_TOWER_SHOOT_CD;
+        this._fireAt(target);
+      }
+    }
+  }
+
+  // Disparo do núcleo central — usa o array de balas do CombatSystem (injetado
+  // pelo TowerDefenseManager) com dano/velocidade próprios, mais fortes que os
+  // das Torres Astrais — reflete que esse é o alvo final, mais bem defendido.
+  _fireAt(target) {
+    if (!this._bullets) return;
+    const bspd=380;
+    const dx=target.x-this.x, dy=target.y-this.y;
+    const d=Math.hypot(dx,dy)||1;
+    const nx=this.x+Math.cos(this._turretAngle)*(this.r+12);
+    const ny=this.y+Math.sin(this._turretAngle)*(this.r+12);
+    this._bullets.push({
+      x:nx, y:ny,
+      vx:(dx/d)*bspd, vy:(dy/d)*bspd,
+      damage:CENTRAL_TOWER_DAMAGE, owner:'tower', team:'neutral',
+      life:2.0, owner_color:this.color, dirX:dx/d, dirY:dy/d, r:6,
+    });
   }
 
   draw(ctx) {
@@ -648,9 +691,13 @@ export class TowerDefenseManager {
 
   get winnerTeam() { return this._winnerTeam; }
 
-  update(dt) {
+  // `bullets` é o array compartilhado do CombatSystem — a torre central
+  // dispara diretamente nele. `attackers` é a lista de naves vivas (jogador
+  // local + remotos + bots) que servem de alvo para a defesa automática.
+  update(dt, bullets=[], attackers=[]) {
     if (this._winnerTeam) return;
-    this.tower.update(dt);
+    this.tower._bullets = bullets;
+    this.tower.update(dt, attackers);
   }
 
   // Aplica dano ao alvo central; retorna info do impacto ou null.
