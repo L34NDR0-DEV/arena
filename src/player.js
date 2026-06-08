@@ -16,33 +16,76 @@ const MANA_DASH   = 14;         // mana gasta por dash
 const SHOOT_CD    = 0.28;       // recarga base do tiro
 const REBUILD_DUR = 10;         // segundos reconstruindo
 
-// ── Combustão na popa ────────────────────────────────────────
+// ── Combustão na popa — estilo arcade: núcleo alongado + faíscas ──
+// `angle` aqui é sempre o ângulo de VOO da nave (para onde o bico aponta),
+// não o ângulo de mira — a chama sai pela popa, ou seja, na direção oposta.
 function spawnFlameAt(flames, ex, ey, angle, intensity) {
-  const count = Math.ceil(intensity * 2);
-  for (let i = 0; i < count; i++) {
-    const spread = (Math.random()-0.5)*0.5;
-    const fa  = angle + Math.PI + spread;
-    const sp  = 55 + Math.random()*70;
-    const life = 0.14 + Math.random()*0.18;
+  const back = angle + Math.PI;
+  // Núcleo: poucas partículas grandes, alongadas no eixo da popa — dão o
+  // efeito de "jato" contínuo em vez de uma bolha de fumaça.
+  const coreCount = 1 + Math.ceil(intensity * 1.4);
+  for (let i = 0; i < coreCount; i++) {
+    const spread = (Math.random()-0.5)*0.22;
+    const fa  = back + spread;
+    const sp  = 95 + Math.random()*90;
+    const life = 0.10 + Math.random()*0.09;
     flames.push({
+      kind:'core',
+      x:ex+(Math.random()-.5)*2, y:ey+(Math.random()-.5)*2,
+      vx:Math.cos(fa)*sp, vy:Math.sin(fa)*sp,
+      angle: fa,
+      life, maxLife:life, size:5+intensity*9+Math.random()*3, flicker:Math.random(),
+    });
+  }
+  // Faíscas: partículas pequenas e rápidas, espalhadas em leque — dão
+  // sensação de velocidade arcade ("estrelas" saindo do motor).
+  const sparkCount = Math.ceil(intensity * 3);
+  for (let i = 0; i < sparkCount; i++) {
+    const spread = (Math.random()-0.5)*0.9;
+    const fa  = back + spread;
+    const sp  = 140 + Math.random()*160;
+    const life = 0.12 + Math.random()*0.16;
+    flames.push({
+      kind:'spark',
       x:ex+(Math.random()-.5)*3, y:ey+(Math.random()-.5)*3,
       vx:Math.cos(fa)*sp, vy:Math.sin(fa)*sp,
-      life, maxLife:life, size:3+Math.random()*7, flicker:Math.random(),
+      angle: fa,
+      life, maxLife:life, size:1+Math.random()*2, flicker:Math.random(),
     });
   }
 }
 function updateFlames(flames, dt) {
-  for (const f of flames) { f.x+=f.vx*dt; f.y+=f.vy*dt; f.vx*=(1-5*dt); f.vy*=(1-5*dt); f.life-=dt; }
+  for (const f of flames) { f.x+=f.vx*dt; f.y+=f.vy*dt; f.vx*=(1-4*dt); f.vy*=(1-4*dt); f.life-=dt; }
   return flames.filter(f=>f.life>0);
 }
 function drawFlames(ctx, flames) {
   for (const f of flames) {
-    const t=f.life/f.maxLife, r=f.size*t;
+    const t=f.life/f.maxLife;
     const fk=0.7+0.3*Math.sin(f.flicker*40+Date.now()*0.03);
-    ctx.save(); ctx.globalAlpha=t*fk;
-    const g=ctx.createRadialGradient(f.x,f.y,0,f.x,f.y,r);
-    g.addColorStop(0,'rgba(255,255,200,1)'); g.addColorStop(0.35,'rgba(255,130,0,0.85)'); g.addColorStop(1,'rgba(255,30,0,0)');
-    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(f.x,f.y,r,0,Math.PI*2); ctx.fill(); ctx.restore();
+    ctx.save(); ctx.globalAlpha=Math.min(1,t*1.3)*fk;
+    if (f.kind==='spark') {
+      // Faísca: traço curto na direção do movimento — reforça sensação de jato.
+      const len=f.size*3*t+2;
+      ctx.translate(f.x,f.y); ctx.rotate(f.angle);
+      const g=ctx.createLinearGradient(0,0,-len,0);
+      g.addColorStop(0,'rgba(255,255,210,0.95)'); g.addColorStop(1,'rgba(255,140,20,0)');
+      ctx.strokeStyle=g; ctx.lineWidth=f.size*t+0.6; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-len,0); ctx.stroke();
+    } else {
+      // Núcleo: gota alongada na direção da popa — gradiente quente→frio.
+      const len=f.size*(1.8+t), wid=f.size*t*0.85;
+      ctx.translate(f.x,f.y); ctx.rotate(f.angle);
+      const g=ctx.createLinearGradient(0,0,-len,0);
+      g.addColorStop(0,'rgba(255,255,235,1)');
+      g.addColorStop(0.28,'rgba(255,200,80,0.95)');
+      g.addColorStop(0.6,'rgba(255,110,20,0.8)');
+      g.addColorStop(1,'rgba(255,30,0,0)');
+      ctx.fillStyle=g;
+      ctx.beginPath();
+      ctx.ellipse(-len*0.5,0,len*0.5,wid,0,0,Math.PI*2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 }
 function drawAlienThruster(ctx, ex, ey, age) {

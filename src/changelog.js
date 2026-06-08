@@ -2,6 +2,17 @@
 // Para lançar uma atualização: adicione uma nova entrada no TOPO da lista.
 export const CHANGELOG = [
   {
+    version: 'v2.1',
+    date: '2026-06-08',
+    changes: [
+      'Novo modo "Equipe Online": PvP em times, até 6 jogadores (3x3), primeira equipe a 200 abates vence',
+      'Torneio Tower Defense: dispute o controle da torre central em duplas e ganhe a skin exclusiva "Hex Champion"',
+      'Guia de boas-vindas para novos pilotos, com instrutor explicando os controles e os modos de jogo',
+      'Avisos de novos modos de jogo direto no menu',
+      'Música de abertura agora toca corretamente em Android e navegadores web (antes só funcionava no iPhone)',
+    ],
+  },
+  {
     version: 'v2.0',
     date: '2026-06-07',
     changes: [

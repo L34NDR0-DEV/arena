@@ -4,18 +4,35 @@ import { ARENA_W, ARENA_H } from './arena.js';
 const DIFF = { facil:0.6, moderado:1.0, dificil:1.5, insano:2.2 };
 const MAX_LIVES = 5;
 
-// ── Combustão na popa ─────────────────────────────────────────
+// ── Combustão na popa — estilo arcade: núcleo alongado + faíscas ──
+// `angle` é o ângulo de VOO (bico); a chama sempre sai pela popa (oposto).
 function spawnFlame(flames, ex, ey, angle, isAlien=false) {
   if (isAlien) return;
+  const back = angle + Math.PI;
   for (let i=0;i<2;i++) {
-    const spread=(Math.random()-0.5)*0.55;
-    const fa=angle+Math.PI+spread;
-    const sp=55+Math.random()*70;
-    const life=0.15+Math.random()*0.18;
+    const spread=(Math.random()-0.5)*0.22;
+    const fa=back+spread;
+    const sp=95+Math.random()*90;
+    const life=0.10+Math.random()*0.09;
     flames.push({
+      kind:'core',
+      x:ex+(Math.random()-.5)*2, y:ey+(Math.random()-.5)*2,
+      vx:Math.cos(fa)*sp, vy:Math.sin(fa)*sp,
+      angle:fa,
+      life, maxLife:life, size:5+Math.random()*5, flicker:Math.random(),
+    });
+  }
+  for (let i=0;i<2;i++) {
+    const spread=(Math.random()-0.5)*0.9;
+    const fa=back+spread;
+    const sp=140+Math.random()*160;
+    const life=0.12+Math.random()*0.16;
+    flames.push({
+      kind:'spark',
       x:ex+(Math.random()-.5)*3, y:ey+(Math.random()-.5)*3,
       vx:Math.cos(fa)*sp, vy:Math.sin(fa)*sp,
-      life, maxLife:life, size:3+Math.random()*7, flicker:Math.random(),
+      angle:fa,
+      life, maxLife:life, size:1+Math.random()*2, flicker:Math.random(),
     });
   }
 }
@@ -23,21 +40,36 @@ function spawnFlame(flames, ex, ey, angle, isAlien=false) {
 function updateFlames(flames, dt) {
   for (const f of flames) {
     f.x+=f.vx*dt; f.y+=f.vy*dt;
-    f.vx*=(1-5*dt); f.vy*=(1-5*dt); f.life-=dt;
+    f.vx*=(1-4*dt); f.vy*=(1-4*dt); f.life-=dt;
   }
   return flames.filter(f=>f.life>0);
 }
 
 function drawFlames(ctx, flames) {
   for (const f of flames) {
-    const t=f.life/f.maxLife, r=f.size*t;
+    const t=f.life/f.maxLife;
     const flicker=0.7+0.3*Math.sin(f.flicker*40+Date.now()*0.03);
-    ctx.save(); ctx.globalAlpha=t*flicker;
-    const g=ctx.createRadialGradient(f.x,f.y,0,f.x,f.y,r);
-    g.addColorStop(0,'rgba(255,255,180,1)');
-    g.addColorStop(0.4,'rgba(255,100,0,0.8)');
-    g.addColorStop(1,'rgba(255,20,0,0)');
-    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(f.x,f.y,r,0,Math.PI*2); ctx.fill();
+    ctx.save(); ctx.globalAlpha=Math.min(1,t*1.3)*flicker;
+    if (f.kind==='spark') {
+      const len=f.size*3*t+2;
+      ctx.translate(f.x,f.y); ctx.rotate(f.angle);
+      const g=ctx.createLinearGradient(0,0,-len,0);
+      g.addColorStop(0,'rgba(255,255,210,0.95)'); g.addColorStop(1,'rgba(255,140,20,0)');
+      ctx.strokeStyle=g; ctx.lineWidth=f.size*t+0.6; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-len,0); ctx.stroke();
+    } else {
+      const len=f.size*(1.8+t), wid=f.size*t*0.85;
+      ctx.translate(f.x,f.y); ctx.rotate(f.angle);
+      const g=ctx.createLinearGradient(0,0,-len,0);
+      g.addColorStop(0,'rgba(255,255,235,1)');
+      g.addColorStop(0.28,'rgba(255,200,80,0.95)');
+      g.addColorStop(0.6,'rgba(255,110,20,0.8)');
+      g.addColorStop(1,'rgba(255,30,0,0)');
+      ctx.fillStyle=g;
+      ctx.beginPath();
+      ctx.ellipse(-len*0.5,0,len*0.5,wid,0,0,Math.PI*2);
+      ctx.fill();
+    }
     ctx.restore();
   }
 }

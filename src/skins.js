@@ -100,14 +100,16 @@ const skinPonta = makeSprite(1, 'Ponta BR', '#ffcc00', 'Ponta.png', {
   ],
 });
 
-// Ghost Verde — motor central + 2 naceles laterais
+// Ghost Verde — sprite vem com o bico apontando para BAIXO (popa nas pontas
+// superiores em V); por isso nozzle/engines ficam invertidos em relação às
+// outras naves, senão a chama saía pela frente.
 const skinVerde = makeSprite(2, 'Ghost Verde', '#00e87a', 'Verde.png', {
   size: 76,
-  nozzle: { x:0, y:-0.85 },
+  nozzle: { x:0, y:0.85 },
   engines: [
-    { x: 0,    y:  0.82 },        // motor central
-    { x:-0.42, y:  0.52 },        // nacel esquerdo
-    { x: 0.42, y:  0.52 },        // nacel direito
+    { x: 0,    y: -0.82 },        // motor central
+    { x:-0.42, y: -0.52 },        // nacel esquerdo
+    { x: 0.42, y: -0.52 },        // nacel direito
   ],
 });
 
@@ -196,6 +198,17 @@ const skinHexChampion = makeSprite(10, 'Hex Champion', '#ffcf4d', 'Triangulo.png
   spinsOnAxis: true,
 });
 
+// Arcade Verde — caça de asas largas, nova linha "arcade", com par de
+// motores gêmeos bem na popa central (já com brilho de chama no sprite).
+const skinArcadeVerde = makeSprite(11, 'Arcade Verde', '#33cc55', 'Arcadeverde.png', {
+  size: 84,
+  nozzle:  { x:0, y:-0.85 },
+  engines: [
+    { x:-0.16, y: 0.86 },   // motor esquerdo
+    { x: 0.16, y: 0.86 },   // motor direito
+  ],
+});
+
 export const SKINS = [
   skinVermelho,
   skinPonta,
@@ -207,6 +220,7 @@ export const SKINS = [
   skinMarromAzul,
   skinRosaVerde,
   skinRosaNeon,
+  skinArcadeVerde,
   skinHexChampion,
 ];
 

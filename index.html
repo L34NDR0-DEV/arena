@@ -910,6 +910,74 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   #sr-skin-canvas{width:90px;height:90px;}
 }
 
+/* ═══ Tutorial de boas-vindas (novos usuários) ═══════════════ */
+#tutorial-overlay{
+  position:fixed;inset:0;z-index:9997;display:none;align-items:center;justify-content:center;
+  flex-direction:column;gap:18px;padding:24px;
+  background:radial-gradient(ellipse at 50% 38%,rgba(0,40,60,.94),rgba(2,5,8,.98));
+  animation:srFadeIn .35s ease both;
+}
+#tutorial-ship-canvas{filter:drop-shadow(0 0 22px var(--cyan));animation:tutShipFloat 3.2s ease-in-out infinite;}
+@keyframes tutShipFloat{0%,100%{transform:translateY(0) rotate(0deg);}50%{transform:translateY(-10px) rotate(4deg);}}
+
+.tut-card{display:flex;align-items:center;gap:18px;max-width:620px;width:100%;}
+.tut-guide{
+  flex:none;width:96px;height:96px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle,#04222e,#020a10);border:2px solid var(--cyan);color:var(--cyan);
+  box-shadow:0 0 26px rgba(91,232,255,.5);overflow:hidden;
+}
+.tut-guide img{width:100%;height:100%;object-fit:cover;}
+.tut-guide svg{width:36px;height:36px;}
+.tut-bubble{
+  flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:10px;
+  padding:18px 20px;position:relative;box-shadow:0 12px 32px rgba(0,0,0,.5);
+}
+.tut-bubble::before{
+  content:'';position:absolute;left:-9px;bottom:22px;width:16px;height:16px;
+  background:var(--panel2);border-left:1px solid var(--border);border-bottom:1px solid var(--border);
+  transform:rotate(45deg);
+}
+.tut-step-label{font-family:'Press Start 2P',monospace;font-size:7px;letter-spacing:2px;color:var(--cyan);margin-bottom:8px;}
+.tut-title{font-family:'Press Start 2P',monospace;font-size:12px;color:#fff;margin-bottom:10px;letter-spacing:.5px;}
+.tut-text{font-size:12px;color:var(--text2);line-height:1.7;margin-bottom:16px;}
+.tut-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.tut-dots{display:flex;gap:6px;}
+.tut-dot{width:7px;height:7px;border-radius:50%;background:#1a3a5a;transition:background .2s;}
+.tut-dot.active{background:var(--cyan);box-shadow:0 0 8px var(--cyan);}
+
+@media (max-width:680px){
+  .tut-card{flex-direction:column;align-items:stretch;}
+  .tut-guide{align-self:center;}
+  .tut-bubble::before{display:none;}
+}
+@media (orientation:landscape) and (max-height:520px){
+  #tutorial-ship-canvas{width:110px;height:110px;}
+  .tut-card{max-width:680px;gap:10px;}
+  .tut-guide{width:60px;height:60px;}
+  .tut-bubble{padding:12px 16px;}
+  .tut-title{font-size:10px;margin-bottom:6px;}
+  .tut-text{font-size:10px;margin-bottom:10px;}
+}
+
+/* ═══ Aviso de novo modo de jogo ═════════════════════════════ */
+#new-mode-overlay{
+  position:fixed;inset:0;z-index:9996;display:none;align-items:center;justify-content:center;
+  background:rgba(2,5,8,.88);backdrop-filter:blur(6px);padding:24px;animation:srFadeIn .3s ease both;
+}
+.nm-card{
+  max-width:380px;width:100%;background:var(--panel2);border:1px solid var(--cyan);border-radius:12px;
+  padding:26px 24px;text-align:center;box-shadow:0 0 36px rgba(91,232,255,.28),0 14px 36px rgba(0,0,0,.5);
+  display:flex;flex-direction:column;align-items:center;gap:12px;
+}
+.nm-badge{font-family:'Press Start 2P',monospace;font-size:8px;letter-spacing:3px;color:var(--gold);
+  border:1px solid var(--gold);border-radius:3px;padding:5px 10px;}
+.nm-icon{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle,#0a1c2c,#020a10);border:2px solid var(--cyan);color:var(--cyan);
+  box-shadow:0 0 18px rgba(91,232,255,.4);}
+.nm-icon svg{width:30px;height:30px;}
+.nm-title{font-family:'Press Start 2P',monospace;font-size:12px;color:#fff;letter-spacing:.5px;}
+.nm-text{font-size:12px;color:var(--text2);line-height:1.7;}
+
 /* ═══ Botões ════════════════════════════════════════════════ */
 .btn{padding:10px 22px;border-radius:3px;border:none;cursor:pointer;font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;transition:all .15s;display:flex;align-items:center;gap:6px;font-family:'Press Start 2P',monospace;}
 .btn svg{width:12px;height:12px;}
@@ -1176,7 +1244,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
       </div>
 
       <div class="login-bottom">
-        <div class="login-credits">© LEANDRO · TOWERDEFENSESPACE.COM.BR<br>v2.0 · TODOS OS DIREITOS RESERVADOS</div>
+        <div class="login-credits">© LEANDRO · TOWERDEFENSESPACE.COM.BR<br>v2.1 · TODOS OS DIREITOS RESERVADOS</div>
         <div class="coin-insert">INSERT COIN</div>
       </div>
       <div class="login-support">
@@ -1483,6 +1551,37 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   </div>
 </div>
 
+<!-- ═══ TUTORIAL DE BOAS-VINDAS — guia do piloto para novos usuários ═══ -->
+<div id="tutorial-overlay" style="display:none;">
+  <canvas id="tutorial-ship-canvas" width="180" height="180"></canvas>
+  <div class="tut-card">
+    <div class="tut-guide">
+      <img src="./src/sprites/guia-piloto.png" alt="Piloto guia">
+    </div>
+    <div class="tut-bubble">
+      <div class="tut-step-label" id="tut-step-label">PASSO 1 / 5</div>
+      <div class="tut-title" id="tut-title">Bem-vindo, piloto!</div>
+      <div class="tut-text" id="tut-text">Eu sou seu instrutor de voo. Vou te mostrar rapidamente como funciona o jogo antes da sua primeira missão.</div>
+      <div class="tut-actions">
+        <button class="btn btn-ghost" id="tut-skip-btn" onclick="skipTutorial()">PULAR</button>
+        <div class="tut-dots" id="tut-dots"></div>
+        <button class="btn btn-primary" id="tut-next-btn" onclick="nextTutorialStep()">PRÓXIMO</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ AVISO DE NOVO MODO DE JOGO ═══════════════════════════ -->
+<div id="new-mode-overlay" style="display:none;" onclick="if(event.target===this)closeNewModeAlert()">
+  <div class="nm-card">
+    <div class="nm-badge">NOVO MODO</div>
+    <div class="nm-icon" id="nm-icon"></div>
+    <div class="nm-title" id="nm-title">Novo modo disponível!</div>
+    <div class="nm-text" id="nm-text"></div>
+    <button class="btn btn-primary" onclick="closeNewModeAlert()">ENTENDI, VAMOS LÁ!</button>
+  </div>
+</div>
+
 <!-- ═══ NOVIDADES (CHANGELOG) ═══════════════════════════════ -->
 <div id="changelog-modal" class="changelog-overlay" style="display:none;" onclick="if(event.target===this)closeChangelog()">
   <div class="changelog-panel">
@@ -1757,6 +1856,146 @@ function applyModeSlotToggle(){
   }
 }
 
+// ── Tutorial de boas-vindas — guia do piloto para novos usuários ──
+// Mostrado uma única vez por conta (flag `tutorialSeen` persistida no
+// servidor), explicando o objetivo do jogo passo a passo com uma nave de
+// exemplo girando no centro da tela e um instrutor (avatar) narrando.
+const TUTORIAL_STEPS = [
+  {
+    title: 'Bem-vindo, piloto!',
+    text: 'Eu sou seu instrutor de voo. Essa é sua nave — você vai pilotá-la pela arena, atirar em inimigos e cumprir objetivos em cada modo de jogo.',
+  },
+  {
+    title: 'Movimento e mira',
+    text: 'No computador, mova-se com WASD ou as setas e mire/atire com o mouse. No celular, use o analógico virtual para mover — sua nave atira automaticamente na direção em que você está se movendo.',
+  },
+  {
+    title: 'Itens e poderes',
+    text: 'Durante a partida aparecem itens flutuando pela arena: alguns curam ou fortalecem sua nave, outros são armadilhas dos inimigos. Pegue os bons e evite os ruins!',
+  },
+  {
+    title: 'Modos de jogo',
+    text: 'Escolha entre vários modos no menu: dispute contra a IA (Contra 1/2), sobreviva o quanto puder (Survivor), ou entre em equipes online para batalhas PvP em tempo real contra outros jogadores.',
+  },
+  {
+    title: 'Pronto para decolar!',
+    text: 'Suba de nível, ganhe créditos jogando e desbloqueie naves novas na loja. Agora é só escolher um modo e começar sua primeira missão. Boa sorte, piloto!',
+  },
+];
+let _tutStep = 0;
+
+function _tutRandomShip(){
+  const pool = SKINS.filter(s => !REWARD_ONLY_SKIN_IDS?.includes(s.id));
+  return pool[Math.floor(Math.random()*pool.length)] || SKINS[0];
+}
+
+function _drawTutorialShip(){
+  const cv = document.getElementById('tutorial-ship-canvas');
+  if (!cv) return;
+  const cctx = cv.getContext('2d');
+  const skin = window._tutShip || (window._tutShip = _tutRandomShip());
+  function draw(){
+    cctx.clearRect(0,0,cv.width,cv.height);
+    cctx.save();
+    cctx.translate(cv.width/2, cv.height/2);
+    skin.drawPreview(cctx, cv.width/skin._size);
+    cctx.restore();
+  }
+  if (skin.img){ skin.img.onload = draw; setTimeout(draw, 300); }
+  draw();
+}
+
+function _renderTutorialStep(){
+  const step = TUTORIAL_STEPS[_tutStep];
+  document.getElementById('tut-step-label').textContent = `PASSO ${_tutStep+1} / ${TUTORIAL_STEPS.length}`;
+  document.getElementById('tut-title').textContent = step.title;
+  document.getElementById('tut-text').textContent = step.text;
+  document.getElementById('tut-next-btn').textContent = (_tutStep === TUTORIAL_STEPS.length-1) ? 'COMEÇAR' : 'PRÓXIMO';
+  const dotsEl = document.getElementById('tut-dots');
+  dotsEl.innerHTML = '';
+  for (let i=0;i<TUTORIAL_STEPS.length;i++){
+    const d = document.createElement('div');
+    d.className = 'tut-dot' + (i===_tutStep ? ' active' : '');
+    dotsEl.appendChild(d);
+  }
+}
+
+window.nextTutorialStep = function(){
+  if (_tutStep < TUTORIAL_STEPS.length-1) {
+    _tutStep++;
+    _renderTutorialStep();
+  } else {
+    finishTutorial();
+  }
+};
+window.skipTutorial = function(){ finishTutorial(); };
+
+function finishTutorial(){
+  document.getElementById('tutorial-overlay').style.display = 'none';
+  if (currentUser) apiFetch('/api/profile/tutorial-seen', { method:'POST' }).catch(()=>{});
+  if (profile) profile.tutorialSeen = true;
+}
+
+function maybeShowTutorial(){
+  if (!profile || profile.tutorialSeen) return;
+  _tutStep = 0;
+  window._tutShip = _tutRandomShip();
+  _renderTutorialStep();
+  document.getElementById('tutorial-overlay').style.display = 'flex';
+  _drawTutorialShip();
+}
+
+// ── Aviso de novo modo de jogo — exibido quando há um modo recém-lançado
+// que o jogador ainda não viu (controlado por NEW_MODE_ANNOUNCEMENTS abaixo
+// + lista `seenNewModes` salva localmente por conta).
+const NEW_MODE_ANNOUNCEMENTS = [
+  {
+    id: 'tower_defense_v1',
+    mode: 'tower_defense',
+    title: 'Torneio Tower Defense chegou!',
+    text: 'Um novo modo por tempo limitado: equipes 2x2 online disputam o controle de uma torre central. Destrua a torre do adversário antes que destruam a sua — e quem vencer leva a skin exclusiva "Hex Champion"!',
+    icon: '<path d="M12 2 L20 7 L20 14 L12 21 L4 14 L4 7 Z"/><path d="M12 2 L12 21 M4 7 L20 14 M20 7 L4 14" opacity=".55"/><circle cx="12" cy="11" r="2.6" fill="currentColor" stroke="none"/>',
+  },
+];
+
+function _seenNewModesKey(){
+  return currentUser ? `arena_seen_new_modes_${currentUser.id}` : null;
+}
+function _getSeenNewModes(){
+  const key = _seenNewModesKey();
+  if (!key) return [];
+  try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
+}
+function _markNewModeSeen(id){
+  const key = _seenNewModesKey();
+  if (!key) return;
+  const seen = _getSeenNewModes();
+  if (!seen.includes(id)) { seen.push(id); localStorage.setItem(key, JSON.stringify(seen)); }
+}
+
+let _pendingNewModeId = null;
+window.closeNewModeAlert = function(){
+  document.getElementById('new-mode-overlay').style.display = 'none';
+  if (_pendingNewModeId) { _markNewModeSeen(_pendingNewModeId); _pendingNewModeId = null; }
+};
+
+function maybeShowNewModeAlert(){
+  if (!currentUser) return;
+  const seen = _getSeenNewModes();
+  // Só anuncia modos que estão de fato disponíveis agora (ex.: torneio ativo)
+  const available = NEW_MODE_ANNOUNCEMENTS.find(a => {
+    if (seen.includes(a.id)) return false;
+    if (a.mode === 'tower_defense') return !!(profile && profile.tournament && profile.tournament.active);
+    return true;
+  });
+  if (!available) return;
+  _pendingNewModeId = available.id;
+  document.getElementById('nm-title').textContent = available.title;
+  document.getElementById('nm-text').textContent = available.text;
+  document.getElementById('nm-icon').innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${available.icon}</svg>`;
+  document.getElementById('new-mode-overlay').style.display = 'flex';
+}
+
 function updateCreditsBadge(){
   const el = document.getElementById('credits-amount');
   if (el && currentUser) el.textContent = currentUser.credits;
@@ -1823,6 +2062,8 @@ async function onAuthSuccess(){
   await refreshProfile();
   loadHistory();
   showScreen('menu');
+  maybeShowTutorial();
+  if (!profile || profile.tutorialSeen) maybeShowNewModeAlert();
 }
 
 async function setupGoogleSignIn(){
@@ -1897,21 +2138,42 @@ resizeLoginBg(); window.addEventListener('resize',resizeLoginBg);
   function tryPlay(){
     if (sessionStorage.getItem(FLAG)) return cleanup();
     const loginScreen = document.getElementById('login-screen');
-    if (loginScreen.style.display === 'none') return cleanup();
-    sessionStorage.setItem(FLAG, '1');
-    music.play().catch(()=>{});
-    cleanup();
+    if (loginScreen.style.display === 'none') return;
+    // Só marca como "tocada" e limpa os listeners se o play() realmente
+    // for aceito — navegadores como Chrome/Android podem rejeitar a
+    // primeira tentativa (gesto não qualificado); deixamos outros gestos
+    // tentarem novamente em vez de desistir após a 1ª rejeição.
+    music.play().then(()=>{
+      sessionStorage.setItem(FLAG, '1');
+      cleanup();
+    }).catch(()=>{});
   }
   function cleanup(){
     document.removeEventListener('click', tryPlay);
     document.removeEventListener('keydown', tryPlay);
     document.removeEventListener('touchstart', tryPlay);
+    ['auth-tab-login','auth-tab-register','auth-submit-btn'].forEach(id=>{
+      const el = document.getElementById(id);
+      if (el) el.removeEventListener('click', tryPlay);
+    });
   }
 
   if (sessionStorage.getItem(FLAG)) return;
+  // Gatilhos genéricos (cobrem o caso comum: 1º toque/clique em qualquer lugar)
   document.addEventListener('click', tryPlay, { once:true });
   document.addEventListener('keydown', tryPlay, { once:true });
   document.addEventListener('touchstart', tryPlay, { once:true });
+  // Gatilhos diretos nos botões de ação da tela de login — em alguns
+  // navegadores Android/desktop (Chrome), o autoplay de mídia só é liberado
+  // por um gesto "qualificado" (toque/clique direto num elemento interativo
+  // como um botão); cliques em campos de texto ou eventos genéricos no
+  // documento podem não satisfazer a política de autoplay. Os botões abaixo
+  // garantem um gesto inequívoco — sem o `once`, pois `tryPlay` já se
+  // autolimpa via `cleanup()`/flag de sessão após a 1ª execução bem-sucedida.
+  ['auth-tab-login','auth-tab-register','auth-submit-btn'].forEach(id=>{
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', tryPlay);
+  });
 })();
 
 (function animateLoginBg(){
@@ -3125,6 +3387,8 @@ function showNotify(text){
     loadHistory();
     showScreen('menu');
     checkPendingCreditOrder();
+    maybeShowTutorial();
+    if (!profile || profile.tutorialSeen) maybeShowNewModeAlert();
   } else {
     showScreen('login');
   }

@@ -77,6 +77,7 @@ function profileFor(user) {
     ownedSkins: owned,
     equippedSkin: user.equipped_skin,
     profileIcon: user.profile_icon,
+    tutorialSeen: !!user.tutorial_seen,
     rewardProgress: {
       count: user.reward_progress_count,
       modesSeen: JSON.parse(user.reward_modes_seen || '[]'),
@@ -271,6 +272,16 @@ const ROUTES = [
 
       db.setDisplayName.run(displayName, user.id);
       sendJson(res, 200, { ok: true, displayName });
+    },
+  },
+
+  {
+    method: 'POST', path: '/api/profile/tutorial-seen',
+    auth: true,
+    rateLimit: rateLimited('tutorial_seen', 5, 60_000, (req, { user }) => user.id),
+    handler: (req, res, { user }) => {
+      db.setTutorialSeen.run(user.id);
+      sendJson(res, 200, { ok: true });
     },
   },
 
