@@ -625,7 +625,7 @@ export class Player {
     const ejected = this._ejectOneItem();
     if (ejected) {
       this._idleItemTimer = 90;
-      this._idleCooldown  = 60;
+      this._idleCooldown  = 30;
       this._spawnEjectParticles(ejected);
       this._pendingEject  = ejected; // game.js vai buscar com consumeEjectedItem()
     } else {
@@ -675,7 +675,7 @@ export class Player {
   // Chamado pelo game.js quando o player usa um item — reseta o contador de inatividade
   notifyItemUsed() {
     this._idleItemTimer = 90;
-    // Não zera o _idleCooldown — o cooldown entre descartes é independente do uso
+    this._idleCooldown  = 0;
   }
 
   // Lê e consome o item descartado desta frame (se houver)

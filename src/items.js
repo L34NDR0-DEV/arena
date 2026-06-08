@@ -567,11 +567,15 @@ export class ItemManager {
     this.maxItems   = 22; // arena maior precisa de mais itens espalhados
   }
 
-  spawnAt(x, y, count=1) {
+  spawnAt(x, y, count=1, arena=null) {
     for (let i=0;i<count;i++) {
       if (this.items.length >= this.maxItems+5) return;
-      const ox=(Math.random()-.5)*80, oy=(Math.random()-.5)*80;
-      this.items.push(new Item(x+ox, y+oy));
+      let cx, cy, tries=0;
+      do {
+        const ox=(Math.random()-.5)*80, oy=(Math.random()-.5)*80;
+        cx=x+ox; cy=y+oy; tries++;
+      } while (arena?.checkObstacleCollision(cx,cy,14) && tries<8);
+      this.items.push(new Item(cx, cy));
     }
   }
 
@@ -587,14 +591,18 @@ export class ItemManager {
     return it;
   }
 
-  update(dt, px, py, hasMagnet, hasExtraSlot=false) {
+  update(dt, px, py, hasMagnet, hasExtraSlot=false, arena=null) {
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0 && this.items.length < this.maxItems) {
       this.spawnTimer = 5 + Math.random()*4;
       const n = 1 + Math.floor(Math.random()*2);
       for (let i=0;i<n;i++) {
-        const x = 100 + Math.random()*(ARENA_W-200);
-        const y = 100 + Math.random()*(ARENA_H-200);
+        let x, y, tries=0;
+        do {
+          x = 100 + Math.random()*(ARENA_W-200);
+          y = 100 + Math.random()*(ARENA_H-200);
+          tries++;
+        } while (arena?.checkObstacleCollision(x,y,14) && tries<10);
         this.items.push(new Item(x, y, randomType(hasExtraSlot)));
       }
     }

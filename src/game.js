@@ -8,6 +8,7 @@ import { UI }                                    from './ui.js';
 import { AudioEngine }                           from './audio.js';
 import { NetworkClient, RemotePlayer }           from './network.js';
 import { applyStun, applyFreeze, applyConfuse } from './statusEffects.js';
+import { PortalManager }                         from './portals.js';
 import * as SkinsModule                          from './skins.js';
 
 const MATCH_DURATION = 300;
@@ -40,6 +41,9 @@ export class Game {
     this.ui       = new UI();
     this.player   = new Player({ x:ARENA_W/2, y:ARENA_H/2, skinIndex, name:playerName });
     this.profileIcon = profileIcon;
+
+    // Portais + Buracos Negros — em todos os modos exceto Teste
+    this.portalMgr = mode!=='teste' ? new PortalManager(this.arena) : null;
 
     // Torres Astrais — disponíveis no modo Teste
     this.towerMgr = mode==='teste' ? new TowerManager() : null;
@@ -489,6 +493,21 @@ export class Game {
     this.arena.update(dt);
     this.player.update(dt,this._input(),this.combat.bullets,this.combat);
 
+    // ── Portais e Buracos Negros ──────────────────────────────
+    if (this.portalMgr) {
+      const allEntities = [this.player, ...this.enemyMgr.enemies.filter(e=>!e.dead), ...Object.values(this.peers), ...this.bots];
+      this.portalMgr.update(dt, allEntities);
+      // Dano dos buracos negros ao player
+      const bhDmg = this.portalMgr.applyBlackHoles(this.player, dt);
+      if (bhDmg > 0) this.player.takeDamage(bhDmg);
+      // Dano dos buracos negros aos inimigos
+      for (const e of this.enemyMgr.enemies) {
+        if (e.dead) continue;
+        const ed = this.portalMgr.applyBlackHoles(e, dt);
+        if (ed > 0) { e.hp -= ed; if (e.hp < 0) e.hp = 0; }
+      }
+    }
+
     // ── Item descartado por inatividade ──────────────────────
     const ejected = this.player.consumeEjectedItem();
     if (ejected) {
@@ -513,7 +532,7 @@ export class Game {
     }
 
     const hasExtra = this.player.inventory.isExtraFull();
-    this.itemMgr.update(dt,this.player.x,this.player.y,this.player.hasMagnet,hasExtra);
+    this.itemMgr.update(dt,this.player.x,this.player.y,this.player.hasMagnet,hasExtra,this.arena);
     this.borderEffect.update(dt);
     for (const it of this.itemMgr.collect(this.player.x,this.player.y)) {
       const sp=this.player.collectItem(it);
@@ -752,6 +771,7 @@ export class Game {
     this.arena.drawBorder(ctx);
     this.arena.drawAsteroids(ctx);
     this.arena.drawObstacles(ctx);
+    this.portalMgr?.draw(ctx);
     this.towerMgr?.draw(ctx);
     this.towerDefenseMgr?.draw(ctx);
     this.itemMgr.draw(ctx);

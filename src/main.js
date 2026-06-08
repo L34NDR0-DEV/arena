@@ -1504,6 +1504,8 @@ showScreen = function(name){
   }
 
   const touchState = { firing:false, dashing:false };
+  // Armazena a última direção do stick para manter a mira ao soltar e atirar
+  const lastFireVec = { x:0, y:-1 };
   bindHold(btnFire, ()=>touchState.firing=true,  ()=>touchState.firing=false);
   bindHold(btnDash, ()=>touchState.dashing=true, ()=>touchState.dashing=false);
 
@@ -1548,11 +1550,18 @@ showScreen = function(name){
     // "destravar" a mira para o canto da tela).
     let wmx, wmy, moveTargetX, moveTargetY, holdRight = base.holdRight;
     if (stickVec.active) {
+      // Stick ativo: atualiza mira e memória de direção
+      lastFireVec.x = stickVec.x;
+      lastFireVec.y = stickVec.y;
       wmx = px + stickVec.x * TOUCH_AIM_DIST;
       wmy = py + stickVec.y * TOUCH_AIM_DIST;
       moveTargetX = wmx;
       moveTargetY = wmy;
       holdRight = true;
+    } else if (touchState.firing) {
+      // Botão de fogo sem stick: aponta na última direção do stick
+      wmx = px + lastFireVec.x * TOUCH_AIM_DIST;
+      wmy = py + lastFireVec.y * TOUCH_AIM_DIST;
     } else if (this.player) {
       wmx = px + Math.cos(this.player._aimAngle - Math.PI/2) * TOUCH_AIM_DIST;
       wmy = py + Math.sin(this.player._aimAngle - Math.PI/2) * TOUCH_AIM_DIST;

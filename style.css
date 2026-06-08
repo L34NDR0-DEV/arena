@@ -1113,7 +1113,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   border:2px solid #bdf6ff;box-shadow:0 0 14px var(--cyan);
   pointer-events:none;
 }
-.touch-actions{position:absolute;right:16px;bottom:16px;display:flex;flex-direction:column;align-items:flex-end;gap:10px;pointer-events:none;}
+.touch-actions{position:absolute;right:16px;bottom:130px;display:flex;flex-direction:column;align-items:flex-end;gap:10px;pointer-events:none;}
 .touch-btn{
   pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;
   display:flex;align-items:center;justify-content:center;
@@ -1148,6 +1148,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   .touch-slot{width:38px;height:38px;font-size:8px;}
   .touch-slots{gap:6px;}
   .touch-btn-pause{width:38px;height:38px;}
+  .touch-actions{bottom:170px;}
 }
 
 /* ═══ Adaptação para telas pequenas (celulares) ══════════════ */

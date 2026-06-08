@@ -999,7 +999,10 @@ export class EnemyManager {
     if (this.mode==='teste') {
       this.toSpawn=['guardian'];
     } else if (isContra1) {
-      this.toSpawn=['smart'];
+      // A partir da onda 2 mistura drones; a partir da onda 4 adiciona guardião
+      if (this.wave >= 4 && Math.random() < 0.3) this.toSpawn=['guardian'];
+      else if (this.wave >= 2 && Math.random() < 0.4) this.toSpawn=['drone'];
+      else this.toSpawn=['smart'];
     } else {
       const count=Math.min(2+this.wave,6);
       this.toSpawn=[];
@@ -1089,12 +1092,12 @@ export class EnemyManager {
           this._enemyLives=0;
           this._livesResult='player_win';
           arena.spawnParticles(e.x,e.y,e.color,22,200);
-          itemMgr.spawnAt(e.x,e.y,3);
+          itemMgr.spawnAt(e.x,e.y,3,arena);
           this.enemyScore+=e.score;
           this._audio?.playExplosion(2);
         } else {
           arena.spawnParticles(e.x,e.y,e.color,16,180);
-          itemMgr.spawnAt(e.x,e.y,2);
+          itemMgr.spawnAt(e.x,e.y,2,arena);
           this.enemyScore+=e.score;
           this._audio?.playExplosion(1.5);
         }
