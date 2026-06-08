@@ -89,6 +89,44 @@ export class CombatSystem {
     }
   }
 
+  // Lança um único míssil teleguiado na direção do tiro (dx,dy) — usado pelo
+  // buff temporário do item MISSILE (hasMissileMode). Mira o inimigo vivo mais
+  // alinhado com a direção do cursor; se nada estiver no cone de ~60°, cai para
+  // o inimigo mais próximo. Reusa 100% do array missiles[] (update/draw/colisão
+  // já funcionam sem nenhuma mudança — o campo _player mantém o kill credit).
+  launchPlayerMissile(px, py, dx, dy, player) {
+    const enemies = this._enemyMgr?.enemies || [];
+    const pvpTargets = this._pvpTargets ? this._pvpTargets(player.team) : [];
+    const alive = [...enemies.filter(e=>!e.dead&&!e.isRespawning), ...pvpTargets.filter(t=>!t.dead)];
+    const d = Math.hypot(dx,dy)||1;
+    const ndx=dx/d, ndy=dy/d;
+
+    let target=null, bestScore=-Infinity;
+    for (const e of alive) {
+      const ex=e.x-px, ey=e.y-py;
+      const dist=Math.hypot(ex,ey)||1;
+      const align=(ex*ndx+ey*ndy)/dist; // cosseno do ângulo (1 = na mira exata)
+      if (align<0.5) continue;          // fora de um cone de ~60°
+      const score=align*2-dist/1000;
+      if (score>bestScore) { bestScore=score; target=e; }
+    }
+    if (!target && alive.length) {
+      alive.sort((a,b)=>Math.hypot(a.x-px,a.y-py)-Math.hypot(b.x-px,b.y-py));
+      target=alive[0];
+    }
+
+    const baseAngle=target ? Math.atan2(target.y-py,target.x-px) : Math.atan2(dy,dx);
+    const baseDmg = Math.round((38+(player.level-1)*5)*1.4);
+    this.missiles.push({
+      x:px, y:py,
+      vx:Math.cos(baseAngle)*180, vy:Math.sin(baseAngle)*180,
+      angle:baseAngle, target,
+      damage:baseDmg,
+      life:4.5, trail:[],
+      _player:player, _age:0,
+    });
+  }
+
   spawnExplosion(x,y,r,color) {
     this.explosions.push({x,y,r,maxR:r,color,life:1});
     this.arena.spawnParticles(x,y,color,10,150);

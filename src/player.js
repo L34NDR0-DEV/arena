@@ -244,7 +244,7 @@ export class Player {
     this.multishotTimer=0; this.piercingTimer=0; this.dashBoostTimer=0;
     this.regenTimer=0;     this.shieldAuraTimer=0; this.overclockTimer=0;
     this.invisibleTimer=0; this.godmodeTimer=0;    this.vampireTimer=0;
-    this.poisonTimer=0;
+    this.poisonTimer=0;    this.missileTimer=0;
     this.inventory = new Inventory();
 
     this._holdMove=false; this._moving=false;
@@ -286,7 +286,8 @@ export class Player {
   get isInvisible()  { return this.invisibleTimer>0; }
   get isGodmode()    { return this.godmodeTimer>0; }
   get isVampire()    { return this.vampireTimer>0; }
-  get isPoisoned()   { return this.poisonTimer>0; }
+  get isPoisoned()      { return this.poisonTimer>0; }
+  get hasMissileMode()  { return this.missileTimer>0; }
 
   moveTo(wx,wy) { this._targetX=wx; this._targetY=wy; this._moving=true; }
 
@@ -419,7 +420,16 @@ export class Player {
       case 'WARP':
         return { type:'warp', itemType:type, color:'#aa44ff' };
       case 'MISSILE':
-        return { type:'missile', itemType:type, color:'#ff6600' };
+        this.missileTimer = track('MISSILE', Math.round(8*m));
+        return { type:'used', itemType:type, color:'#ff6600' };
+      // Ofensivos — o efeito é aplicado em adversários pelo game.js
+      // (player.js só empacota o tipo e a duração; não altera o próprio Player)
+      case 'STUN':
+        return { type:'stun', itemType:type, color:'#ffe066', duration: Math.round(3*m) };
+      case 'DEEP_FREEZE':
+        return { type:'deepfreeze', itemType:type, color:'#66ccff', duration: Math.round(2.5*m) };
+      case 'CONFUSE':
+        return { type:'confuse', itemType:type, color:'#cc66ff', duration: Math.round(5*m) };
     }
     return null;
   }
@@ -446,7 +456,7 @@ export class Player {
     }
   }
 
-  update(dt, input, bullets) {
+  update(dt, input, bullets, combat) {
     this._age+=dt;
     if (this._lifeTimer>0) this._lifeTimer-=dt;
 
@@ -498,6 +508,7 @@ export class Player {
     if (this.invisibleTimer>0)  this.invisibleTimer-=dt;
     if (this.godmodeTimer>0)    this.godmodeTimer-=dt;
     if (this.vampireTimer>0)    this.vampireTimer-=dt;
+    if (this.missileTimer>0)    this.missileTimer-=dt;
     if (this.poisonTimer>0) {
       this.poisonTimer-=dt;
       // veneno drena HP ao longo do tempo
@@ -592,7 +603,7 @@ export class Player {
     // ── Tiro com Espaço ──────────────────────────────────────
     const cd=this.hasRapid ? SHOOT_CD*0.35 : SHOOT_CD;
     if (input.space && this.shootCd<=0) {
-      this._shoot(input.worldMouseX, input.worldMouseY, bullets);
+      this._shoot(input.worldMouseX, input.worldMouseY, bullets, combat);
       this.shootCd=cd;
       this._audio?.playShoot();
     }
@@ -674,11 +685,19 @@ export class Player {
     return it;
   }
 
-  _shoot(tx, ty, bullets) {
+  _shoot(tx, ty, bullets, combat) {
     const shootAngle = this._aimAngle ?? this.angle;
     const nozzle = this.skin.getNozzle(this.x, this.y, shootAngle, 1.76);
     const baseDmg = (38 + (this.level-1)*5) * (this.hasOverclock ? 2 : 1);
     const sp = 600;
+
+    // Buff de míssil ativo: cada tiro vira um míssil teleguiado (reusa o array
+    // missiles[] do CombatSystem — zero duplicação de física/draw/colisão).
+    if (this.hasMissileMode && combat) {
+      const mx = tx - nozzle.x, my = ty - nozzle.y;
+      combat.launchPlayerMissile(nozzle.x, nozzle.y, mx, my, this);
+      return;
+    }
 
     const _spawnBullet = (dx, dy, dmg=baseDmg) => {
       const d = Math.hypot(dx, dy)||1;

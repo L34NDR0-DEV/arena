@@ -203,6 +203,37 @@ function _drawItemIcon(ctx, type, s) {
       break;
     }
 
+    // ── OFENSIVOS ─────────────────────────────────────────────
+    case 'STUN': {
+      // Raio elétrico (zigzag) — símbolo de atordoamento
+      ctx.lineWidth=s*0.15; ctx.strokeStyle=ctx.fillStyle;
+      ctx.beginPath();
+      ctx.moveTo(s*0.25,-s); ctx.lineTo(-s*0.1,-s*0.1);
+      ctx.lineTo(s*0.2,-s*0.1); ctx.lineTo(-s*0.25,s);
+      ctx.stroke();
+      break;
+    }
+    case 'DEEP_FREEZE': {
+      // Floco de neve simplificado (6 linhas radiais com branchinhas)
+      ctx.lineWidth=s*0.12; ctx.strokeStyle=ctx.fillStyle;
+      for (let i=0;i<6;i++) {
+        ctx.save(); ctx.rotate(i*Math.PI/3);
+        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(0,-s); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-s*0.25,-s*0.55); ctx.lineTo(0,-s*0.35); ctx.lineTo(s*0.25,-s*0.55); ctx.stroke();
+        ctx.restore();
+      }
+      break;
+    }
+    case 'CONFUSE': {
+      // Espiral / olho torto — símbolo de confusão
+      ctx.lineWidth=s*0.15; ctx.strokeStyle=ctx.fillStyle;
+      ctx.beginPath();
+      ctx.arc(0,0,s*0.65,0,Math.PI*1.5);
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(0,-s*0.1,s*0.25,0,Math.PI*2); ctx.stroke();
+      break;
+    }
+
     // ── LENDÁRIOS ─────────────────────────────────────────────
     case 'GODMODE': {
       for (let i=0;i<8;i++) {

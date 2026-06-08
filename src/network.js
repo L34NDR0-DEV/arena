@@ -1,5 +1,6 @@
 // Cliente WebSocket para modo multiplayer.
 // Uso: new NetworkClient(url, handlers)
+import { tickStatus, isFrozen, drawStatusIcons } from './statusEffects.js';
 
 export class NetworkClient {
   constructor(url, handlers = {}) {
@@ -158,6 +159,8 @@ export class RemotePlayer {
   }
 
   update(dt) {
+    tickStatus(this, dt);
+    if (isFrozen(this)) return; // imóvel: não interpola para nova posição
     this.x += (this._tx - this.x) * Math.min(1, 12 * dt);
     this.y += (this._ty - this.y) * Math.min(1, 12 * dt);
   }
@@ -192,5 +195,7 @@ export class RemotePlayer {
     ctx.fillRect(this.x - bw/2, this.y - 28, bw, 4);
     ctx.fillStyle = teamColor;
     ctx.fillRect(this.x - bw/2, this.y - 28, bw * (this.hp/this.maxHp), 4);
+
+    drawStatusIcons(ctx, this.x, this.y - 44, this);
   }
 }

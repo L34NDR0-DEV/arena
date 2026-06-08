@@ -34,7 +34,15 @@ export const ITEM_DEFS = {
   INVISIBLE:  { color:'#aaaacc', glow:'#aaaacc44', rarity:'epic',      label:'CLOAK',  desc:'Invisível p/ inimigos 5s', usable:true, harmful:false, legendary:false },
 
   // ── ESPECIAL ─────────────────────────────────────────────────
-  MISSILE:    { color:'#ff6600', glow:'#ff660077', rarity:'epic',      label:'MÍSSIL',  desc:'3 mísseis teleguiados',  usable:true,  harmful:false, legendary:false },
+  MISSILE:    { color:'#ff6600', glow:'#ff660077', rarity:'epic',      label:'MÍSSIL',  desc:'Tiro teleguiado 8s',     usable:true,  harmful:false, legendary:false },
+
+  // ── OFENSIVOS — afetam adversários mais próximos ao coletar ──
+  // harmful:false pois "quem sofre" é o adversário, não o coletor.
+  // DEEP_FREEZE usa nome diferente de FREEZE (que existe como item de área PvE)
+  // para não colidir com o sistema applyHarmful que lê a chave do tipo.
+  STUN:       { color:'#ffe066', glow:'#ffe06677', rarity:'rare',      label:'STUN',    desc:'Atordoa adversário 3s',  usable:true,  harmful:false, legendary:false },
+  DEEP_FREEZE:{ color:'#66ccff', glow:'#66ccff77', rarity:'epic',      label:'CONGELA', desc:'Congela adversário 2.5s',usable:true,  harmful:false, legendary:false },
+  CONFUSE:    { color:'#cc66ff', glow:'#cc66ff77', rarity:'epic',      label:'CONFUNDE',desc:'Confunde mira 5s',       usable:true,  harmful:false, legendary:false },
 
   // ── LENDÁRIOS — somem em 5-7s, muito fortes ──────────────────
   GODMODE:    { color:'#ffd700', glow:'#ffd70099', rarity:'legendary', label:'DEUS',   desc:'Invencível 4s',         usable:true,  harmful:false, legendary:true  },
@@ -78,6 +86,9 @@ const SPAWN_TABLE = [
   ['REGEN',        4,  6],
   // epics
   ['MISSILE',      3,  5],
+  ['STUN',         4,  6],
+  ['DEEP_FREEZE',  2,  4],
+  ['CONFUSE',      2,  4],
   ['MULTISHOT',    3,  6],
   ['PIERCING',     3,  6],
   ['DASH_BOOST',   2,  5],

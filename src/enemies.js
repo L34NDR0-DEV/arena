@@ -1,5 +1,6 @@
 // IA do inimigo — Contra1: nave inteligente com sistema de VIDAS.
 import { ARENA_W, ARENA_H } from './arena.js';
+import { tickStatus, isStunned, isFrozen, isConfused, confusedAngle, drawStatusIcons } from './statusEffects.js';
 
 const DIFF = { facil:0.6, moderado:1.0, dificil:1.5, insano:2.2 };
 const MAX_LIVES = 5;
@@ -280,6 +281,7 @@ export class SmartEnemy {
     }
     if (this.dead) return;
     this._age+=dt;
+    tickStatus(this, dt);
 
     // ── Respawn: invencível e teleportando ─────────────────
     if (this._respawnTimer>0) {
@@ -289,6 +291,15 @@ export class SmartEnemy {
       this.x=this.x+(this._respawnX-this.x)*Math.min(1,pct*3);
       this.y=this.y+(this._respawnY-this.y)*Math.min(1,pct*3);
       this.vx=0; this.vy=0;
+      return;
+    }
+
+    // Congelado: completamente imóvel (não move, não atira, não muda estado)
+    if (isFrozen(this)) {
+      this.vx=0; this.vy=0;
+      const eng=this._getEngine();
+      spawnFlame(this.flames,eng.x,eng.y,this.angle,this.isAlien);
+      this.flames=updateFlames(this.flames,dt);
       return;
     }
 
@@ -361,7 +372,7 @@ export class SmartEnemy {
 
     // ── Tiro preditivo ────────────────────────────────────
     this._shootTimer-=dt;
-    if (this._shootTimer<=0&&dist<520) {
+    if (this._shootTimer<=0&&dist<520&&!isStunned(this)) {
       this._shootTimer=this._shootCd;
       this._firePredictive(tx,ty,pvx,pvy,dist,bullets);
       this._audio?.playEnemyShoot();
@@ -372,9 +383,14 @@ export class SmartEnemy {
     const bspd=340, tof=dist/bspd;
     const px=tx+pvx*tof*this._predictMult, py=ty+pvy*tof*this._predictMult;
     const nozzle=this._getNozzle();
-    const dx=px-nozzle.x, dy=py-nozzle.y;
+    let dx=px-nozzle.x, dy=py-nozzle.y;
     const d=Math.hypot(dx,dy)||1;
-    bullets.push({ x:nozzle.x,y:nozzle.y, vx:(dx/d)*bspd,vy:(dy/d)*bspd, damage:this.damage, owner:'enemy', life:1.6, owner_color:'#ff4466', dirX:dx/d,dirY:dy/d });
+    let dirX=dx/d, dirY=dy/d;
+    if (isConfused(this)) {
+      const a=confusedAngle(Math.atan2(dy,dx));
+      dirX=Math.cos(a); dirY=Math.sin(a);
+    }
+    bullets.push({ x:nozzle.x,y:nozzle.y, vx:dirX*bspd,vy:dirY*bspd, damage:this.damage, owner:'enemy', life:1.6, owner_color:'#ff4466', dirX,dirY });
   }
 
   draw(ctx) {
@@ -432,6 +448,8 @@ export class SmartEnemy {
     // Label
     ctx.fillStyle='#ff6677'; ctx.font='10px system-ui'; ctx.textAlign='center';
     ctx.fillText('INIMIGO',this.x,this.y-this.r-36);
+
+    drawStatusIcons(ctx, this.x, this.y-this.r-50, this);
   }
 }
 
@@ -559,6 +577,14 @@ export class TeamBot {
 
   update(dt, players, bullets) {
     if (this.dead) return;
+    tickStatus(this, dt);
+    // Compartilha o objeto de status com o _brain para que as checagens de
+    // isStunned/isFrozen/isConfused dentro de SmartEnemy.update (e _firePredictive)
+    // leiam o estado do TeamBot — sem duplicar a lógica em cada chamada.
+    this._brain._status = this._status;
+
+    if (isFrozen(this)) return;
+
     const target=this._pickTarget(players);
 
     // Há um inimigo por perto: engaja normalmente via IA da nave (esquiva,
@@ -662,6 +688,12 @@ export class DroneEnemy {
     }
     if (this.dead) return;
     this._age+=dt;
+    tickStatus(this, dt);
+
+    if (isFrozen(this)) {
+      this.vx=0; this.vy=0;
+      return;
+    }
 
     // Movimento sinusoidal rápido em direção ao player
     const dx=player.x-this.x, dy=player.y-this.y;
@@ -680,11 +712,16 @@ export class DroneEnemy {
 
     // Tiro
     this._shootTimer-=dt;
-    if (this._shootTimer<=0&&dist<380) {
+    if (this._shootTimer<=0&&dist<380&&!isStunned(this)) {
       this._shootTimer=this._shootCd;
       const noz={x:this.x+Math.sin(this.angle-Math.PI/2)*(-20),y:this.y-Math.cos(this.angle-Math.PI/2)*(-20)};
-      const bspd=400, da=dx/dist, db=dy/dist;
-      bullets.push({x:noz.x,y:noz.y,vx:da*bspd,vy:db*bspd,damage:this.damage,owner:'enemy',life:1.2,owner_color:'#ff8800',dirX:da,dirY:db});
+      const bspd=400;
+      let dirX=dx/dist, dirY=dy/dist;
+      if (isConfused(this)) {
+        const a=confusedAngle(Math.atan2(dy,dx));
+        dirX=Math.cos(a); dirY=Math.sin(a);
+      }
+      bullets.push({x:noz.x,y:noz.y,vx:dirX*bspd,vy:dirY*bspd,damage:this.damage,owner:'enemy',life:1.2,owner_color:'#ff8800',dirX,dirY});
       this._audio?.playEnemyShoot();
     }
   }
@@ -729,6 +766,8 @@ export class DroneEnemy {
     // Label
     ctx.fillStyle='#ffaa44'; ctx.font='8px system-ui'; ctx.textAlign='center';
     ctx.fillText('DRONE',this.x,this.y-this.r-14);
+
+    drawStatusIcons(ctx, this.x, this.y-this.r-28, this);
   }
 }
 
@@ -788,6 +827,15 @@ export class GuardianEnemy {
     }
     if (this.dead) return;
     this._age+=dt;
+    tickStatus(this, dt);
+
+    if (isFrozen(this)) {
+      this.vx=0; this.vy=0;
+      const eng=this._getEngine();
+      spawnFlame(this.flames,eng.x,eng.y,this.angle,this.isAlien);
+      this.flames=updateFlames(this.flames,dt);
+      return;
+    }
 
     const ownTowers   = (towers||[]).filter(t=>t.owner==='enemy');
     const enemyTowers = (towers||[]).filter(t=>t.owner==='player'); // alvo: torres do "lado jogador"
@@ -848,7 +896,7 @@ export class GuardianEnemy {
 
     // ── Tiro: ataca o jogador se estiver perto, senão a torre-alvo ──
     this._shootTimer-=dt;
-    if (this._shootTimer<=0) {
+    if (this._shootTimer<=0&&!isStunned(this)) {
       this._shootTimer=this._shootCd;
       if (distToPlayer<460) { this._fireAt(player.x,player.y,bullets); this._audio?.playEnemyShoot(); }
       else if (this._state==='advance' && nearestTarget && targD<460) { this._fireAt(nearestTarget.x,nearestTarget.y,bullets); this._audio?.playEnemyShoot(); }
@@ -860,7 +908,12 @@ export class GuardianEnemy {
     const nozzle=this._getNozzle();
     const dx=tx-nozzle.x, dy=ty-nozzle.y;
     const d=Math.hypot(dx,dy)||1;
-    bullets.push({ x:nozzle.x,y:nozzle.y, vx:(dx/d)*bspd,vy:(dy/d)*bspd, damage:this.damage, owner:'enemy', life:1.6, owner_color:'#ffaa00', dirX:dx/d,dirY:dy/d });
+    let dirX=dx/d, dirY=dy/d;
+    if (isConfused(this)) {
+      const a=confusedAngle(Math.atan2(dy,dx));
+      dirX=Math.cos(a); dirY=Math.sin(a);
+    }
+    bullets.push({ x:nozzle.x,y:nozzle.y, vx:dirX*bspd,vy:dirY*bspd, damage:this.damage, owner:'enemy', life:1.6, owner_color:'#ffaa00', dirX,dirY });
   }
 
   draw(ctx) {
@@ -899,6 +952,8 @@ export class GuardianEnemy {
     ctx.fillStyle='#ffcc66'; ctx.font='9px system-ui'; ctx.textAlign='center';
     const stLabel = this._state==='defend' ? 'GUARDIÃO ▣ DEFENDENDO' : 'GUARDIÃO ▶ ATACANDO';
     ctx.fillText(stLabel,this.x,this.y-this.r-22);
+
+    drawStatusIcons(ctx, this.x, this.y-this.r-36, this);
   }
 }
 

@@ -7,6 +7,7 @@ import { TowerManager, TowerDefenseManager }     from './towers.js';
 import { UI }                                    from './ui.js';
 import { AudioEngine }                           from './audio.js';
 import { NetworkClient, RemotePlayer }           from './network.js';
+import { applyStun, applyFreeze, applyConfuse } from './statusEffects.js';
 import * as SkinsModule                          from './skins.js';
 
 const MATCH_DURATION = 300;
@@ -148,10 +149,15 @@ export class Game {
               this.arena.spawnParticles(px,py,'#aa44ff',20,180);
               this.arena.spawnParticles(this.player.x,this.player.y,'#aa44ff',20,180);
               this.ui.notify('WARP!'+bonus,'#aa44ff');
-            } else if (result.type==='missile') {
-              const count = bonus ? 5 : 3;
-              this.combat.launchMissiles(px, py, this.enemyMgr.enemies, this.player, count);
-              this.ui.notify('MÍSSEIS!'+bonus,'#ff6600'); this._audio.playBomb?.();
+            } else if (result.type==='stun') {
+              const n=this._applyOffensiveDebuff(applyStun, result.duration, px, py);
+              this.ui.notify(n?`ATORDOOU ${n}!`+bonus:'Ninguém perto...'+bonus,'#ffe066');
+            } else if (result.type==='deepfreeze') {
+              const n=this._applyOffensiveDebuff(applyFreeze, result.duration, px, py);
+              this.ui.notify(n?`CONGELOU ${n}!`+bonus:'Ninguém perto...'+bonus,'#66ccff');
+            } else if (result.type==='confuse') {
+              const n=this._applyOffensiveDebuff(applyConfuse, result.duration, px, py);
+              this.ui.notify(n?`CONFUNDIU ${n}!`+bonus:'Ninguém perto...'+bonus,'#cc66ff');
             } else {
               const nl={
                 HEALTH:'+Vida',HEALTH_BIG:'+Vida Grande!',
@@ -161,7 +167,7 @@ export class Game {
                 MAGNET:'Ímã!',BOOST:'Velocidade!',DASH_BOOST:'Super Dash!',
                 FREEZE:'Freeze!',REGEN:'Regeneração!',SHIELD_AURA:'Aura de Escudo!',
                 OVERCLOCK:'Sobrecarga de Dano!',INVISIBLE:'Invisível!',
-                GODMODE:'MODO DEUS!',VAMPIRO:'Vampiro!',MISSILE:'Mísseis!',
+                GODMODE:'MODO DEUS!',VAMPIRO:'Vampiro!',MISSILE:'Tiro Míssil 8s!',
               };
               this.ui.notify((nl[result.itemType]||'Item usado')+bonus, result.color||'#00ff88');
             }
@@ -481,7 +487,7 @@ export class Game {
     this.camY=Math.max(0,Math.min(ARENA_H-this.H,this.camY));
 
     this.arena.update(dt);
-    this.player.update(dt,this._input(),this.combat.bullets);
+    this.player.update(dt,this._input(),this.combat.bullets,this.combat);
 
     // ── Item descartado por inatividade ──────────────────────
     const ejected = this.player.consumeEjectedItem();
@@ -650,6 +656,36 @@ export class Game {
   // Lista de naves vivas (jogador local + remotos + bots locais) que servem
   // de alvo para a defesa automática da torre central — ela ataca qualquer
   // time, então não filtramos por `team`.
+  // Lista combatentes adversários vivos candidatos a receber debuffs ofensivos
+  // (STUN/CONGELA/CONFUNDE): unifica inimigos PvE e alvos PvP (remotos + bots
+  // do time rival) — ponto único para os 3 itens novos.
+  _offensiveTargets() {
+    const list=[];
+    for (const e of (this.enemyMgr?.enemies||[])) {
+      if (!e.dead&&!e.isRespawning) list.push(e);
+    }
+    if (this.mode==='equipe_online'||this.mode==='tower_defense') {
+      for (const rp of Object.values(this.peers||{})) {
+        if (!rp.dead&&rp.team&&rp.team!==this.team) list.push(rp);
+      }
+      if (this.isHost) for (const bot of (this.bots||[])) {
+        if (!bot.dead&&bot.team&&bot.team!==this.team) list.push(bot);
+      }
+    }
+    return list;
+  }
+
+  // Aplica um debuff ofensivo nos adversários mais próximos dentro do raio.
+  // Retorna o número de alvos afetados (para a notificação de feedback).
+  _applyOffensiveDebuff(applyFn, duration, px, py, radius=360, maxTargets=2) {
+    const targets=this._offensiveTargets()
+      .filter(t=>Math.hypot(t.x-px,t.y-py)<radius)
+      .sort((a,b)=>Math.hypot(a.x-px,a.y-py)-Math.hypot(b.x-px,b.y-py))
+      .slice(0,maxTargets);
+    for (const t of targets) applyFn(t,duration);
+    return targets.length;
+  }
+
   _tdAttackers() {
     const list=[this.player];
     for (const id in this.peers) list.push(this.peers[id]);
