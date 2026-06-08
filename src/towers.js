@@ -72,7 +72,8 @@ export class Tower {
   }
 
   takeDamage(amount) {
-    if (this.dead||this.emerging) return false;
+    // Torres surgindo, reconstruindo ou já mortas são invulneráveis
+    if (this.dead||this.emerging||this._rebuilding) return false;
     this.hp=Math.max(0,this.hp-amount);
     this._hitFlash=0.15;
     spawnDamageNumber(this.x+(Math.random()-0.5)*this.r, this.y-this.r-10, amount);
@@ -80,21 +81,50 @@ export class Tower {
     return false;
   }
 
-  // Recaptura: a torre "renasce" sob controle de quem a destruiu
+  // Recaptura com reconstrução: em vez de renascer instantaneamente, a torre
+  // entra em fase de reconstrução (EMERGE_DUR segundos, igual ao surgimento
+  // inicial) — durante esse tempo não atira e não recebe dano, dando uma janela
+  // de oportunidade tática para o time atacante.
   captureBy(newOwner) {
     this.owner=newOwner;
     this.hp=this.maxHp;
     this.dead=false;
     this.captures++;
     this._destroyedFlash=0.6;
+    // Inicia fase de reconstrução (reaproveita a animação de surgimento)
+    this._rebuilding=true;
+    this._rebuildT=0;
+    this._emergeParticles=this._spawnEmergeParticles(); // partículas frescas
   }
 
+  // Nome da torre baseado em capturas — "transforma" com o histórico de batalha
+  get _tierLabel() {
+    if (this.captures>=3) return 'TORRE ANCESTRAL';
+    if (this.captures>=1) return 'TORRE FORJADA';
+    return 'TORRE ASTRAL';
+  }
+
+  // Raio visual aumenta levemente a cada captura (max +25%) — torre "cresce"
+  get _visualR() { return this.r * (1 + Math.min(this.captures, 3)*0.08); }
+
   update(dt, player, enemies, bullets) {
-    // ── Fase de montagem/surgimento ───────────────────────────
+    // ── Fase de montagem/surgimento inicial ───────────────────
     if (this.emerging) {
       this._emergeT=Math.min(1,this._emergeT+dt/EMERGE_DUR);
       if (this._emergeT>=1) this.emerging=false;
       return; // torre ainda não combate enquanto surge
+    }
+
+    // ── Fase de reconstrução (após ser capturada) ─────────────
+    if (this._rebuilding) {
+      this._rebuildT=Math.min(1,(this._rebuildT||0)+dt/EMERGE_DUR);
+      // Reutiliza _emergeT para a animação _drawEmerging
+      this._emergeT=this._rebuildT;
+      if (this._rebuildT>=1) {
+        this._rebuilding=false;
+        this._emergeT=1; // garante que _drawBody receba rise=1,assembly=1
+      }
+      return; // não atira durante reconstrução
     }
 
     if (this._hitFlash>0) this._hitFlash-=dt;
@@ -144,18 +174,23 @@ export class Tower {
   }
 
   draw(ctx) {
-    if (this.emerging) { this._drawEmerging(ctx); return; }
+    // Reconstrução e surgimento inicial usam a mesma animação _drawEmerging
+    if (this.emerging||this._rebuilding) { this._drawEmerging(ctx); return; }
 
     const col=this.color;
-    const r=this.r;
+    const r=this._visualR; // cresce com captures (transformação)
 
     ctx.save();
     ctx.translate(this.x,this.y);
 
-    // Aura/anel de alcance (sutil)
+    // Aura/anel de alcance (sutil) — anel extra para torres mais experientes
     ctx.globalAlpha=0.045;
     ctx.strokeStyle=col; ctx.lineWidth=2;
     ctx.beginPath(); ctx.arc(0,0,TOWER_RANGE,0,Math.PI*2); ctx.stroke();
+    if (this.captures>=1) {
+      ctx.globalAlpha=0.025;
+      ctx.beginPath(); ctx.arc(0,0,TOWER_RANGE*1.12,0,Math.PI*2); ctx.stroke();
+    }
     ctx.globalAlpha=1;
 
     this._drawBody(ctx, col, r, 1, 1);
@@ -175,11 +210,16 @@ export class Tower {
     ctx.strokeStyle=col+'66'; ctx.lineWidth=1; ctx.strokeRect(bx,by,w,h);
     ctx.restore();
 
-    // Label
+    // Label com tier (transforma conforme histórico de batalha)
     ctx.save();
     ctx.fillStyle=col; ctx.font='bold 13px system-ui'; ctx.textAlign='center';
     ctx.shadowColor=col; ctx.shadowBlur=6;
-    ctx.fillText('TORRE ASTRAL', this.x, by-10);
+    ctx.fillText(this._tierLabel, this.x, by-10);
+    // Contador de capturas para torres experientes
+    if (this.captures>0) {
+      ctx.font='10px system-ui'; ctx.shadowBlur=3;
+      ctx.fillText(`★`.repeat(Math.min(this.captures,3)), this.x, by-24);
+    }
     ctx.shadowBlur=0;
     ctx.restore();
 
@@ -486,7 +526,10 @@ export class Tower {
       ctx.fillStyle=col; ctx.font='bold 12px system-ui'; ctx.textAlign='center';
       ctx.globalAlpha=0.85;
       ctx.shadowColor=col; ctx.shadowBlur=6;
-      ctx.fillText(t<0.45 ? 'CONVERGINDO ENERGIA…' : 'MONTANDO TORRE…', 0, -r*2.1);
+      const txt = this._rebuilding
+        ? (t<0.45 ? 'RECONSTITUINDO ENERGIA…' : 'RECONSTRUINDO TORRE…')
+        : (t<0.45 ? 'CONVERGINDO ENERGIA…'     : 'MONTANDO TORRE…');
+      ctx.fillText(txt, 0, -r*2.1);
       ctx.shadowBlur=0;
       ctx.restore();
     }
