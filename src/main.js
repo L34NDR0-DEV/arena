@@ -1335,6 +1335,13 @@ function showScreen(name){
   document.getElementById('gameover').style.display     = 'none';
 }
 
+// Volta ao menu principal sem fazer logout (usado pelo kick de inatividade)
+window.exitToMenu=function(){
+  if(game){game.destroy();game=null;}
+  paused=false;
+  showScreen('menu');
+};
+
 window.goLoginScreen=async function(){
   if(game){game.destroy();game=null;}
   paused=false;

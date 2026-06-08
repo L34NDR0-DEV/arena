@@ -530,8 +530,8 @@ export class Game {
     this.over = true;
     cancelAnimationFrame(this._rafId);
     this._audio.stopEngine?.();
-    // Mostra mensagem e volta ao menu após 4s
     this._idleKicked = true;
+    this._idleKickAt = performance.now();
     setTimeout(() => window.exitToMenu?.(), 4000);
   }
 
@@ -951,40 +951,115 @@ export class Game {
 
     // ── Overlay de inatividade ────────────────────────────────
     if (this._idleKicked) {
+      const t = (performance.now() - (this._idleKickAt||0)) / 1000;
+      const blink = Math.floor(t * 4) % 2 === 0;
       ctx.save();
-      ctx.fillStyle='rgba(0,0,0,0.78)';
-      ctx.fillRect(0,0,W,H);
-      ctx.textAlign='center';
-      ctx.fillStyle='#ffaa00';
-      ctx.font='bold 28px system-ui';
-      ctx.shadowColor='#ffaa00'; ctx.shadowBlur=20;
-      ctx.fillText('EXPULSO POR INATIVIDADE', W/2, H/2-30);
-      ctx.shadowBlur=0;
-      ctx.fillStyle='#ffffff';
-      ctx.font='16px system-ui';
-      ctx.fillText('Você ficou 2 minutos sem jogar.', W/2, H/2+10);
-      ctx.fillStyle='#aaaaaa';
-      ctx.font='13px system-ui';
-      ctx.fillText('Voltando ao menu...', W/2, H/2+38);
+      // Fundo com scanlines arcade
+      ctx.fillStyle = 'rgba(0,0,0,0.92)';
+      ctx.fillRect(0, 0, W, H);
+      // Scanlines
+      ctx.globalAlpha = 0.08;
+      ctx.fillStyle = '#ffffff';
+      for (let sy = 0; sy < H; sy += 4) ctx.fillRect(0, sy, W, 2);
+      ctx.globalAlpha = 1;
+
+      // Painel central
+      const pw = Math.min(520, W - 40), ph = 200;
+      const px = W/2 - pw/2, py = H/2 - ph/2;
+      ctx.fillStyle = '#0a0a0f';
+      ctx.strokeStyle = '#ff3300';
+      ctx.lineWidth = 3;
+      ctx.fillRect(px, py, pw, ph);
+      ctx.strokeRect(px, py, pw, ph);
+      // Borda interna
+      ctx.strokeStyle = 'rgba(255,51,0,0.35)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(px+6, py+6, pw-12, ph-12);
+
+      // Cantos decorativos
+      const corner = 14;
+      ctx.strokeStyle = '#ff3300';
+      ctx.lineWidth = 2;
+      [[px,py],[px+pw,py],[px,py+ph],[px+pw,py+ph]].forEach(([cx,cy],i) => {
+        const sx = i%2===0?1:-1, sy = i<2?1:-1;
+        ctx.beginPath();
+        ctx.moveTo(cx+sx*corner, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy+sy*corner);
+        ctx.stroke();
+      });
+
+      ctx.textAlign = 'center';
+      // Titulo piscante
+      if (blink) {
+        ctx.fillStyle = '#ff3300';
+        ctx.shadowColor = '#ff3300'; ctx.shadowBlur = 22;
+        ctx.font = `bold ${Math.round(W*0.042)}px 'Courier New', monospace`;
+        ctx.fillText('!! EXPULSO POR INATIVIDADE !!', W/2, py + 62);
+        ctx.shadowBlur = 0;
+      }
+
+      // Linha separadora
+      ctx.strokeStyle = 'rgba(255,51,0,0.5)';
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(px+20, py+78); ctx.lineTo(px+pw-20, py+78); ctx.stroke();
+
+      // Mensagem
+      ctx.fillStyle = '#cccccc';
+      ctx.font = `${Math.round(W*0.022)}px 'Courier New', monospace`;
+      ctx.fillText('VOCE FICOU 2 MINUTOS SEM JOGAR', W/2, py + 110);
+
+      // Rodapé piscante
+      if (blink) {
+        ctx.fillStyle = '#ffee00';
+        ctx.shadowColor = '#ffee00'; ctx.shadowBlur = 12;
+        ctx.font = `bold ${Math.round(W*0.024)}px 'Courier New', monospace`;
+        ctx.fillText('>>> RETORNANDO AO INICIO... <<<', W/2, py + 152);
+        ctx.shadowBlur = 0;
+      }
+
+      // Barra de progresso (4s)
+      const prog = Math.min(t / 4, 1);
+      const bw = pw - 40;
+      ctx.fillStyle = 'rgba(255,255,255,0.08)';
+      ctx.fillRect(px+20, py+170, bw, 12);
+      ctx.fillStyle = '#ff3300';
+      ctx.shadowColor = '#ff3300'; ctx.shadowBlur = 6;
+      ctx.fillRect(px+20, py+170, bw * prog, 12);
+      ctx.shadowBlur = 0;
+
       ctx.restore();
     } else if (this._idleWarned && this._idleTime >= 60) {
-      // Aviso progressivo: fica no canto da tela (não bloqueia o jogo)
       const remaining = Math.ceil(120 - this._idleTime);
-      const urgency = remaining <= 20 ? Math.sin(Date.now()*0.012)*0.4+0.8 : 0.85;
-      const col = remaining <= 20 ? '#ff4444' : '#ffaa00';
+      const urgent = remaining <= 20;
+      const blink = urgent && Math.floor(Date.now() / 250) % 2 === 0;
+      const col = urgent ? '#ff3300' : '#ffaa00';
       ctx.save();
-      ctx.globalAlpha = urgency;
-      ctx.fillStyle = 'rgba(0,0,0,0.65)';
-      ctx.fillRect(W/2-160, 18, 320, 54);
-      ctx.textAlign='center';
+      // Painel topo
+      const pw = Math.min(380, W - 40);
+      const px = W/2 - pw/2;
+      ctx.globalAlpha = urgent ? (blink ? 1 : 0.75) : 0.9;
+      ctx.fillStyle = '#0a0a0f';
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 2;
+      ctx.fillRect(px, 12, pw, 58);
+      ctx.strokeRect(px, 12, pw, 58);
+      // Cantos
+      const c = 10;
+      [[px,12],[px+pw,12],[px,70],[px+pw,70]].forEach(([cx,cy],i) => {
+        const sx = i%2===0?1:-1, sy = i<2?1:-1;
+        ctx.beginPath();
+        ctx.moveTo(cx+sx*c, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy+sy*c);
+        ctx.stroke();
+      });
+      ctx.textAlign = 'center';
       ctx.fillStyle = col;
-      ctx.font = 'bold 15px system-ui';
       ctx.shadowColor = col; ctx.shadowBlur = 10;
-      ctx.fillText('INATIVO — mova-se para continuar', W/2, 42);
+      ctx.font = `bold ${Math.round(W*0.020)}px 'Courier New', monospace`;
+      ctx.fillText('!! ATENCAO — JOGADOR INATIVO !!', W/2, 34);
       ctx.shadowBlur = 0;
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 20px system-ui';
-      ctx.fillText(`Expulsão em ${remaining}s`, W/2, 62);
+      ctx.font = `bold ${Math.round(W*0.024)}px 'Courier New', monospace`;
+      ctx.fillText(`EXPULSAO EM: ${String(remaining).padStart(3,' ')}s`, W/2, 58);
+      ctx.globalAlpha = 1;
       ctx.restore();
     }
   }
