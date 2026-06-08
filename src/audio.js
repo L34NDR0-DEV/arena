@@ -287,58 +287,68 @@ export class AudioEngine {
     setTimeout(() => this.playExplosion(1.5), 200);
   }
 
-  // ── Impacto em estrutura (torre/parede) ───────────────────
+  // ── Impacto em estrutura blindada (torre de guerra) ───────
   playTowerHit() {
     if (!this._ready) return;
     const ac  = this._ctx;
     const now = ac.currentTime;
 
-    // Impacto pesado: camada grave + estrondo metálico profundo
-    // (sem a agudez de alumínio do playCollision — sons mais baixos e densos)
-    const dur = 0.25;
+    // Pancada metálica pesada: thud grave + ressonância de aço + faísca aguda
+    // Evoca projétil batendo em blindagem de metal — não alumínio oco.
+
+    // Ruído filtrado: "chunk" de metal maciço
+    const dur = 0.38;
     const bufLen = Math.floor(ac.sampleRate * dur);
-    const buf    = ac.createBuffer(1, bufLen, ac.sampleRate);
-    const data   = buf.getChannelData(0);
-    for (let i = 0; i < bufLen; i++) data[i] = (Math.random() * 2 - 1);
-
-    const src    = ac.createBufferSource();
-    src.buffer   = buf;
-
-    // Filtro passa-baixa bem estreito — só o "thud" grave, sem chirp metálico
-    const filter = ac.createBiquadFilter();
-    filter.type  = 'lowpass';
-    filter.frequency.setValueAtTime(320, now);
-    filter.frequency.exponentialRampToValueAtTime(60, now + dur);
-    filter.Q.value = 0.5;
-
+    const buf  = ac.createBuffer(1, bufLen, ac.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ac.sampleRate * 0.06));
+    }
+    const src = ac.createBufferSource();
+    src.buffer = buf;
+    const f1 = ac.createBiquadFilter();
+    f1.type = 'bandpass'; f1.frequency.value = 180; f1.Q.value = 0.7;
     const ng = ac.createGain();
-    ng.gain.setValueAtTime(0.55, now);
+    ng.gain.setValueAtTime(0.9, now);
     ng.gain.exponentialRampToValueAtTime(0.001, now + dur);
 
-    // Sub-grave de impacto
-    const osc  = ac.createOscillator();
-    const og   = ac.createGain();
-    osc.type   = 'sine';
-    osc.frequency.setValueAtTime(75, now);
-    osc.frequency.exponentialRampToValueAtTime(28, now + 0.18);
-    og.gain.setValueAtTime(0.7, now);
-    og.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+    // Sub-grave: "boom" de estrutura maciça absorvendo o impacto
+    const bass = ac.createOscillator();
+    const bg   = ac.createGain();
+    bass.type  = 'sine';
+    bass.frequency.setValueAtTime(55, now);
+    bass.frequency.exponentialRampToValueAtTime(18, now + 0.30);
+    bg.gain.setValueAtTime(1.1, now);
+    bg.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
 
-    // Camada de "crack" médio — dá sensação de resistência da estrutura
-    const osc2 = ac.createOscillator();
-    const og2  = ac.createGain();
-    osc2.type  = 'triangle';
-    osc2.frequency.setValueAtTime(220, now);
-    osc2.frequency.exponentialRampToValueAtTime(80, now + 0.08);
-    og2.gain.setValueAtTime(0.25, now);
-    og2.gain.exponentialRampToValueAtTime(0.001, now + 0.10);
+    // Ressonância metálica média: "clang" abafado de blindagem
+    const mid  = ac.createOscillator();
+    const mg   = ac.createGain();
+    mid.type   = 'sawtooth';
+    mid.frequency.setValueAtTime(340, now);
+    mid.frequency.exponentialRampToValueAtTime(95, now + 0.14);
+    mg.gain.setValueAtTime(0.35, now);
+    mg.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+    const distNode = ac.createWaveShaper();
+    distNode.curve = this._makeDistCurve(12);
 
-    src.connect(filter); filter.connect(ng); ng.connect(this._master);
-    osc.connect(og);   og.connect(this._master);
-    osc2.connect(og2); og2.connect(this._master);
+    // Faísca elétrica aguda: projétil raspando o escudo
+    const spark  = ac.createOscillator();
+    const spkg   = ac.createGain();
+    spark.type   = 'square';
+    spark.frequency.setValueAtTime(1800, now);
+    spark.frequency.exponentialRampToValueAtTime(600, now + 0.04);
+    spkg.gain.setValueAtTime(0.07, now);
+    spkg.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+
+    src.connect(f1); f1.connect(ng); ng.connect(this._master);
+    bass.connect(bg); bg.connect(this._master);
+    mid.connect(distNode); distNode.connect(mg); mg.connect(this._master);
+    spark.connect(spkg); spkg.connect(this._master);
     src.start(now);
-    osc.start(now); osc.stop(now + 0.24);
-    osc2.start(now); osc2.stop(now + 0.11);
+    bass.start(now); bass.stop(now + 0.34);
+    mid.start(now);  mid.stop(now  + 0.18);
+    spark.start(now); spark.stop(now + 0.06);
   }
 
   // ── Toggle mudo ───────────────────────────────────────────

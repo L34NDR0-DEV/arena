@@ -41,6 +41,8 @@ export class Game {
     this.ui       = new UI();
     this.player   = new Player({ x:ARENA_W/2, y:ARENA_H/2, skinIndex, name:playerName });
     this.profileIcon = profileIcon;
+    // Contra1: 1 único inimigo, partida curta — level-up não faz sentido
+    if (mode==='contra1') this.player.levelUpEnabled = false;
 
     // Portais + Buracos Negros — em todos os modos exceto Teste
     this.portalMgr = mode!=='teste' ? new PortalManager(this.arena) : null;
@@ -239,7 +241,7 @@ export class Game {
           }
         },
         onJoin:msg=>{ const rp=new RemotePlayer({id:msg.id,name:msg.name,skinIndex:msg.skinIndex,profileIcon:msg.profileIcon,skins:SkinsModule}); this.peers[msg.id]=rp; this.ui.killFeed(`${msg.name} entrou`); },
-        onLeave:msg=>delete this.peers[msg.id],
+        onLeave:msg=>{ this.ui.killFeed(`${this.peers[msg.id]?.name ?? 'Jogador'} saiu`); delete this.peers[msg.id]; },
         onState:msg=>this.peers[msg.id]?.applyState(msg.data),
         onEvent:msg=>{
           if(msg.data?.type==='kill') {
@@ -247,6 +249,7 @@ export class Game {
             if (isTeamMode && msg.data.killerTeam) this._registerTeamKill(msg.data.killerTeam);
           }
         },
+        onPlayerReplacedByBot: msg=>this._onPlayerReplacedByBot(msg),
         onMatchStart: msg=>this._onMatchStart(msg),
         onTdQueueState: msg=>this._onTdQueueState(msg),
         onTdUnavailable: msg=>this._onTdUnavailable(msg),
@@ -323,6 +326,51 @@ export class Game {
 
     this._refreshMatchLoading(matchPeers);
     this._loadingHideAt = performance.now() + 7000;
+  }
+
+  // Aliado desistiu durante uma partida do Equipe Online (ou Tower Defense):
+  // o servidor já elegeu um bot substituto e, se necessário, migrou o host.
+  // Aqui o cliente:
+  //  1. Remove o peer que saiu (já veio um 'leave' padrão antes, mas por segurança).
+  //  2. Adiciona o bot substituto — como TeamBot local se agora somos o novo host,
+  //     ou como RemotePlayer se o host continua sendo outro jogador.
+  //  3. Se viramos o novo host, assume a simulação dos bots já existentes também.
+  _onPlayerReplacedByBot(msg) {
+    const { leaverId, leaverName, bot, newHostId } = msg;
+    delete this.peers[leaverId]; // garante remoção mesmo que 'leave' chegue depois
+
+    const becameHost = !this.isHost && newHostId === this.net?.myId;
+    if (becameHost) {
+      this.isHost = true;
+      // Converte todos os peers marcados como isBot em TeamBots locais
+      for (const [pid, rp] of Object.entries(this.peers)) {
+        if (!rp.isBot) continue;
+        const {x, y} = this._spawnPosFor(rp.team);
+        const profile = BOT_PROFILES.find(pr => pr.name === rp.name);
+        const tb = new TeamBot({ id: pid, name: rp.name, team: rp.team, x, y,
+          difficulty: this.diff, skinIndex: rp.skinIndex, traits: profile?.traits ?? null });
+        if (this.mode === 'tower_defense') tb.setObjective(this.towerDefenseMgr?.tower);
+        this.bots.push(tb);
+        delete this.peers[pid];
+      }
+    }
+
+    // Instancia o bot novo
+    if (this.isHost) {
+      const {x, y} = this._spawnPosFor(bot.team);
+      const profile = BOT_PROFILES.find(pr => pr.name === bot.name);
+      const tb = new TeamBot({ id: bot.id, name: bot.name, team: bot.team, x, y,
+        difficulty: this.diff, skinIndex: bot.skinIndex, traits: profile?.traits ?? null });
+      if (this.mode === 'tower_defense') tb.setObjective(this.towerDefenseMgr?.tower);
+      this.bots.push(tb);
+    } else {
+      this.peers[bot.id] = new RemotePlayer({ id: bot.id, name: bot.name,
+        skinIndex: bot.skinIndex, skins: SkinsModule, team: bot.team, isBot: true });
+    }
+
+    const teamLabel = bot.team === 'red' ? 'Vermelho' : 'Azul';
+    this.ui.killFeed(`${leaverName} saiu — ${bot.name} entrou (Time ${teamLabel})`);
+    if (becameHost) this.ui.notify('Você assumiu o controle dos bots aliados.', '#ffcc44');
   }
 
   // ── Torneio "Tower Defense" — fila global única, partidas 2x2 sequenciais ──

@@ -271,16 +271,23 @@ export class CombatSystem {
       });
     }
 
-    // Colisão player → asteroide (dano e empurrão)
-    if (this.arena?.asteroids && !player.dead && !player.rebuilding && player.invincible<=0) {
+    // Colisão player → asteroide (empurrão sempre; dano só fora do dash)
+    if (this.arena?.asteroids && !player.dead && !player.rebuilding) {
       const a=this.arena.checkAsteroidCollision(player.x,player.y,player.r,0);
       if (a) {
         const d=Math.hypot(a.x-player.x,a.y-player.y)||1;
         const nx=(player.x-a.x)/d, ny=(player.y-a.y)/d;
-        player.vx+=nx*180; player.vy+=ny*180;
+        // Empurrão físico: cancela velocidade em direção ao asteroide e afasta
+        const overlap=(a.r+player.r-d);
+        if (overlap>0) { player.x+=nx*overlap*0.5; player.y+=ny*overlap*0.5; }
+        const dot=player.vx*nx+player.vy*ny;
+        if (dot<0) { player.vx-=dot*nx*1.6; player.vy-=dot*ny*1.6; }
         this._playCollisionSfx(1.6);
-        const died=player.takeDamage(18*dt, true); // colisão asteroide: escudo 50% efetivo
-        if (died) this._triggerPlayerRebuild(player,isContra1);
+        // Dano só quando não está invencível (dash, godmode, rebuild)
+        if (player.invincible<=0) {
+          const died=player.takeDamage(18*dt, true);
+          if (died) this._triggerPlayerRebuild(player,isContra1);
+        }
       }
     }
 

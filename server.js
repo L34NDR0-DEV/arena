@@ -166,7 +166,40 @@ function leaveTeamQueue(socket, info) {
   if (tr.players.length === 0) {
     if (tr.waitTimer) clearTimeout(tr.waitTimer);
     teamRooms.delete(info.roomId);
+    return;
   }
+
+  // Partida já iniciada: substitui o desistente por um bot do mesmo time,
+  // e migra o host se necessário.
+  if (!tr.started) return;
+
+  // Conta quantos bots já existem para gerar o próximo índice de perfil
+  const existingBots = tr.botIds ? tr.botIds.size : 0;
+  const botId = `bot_${info.roomId}_sub_${existingBots}`;
+  const profile = botProfileForSlot(existingBots);
+  if (!tr.botIds) tr.botIds = new Set();
+  tr.botIds.add(botId);
+
+  // Migra host se quem saiu era o anfitrião — elege o próximo jogador real
+  let newHostId = tr.hostId;
+  if (removed.id === tr.hostId) {
+    const nextPlayer = tr.players.find(p => !p.isBot);
+    newHostId = nextPlayer?.id ?? tr.hostId;
+    tr.hostId = newHostId;
+  }
+
+  const botSlot = { id: botId, name: profile.name, skinIndex: profile.skinIndex,
+    profileIcon: 0, team: removed.team, isBot: true, isHost: false };
+
+  const notifyMsg = JSON.stringify({
+    type: 'player_replaced_by_bot',
+    leaverId: removed.id,
+    leaverName: removed.name,
+    bot: botSlot,
+    newHostId,
+  });
+  broadcastRoom(info.roomId, JSON.parse(notifyMsg));
+  console.log(`[MATCH] ${removed.name} saiu — substituído por ${profile.name} (${removed.team}) em "${info.roomId}"; host agora: ${newHostId}`);
 }
 
 // ── Matchmaking do "Torneio Tower Defense" (PvP 2x2, torre central) ──

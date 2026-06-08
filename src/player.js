@@ -231,6 +231,7 @@ export class Player {
     this.shield=0; this.maxShield=SHIELD_MAX;
     this.mana=MANA_MAX; this.maxMana=MANA_MAX;
     this.xp=0; this.level=1; this.xpToNext=100;
+    this.levelUpEnabled=true; // desativado no Contra1 (partida curta, 1 inimigo)
     this.score=0; this.kills=0; this.itemsCollected=0;
     this.team=null; // atribuído no modo "Equipe Online" (PvP em times)
     this.itemTypeCounts={}; // { 'HEALTH': 3, 'MINE': 1, ... }
@@ -329,6 +330,7 @@ export class Player {
 
   addXP(v) {
     this.xp+=v;
+    if (!this.levelUpEnabled) return false;
     if (this.xp>=this.xpToNext) {
       this.xp-=this.xpToNext; this.level++;
       this.xpToNext=Math.floor(this.xpToNext*1.5);

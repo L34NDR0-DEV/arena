@@ -61,7 +61,8 @@ export class NetworkClient {
       case 'td_queue_state':  h.onTdQueueState?.(msg);          break;
       case 'td_unavailable':  h.onTdUnavailable?.(msg);         break;
       case 'td_match_start':  this.myId = msg.you?.id ?? this.myId; h.onTdMatchStart?.(msg); break;
-      case 'td_reward_granted': h.onTdRewardGranted?.(msg);     break;
+      case 'td_reward_granted':        h.onTdRewardGranted?.(msg);        break;
+      case 'player_replaced_by_bot':   h.onPlayerReplacedByBot?.(msg);    break;
       case 'pong':        this._onPong(msg);                    break;
     }
   }
@@ -167,34 +168,42 @@ export class RemotePlayer {
 
   draw(ctx) {
     if (this.dead) return;
-    const teamColor = TEAM_COLORS[this.team] || '#aaccff';
+    // Sem time = modo cooperativo = aliado (verde); com time = PvP (cor do time)
+    const teamColor = this.team ? (TEAM_COLORS[this.team] || '#aaccff') : '#44dd88';
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
     this.skin.draw(ctx, 1.35);
     ctx.restore();
-    // Anel de identificação de time (PvP)
-    if (this.team) {
-      ctx.save();
-      ctx.strokeStyle = teamColor;
-      ctx.globalAlpha = 0.55;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(this.x, this.y, 30, 0, Math.PI*2);
-      ctx.stroke();
-      ctx.restore();
-    }
-    // Nome
+    // Anel de identificação: verde pulsante para aliados sem time, cor do time para PvP
+    ctx.save();
+    ctx.strokeStyle = teamColor;
+    ctx.globalAlpha = this.team ? 0.55 : 0.40;
+    ctx.lineWidth = this.team ? 2 : 1.5;
+    ctx.setLineDash(this.team ? [] : [4, 4]); // tracejado = aliado cooperativo
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, 30, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+    // Nome e label de aliado
     ctx.fillStyle = teamColor;
     ctx.font = '11px system-ui';
     ctx.textAlign = 'center';
-    ctx.fillText(this.isBot ? `[BOT] ${this.name}` : this.name, this.x, this.y - 28);
+    const label = this.isBot ? `[BOT] ${this.name}` : this.name;
+    ctx.fillText(label, this.x, this.y - 28);
+    if (!this.team) {
+      ctx.font = '9px system-ui';
+      ctx.globalAlpha = 0.75;
+      ctx.fillText('aliado', this.x, this.y - 18);
+      ctx.globalAlpha = 1;
+    }
     // HP bar
     const bw = 30;
     ctx.fillStyle = '#0d1e32';
     ctx.fillRect(this.x - bw/2, this.y - 28, bw, 4);
     ctx.fillStyle = teamColor;
-    ctx.fillRect(this.x - bw/2, this.y - 28, bw * (this.hp/this.maxHp), 4);
+    ctx.fillRect(this.x - bw/2, this.y - 28, bw * (this.hp / this.maxHp), 4);
 
     drawStatusIcons(ctx, this.x, this.y - 44, this);
   }

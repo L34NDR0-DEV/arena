@@ -530,6 +530,8 @@ export class TeamBot {
 
   get x() { return this._brain.x; }
   get y() { return this._brain.y; }
+  set x(v) { this._brain.x = v; }
+  set y(v) { this._brain.y = v; }
   get angle() { return this._brain.angle; }
   get hp() { return this._brain.hp; }
   get maxHp() { return this._brain.maxHp; }

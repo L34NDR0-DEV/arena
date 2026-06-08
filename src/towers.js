@@ -197,10 +197,10 @@ export class Tower {
 
     // Barra de HP
     ctx.restore();
-    const w=110,h=9, bx=this.x-w/2, by=this.y-r*1.55-26;
+    const w=120, h=9, bx=this.x-w/2, by=this.y-r*1.42-22;
     ctx.save();
     ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(bx-2,by-2,w+4,h+4);
-    ctx.fillStyle='#222'; ctx.fillRect(bx,by,w,h);
+    ctx.fillStyle='#1a1a1a'; ctx.fillRect(bx,by,w,h);
     const pct=this.hp/this.maxHp;
     const hpGrad=ctx.createLinearGradient(bx,0,bx+w,0);
     hpGrad.addColorStop(0,col+'88'); hpGrad.addColorStop(1,col);
@@ -210,15 +210,14 @@ export class Tower {
     ctx.strokeStyle=col+'66'; ctx.lineWidth=1; ctx.strokeRect(bx,by,w,h);
     ctx.restore();
 
-    // Label com tier (transforma conforme histórico de batalha)
+    // Label com tier e capturas
     ctx.save();
     ctx.fillStyle=col; ctx.font='bold 13px system-ui'; ctx.textAlign='center';
     ctx.shadowColor=col; ctx.shadowBlur=6;
     ctx.fillText(this._tierLabel, this.x, by-10);
-    // Contador de capturas para torres experientes
     if (this.captures>0) {
       ctx.font='10px system-ui'; ctx.shadowBlur=3;
-      ctx.fillText(`★`.repeat(Math.min(this.captures,3)), this.x, by-24);
+      ctx.fillText('*'.repeat(Math.min(this.captures,3)), this.x, by-24);
     }
     ctx.shadowBlur=0;
     ctx.restore();
@@ -233,304 +232,313 @@ export class Tower {
     }
   }
 
-  // Desenha a estrutura completa da torre — cristal hexagonal facetado com
-  // anéis de energia rotativos, em camadas pseudo-3D.
-  // `rise` (0-1) controla quanto da torre já "subiu" do chão (animação de surgimento).
-  // `assembly` (0-1) controla o quanto das peças já se encaixaram (escala/opacidade).
+  // Desenha a estrutura da torre — plataforma de guerra orbital:
+  // base cilíndrica de blindagem, escudo de plasma hexagonal, canhão pesado,
+  // braços de antena rotativos e núcleo de reactor pulsante.
+  // `rise` (0-1) e `assembly` (0-1) controlam a animação de surgimento.
   _drawBody(ctx, col, r, rise, assembly) {
-    const liftY = (1-rise) * r*1.4; // desloca a estrutura para baixo enquanto "emerge"
+    const liftY = (1 - rise) * r * 1.5;
+    const pulse  = 0.7 + 0.3 * Math.sin(this._ringPulse * 2.4);
+    const rot    = this._ringPulse;
 
     ctx.save();
     ctx.translate(0, liftY);
 
-    // ── Sombra projetada no "chão" (achatada, dá noção de profundidade) ──
+    // ── Sombra no "chão" ──────────────────────────────────────
     ctx.save();
-    ctx.globalAlpha=0.35*assembly;
-    ctx.fillStyle='#000814';
+    ctx.globalAlpha = 0.40 * assembly;
+    ctx.fillStyle = '#000';
     ctx.beginPath();
-    ctx.ellipse(0, r*0.92 - liftY*0.5, r*1.08, r*0.34, 0, 0, Math.PI*2);
+    ctx.ellipse(0, r * 0.85 - liftY * 0.4, r * 1.1, r * 0.28, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
-    // ── Base hexagonal "inferior" (face de baixo, mais escura = volume) ──
+    // ── Braços de antena rotativos (4 braços, giram devagar) ──
     ctx.save();
-    ctx.translate(0, r*0.30);
-    ctx.scale(1, 0.62);
-    ctx.fillStyle='#050b14';
-    ctx.strokeStyle=col; ctx.globalAlpha=0.9*assembly; ctx.lineWidth=3;
-    this._hexagon(ctx, r*1.05, 0);
-    ctx.fill(); ctx.stroke();
-    ctx.restore();
-
-    // ── Corpo cristalino central (faces facetadas tipo gema) ──
-    const bodyH=r*0.95;
-    const bodyGrad=ctx.createLinearGradient(-r,0,r,0);
-    bodyGrad.addColorStop(0,'#040b16');
-    bodyGrad.addColorStop(0.5,'#0d1c30');
-    bodyGrad.addColorStop(1,'#040b16');
-    ctx.save();
-    ctx.globalAlpha=assembly;
-    ctx.fillStyle=bodyGrad;
-    ctx.beginPath();
-    ctx.moveTo(-r*0.92, 0);
-    ctx.lineTo(-r*0.92, bodyH*0.55);
-    ctx.lineTo(0, bodyH*0.55+r*0.30);
-    ctx.lineTo(r*0.92, bodyH*0.55);
-    ctx.lineTo(r*0.92, 0);
-    ctx.closePath();
-    ctx.fill();
-
-    // facetas angulares de cristal (linhas convergindo para o ápice central,
-    // como cortes de gema, em vez de painéis verticais retos)
-    ctx.strokeStyle=col+'3a'; ctx.lineWidth=1.4;
-    const apex={x:0, y:bodyH*0.55+r*0.30};
-    for (let i=-3;i<=3;i++) {
-      if (i===0) continue;
-      const px=i*r*0.30;
-      ctx.beginPath();
-      ctx.moveTo(px, 0);
-      ctx.lineTo(apex.x, apex.y);
-      ctx.stroke();
+    ctx.globalAlpha = 0.80 * assembly;
+    ctx.rotate(rot * 0.35);
+    for (let i = 0; i < 4; i++) {
+      ctx.save();
+      ctx.rotate(i * Math.PI / 2);
+      // haste principal
+      ctx.strokeStyle = col + 'aa'; ctx.lineWidth = 3;
+      ctx.shadowColor = col; ctx.shadowBlur = 6;
+      ctx.beginPath(); ctx.moveTo(r * 0.45, 0); ctx.lineTo(r * 1.28, 0); ctx.stroke();
+      // prato da antena (semicírculo na ponta)
+      ctx.translate(r * 1.28, 0);
+      ctx.strokeStyle = col; ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(0, 0, 10, -Math.PI/2, Math.PI/2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(0, 10); ctx.stroke();
+      // luz de sinalização pulsante na ponta
+      ctx.globalAlpha = pulse * 0.9 * assembly;
+      ctx.fillStyle = col; ctx.shadowBlur = 10 * pulse;
+      ctx.beginPath(); ctx.arc(12, 0, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
     }
-    ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(apex.x,apex.y); ctx.stroke();
+    ctx.shadowBlur = 0;
     ctx.restore();
 
-    // ── Anéis de energia concêntricos e rotativos (brilho neon) ──
-    // Anel externo gira lento em sentido horário, interno gira mais rápido
-    // em sentido anti-horário — reforça a leitura "estrutura cristalina viva".
-    const ringPulse=0.65+0.35*Math.sin(this._ringPulse*2.2);
+    // ── Base cilíndrica de blindagem (anel inferior) ──────────
     ctx.save();
-    ctx.globalAlpha=0.75*assembly;
-    ctx.translate(0, bodyH*0.30);
-    ctx.scale(1, 0.34);
-    ctx.rotate(this._ringPulse*0.45);
-    ctx.strokeStyle=col;
-    ctx.lineWidth=3;
-    ctx.shadowColor=col; ctx.shadowBlur=16*ringPulse;
-    this._hexagon(ctx, r*1.05, 0);
+    ctx.globalAlpha = assembly;
+    const baseGrad = ctx.createLinearGradient(-r * 0.9, 0, r * 0.9, 0);
+    baseGrad.addColorStop(0,   '#1a1f2a');
+    baseGrad.addColorStop(0.45,'#2d3548');
+    baseGrad.addColorStop(1,   '#1a1f2a');
+    ctx.fillStyle = baseGrad;
+    ctx.beginPath();
+    ctx.ellipse(0, r * 0.35, r * 0.9, r * 0.28, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = col + '55'; ctx.lineWidth = 2;
     ctx.stroke();
     ctx.restore();
 
+    // ── Corpo central da plataforma (cilindro hexagonal) ──────
     ctx.save();
-    ctx.globalAlpha=0.55*assembly;
-    ctx.translate(0, bodyH*0.30);
-    ctx.scale(1, 0.34);
-    ctx.rotate(-this._ringPulse*0.85);
-    ctx.strokeStyle='#ffffff';
-    ctx.lineWidth=1.6;
-    ctx.shadowColor=col; ctx.shadowBlur=10*ringPulse;
-    this._hexagon(ctx, r*0.78, Math.PI/6);
-    ctx.stroke();
-    ctx.restore();
-
-    // ── Topo hexagonal (face superior, mais clara = recebe "luz") ──
-    const topY=-bodyH*0.50;
-    ctx.save();
-    ctx.translate(0, topY);
-    ctx.scale(1, 0.62);
-    const topGrad=ctx.createRadialGradient(0,0,0,0,0,r*1.05);
-    topGrad.addColorStop(0,'#16314f');
-    topGrad.addColorStop(1,'#060f1c');
-    ctx.fillStyle=topGrad;
-    ctx.strokeStyle=col; ctx.globalAlpha=assembly; ctx.lineWidth=3;
-    this._hexagon(ctx, r*1.0, 0);
-    ctx.fill(); ctx.stroke();
-    ctx.restore();
-
-    // ── Núcleo de cristal pulsante (gema hexagonal brilhante no topo) ──
-    const pulse=0.7+0.3*Math.sin(Date.now()*0.005);
-    ctx.save();
-    ctx.translate(0, topY);
-    ctx.globalAlpha=assembly;
-    const coreR=r*0.46;
-    // halo de luz por trás da gema
-    const halo=ctx.createRadialGradient(0,0,0,0,0,coreR*1.4);
-    halo.addColorStop(0,'#ffffff'); halo.addColorStop(0.35,col+'dd'); halo.addColorStop(1,col+'00');
-    ctx.globalAlpha=pulse*assembly;
-    ctx.fillStyle=halo;
-    ctx.beginPath(); ctx.arc(0,0,coreR*1.4,0,Math.PI*2); ctx.fill();
-    // gema hexagonal facetada (gradiente vertical do branco-quente ao tom do dono)
-    ctx.save();
-    ctx.rotate(this._ringPulse*0.6);
-    const gemGrad=ctx.createLinearGradient(0,-coreR,0,coreR);
-    gemGrad.addColorStop(0,'#ffffff');
-    gemGrad.addColorStop(0.45,col);
-    gemGrad.addColorStop(1,col+'aa');
-    ctx.fillStyle=gemGrad;
-    ctx.shadowColor=col; ctx.shadowBlur=20*pulse;
-    this._hexagon(ctx, coreR, 0);
+    ctx.globalAlpha = assembly;
+    const bodyGrad = ctx.createLinearGradient(-r * 0.8, 0, r * 0.8, 0);
+    bodyGrad.addColorStop(0,   '#10151e');
+    bodyGrad.addColorStop(0.3, '#1e2a3a');
+    bodyGrad.addColorStop(0.7, '#1e2a3a');
+    bodyGrad.addColorStop(1,   '#10151e');
+    ctx.fillStyle = bodyGrad;
+    // seis faces de painel blindado
+    this._hexagon(ctx, r * 0.82, 0);
     ctx.fill();
-    // facetas internas da gema (cortes de luz)
-    ctx.strokeStyle='#ffffff77'; ctx.lineWidth=1;
-    for (let i=0;i<3;i++) {
-      const a=i*Math.PI/3;
+    ctx.strokeStyle = col + '66'; ctx.lineWidth = 2.5;
+    ctx.stroke();
+    // linhas de painel entre as faces (detalhes industriais)
+    ctx.strokeStyle = col + '28'; ctx.lineWidth = 1;
+    for (let i = 0; i < 6; i++) {
+      const a = i * Math.PI / 3;
       ctx.beginPath();
-      ctx.moveTo(Math.cos(a)*coreR, Math.sin(a)*coreR);
-      ctx.lineTo(Math.cos(a+Math.PI)*coreR, Math.sin(a+Math.PI)*coreR);
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(a) * r * 0.82, Math.sin(a) * r * 0.82);
       ctx.stroke();
     }
     ctx.restore();
-    ctx.globalAlpha=assembly;
 
-    // ── Canhão/torreta apontando pro alvo (saliência 3D) ──
+    // ── Escudo de plasma hexagonal (gira devagar, pulsa) ──────
     ctx.save();
+    ctx.globalAlpha = (0.45 + 0.20 * pulse) * assembly;
+    ctx.rotate(-rot * 0.28);
+    ctx.shadowColor = col; ctx.shadowBlur = 18 * pulse;
+    ctx.strokeStyle = col; ctx.lineWidth = 2.8;
+    this._hexagon(ctx, r * 1.0, Math.PI / 6);
+    ctx.stroke();
+    ctx.globalAlpha = (0.20 + 0.10 * pulse) * assembly;
+    ctx.lineWidth = 1.2;
+    this._hexagon(ctx, r * 0.96, Math.PI / 6);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+
+    // ── Anel de plasma interior (gira no sentido contrário) ───
+    ctx.save();
+    ctx.globalAlpha = 0.50 * assembly;
+    ctx.rotate(rot * 0.55);
+    ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 8;
+    ctx.strokeStyle = '#ffffff44'; ctx.lineWidth = 1.2;
+    this._hexagon(ctx, r * 0.65, 0);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+
+    // ── Topo da plataforma (disco blindado superior) ──────────
+    ctx.save();
+    ctx.translate(0, -r * 0.28);
+    ctx.globalAlpha = assembly;
+    const topGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.82);
+    topGrad.addColorStop(0, '#252e40');
+    topGrad.addColorStop(0.6, '#15202e');
+    topGrad.addColorStop(1, '#0a1018');
+    ctx.fillStyle = topGrad;
+    this._hexagon(ctx, r * 0.80, 0);
+    ctx.fill();
+    ctx.strokeStyle = col + '88'; ctx.lineWidth = 2;
+    ctx.stroke();
+    // detalhes de parafuso nos cantos (hexágonos pequenos)
+    for (let i = 0; i < 6; i++) {
+      const a = i * Math.PI / 3;
+      const bx = Math.cos(a) * r * 0.62, by = Math.sin(a) * r * 0.62;
+      ctx.fillStyle = '#0a1018';
+      ctx.strokeStyle = col + '55'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(bx, by, 5, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
+
+    // ── Canhão pesado (apontado para o alvo) ─────────────────
+    ctx.save();
+    ctx.translate(0, -r * 0.28);
     ctx.rotate(this._turretAngle);
-    const turretGrad=ctx.createLinearGradient(0,-9,0,9);
-    turretGrad.addColorStop(0,'#ffffff66');
-    turretGrad.addColorStop(0.5,col);
-    turretGrad.addColorStop(1,'#00000066');
-    ctx.fillStyle=turretGrad; ctx.shadowColor=col; ctx.shadowBlur=14;
-    ctx.fillRect(0,-9,r+30,18);
-    ctx.fillStyle='#ffffffaa';
-    ctx.fillRect(r*0.55,-3,r*0.55,4);
+    // base do canhão (disco giratório)
+    const baseDisc = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.38);
+    baseDisc.addColorStop(0, '#2c3a50');
+    baseDisc.addColorStop(1, '#131a24');
+    ctx.fillStyle = baseDisc;
+    ctx.shadowColor = col; ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.36, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = col + '66'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.36, 0, Math.PI * 2); ctx.stroke();
+    // cano do canhão (duplo, separados verticalmente)
+    const cG = ctx.createLinearGradient(0, -14, 0, 14);
+    cG.addColorStop(0, '#3a4a60'); cG.addColorStop(0.5, '#5c7090'); cG.addColorStop(1, '#1a2030');
+    ctx.fillStyle = cG; ctx.shadowBlur = 0;
+    // cano superior
+    ctx.fillRect(r * 0.28, -11, r * 0.72, 8);
+    // cano inferior
+    ctx.fillRect(r * 0.28, 3, r * 0.72, 8);
+    // reforço de aço entre os canos
+    ctx.fillStyle = col + '44';
+    ctx.fillRect(r * 0.30, -3, r * 0.65, 6);
+    // bocal de plasma na ponta do canhão
+    ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 12 * pulse;
+    ctx.beginPath(); ctx.arc(r * 0.98, 0, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
     ctx.restore();
 
-    ctx.fillStyle='#ffffff';
-    ctx.shadowColor='#fff'; ctx.shadowBlur=10;
-    ctx.beginPath(); ctx.arc(0,0,9,0,Math.PI*2); ctx.fill();
-    ctx.shadowBlur=0;
-    ctx.restore();
-
-    // ── Espiras de cristal laterais (substituem as antenas mecânicas) ──
+    // ── Núcleo de reactor (centro pulsante) ───────────────────
     ctx.save();
-    ctx.globalAlpha=0.85*assembly;
-    ctx.strokeStyle=col; ctx.lineWidth=2.4; ctx.shadowColor=col; ctx.shadowBlur=8;
-    for (const side of [-1,1]) {
-      const bx=side*r*0.62, by=topY+r*0.18;
-      const tx=side*r*0.95, ty=topY-r*0.55;
-      ctx.beginPath();
-      ctx.moveTo(bx, by);
-      ctx.lineTo(tx, ty);
-      ctx.stroke();
-      // ponta em diamante (espira de cristal) em vez de círculo
-      ctx.save();
-      ctx.translate(tx,ty);
-      ctx.fillStyle=col;
-      ctx.beginPath();
-      ctx.moveTo(0,-4.6); ctx.lineTo(3.2,0); ctx.lineTo(0,4.6); ctx.lineTo(-3.2,0);
-      ctx.closePath(); ctx.fill();
-      ctx.restore();
-    }
-    ctx.shadowBlur=0;
+    ctx.translate(0, -r * 0.28);
+    ctx.globalAlpha = assembly;
+    const coreR = r * 0.22;
+    // halo externo
+    const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, coreR * 2.2);
+    halo.addColorStop(0, col + 'cc');
+    halo.addColorStop(0.4, col + '44');
+    halo.addColorStop(1, col + '00');
+    ctx.globalAlpha = pulse * 0.85 * assembly;
+    ctx.fillStyle = halo;
+    ctx.beginPath(); ctx.arc(0, 0, coreR * 2.2, 0, Math.PI * 2); ctx.fill();
+    // núcleo sólido
+    ctx.globalAlpha = assembly;
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = col; ctx.shadowBlur = 22 * pulse;
+    ctx.beginPath(); ctx.arc(0, 0, coreR * 0.55, 0, Math.PI * 2); ctx.fill();
+    // anel de reactor
+    ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.shadowBlur = 14 * pulse;
+    ctx.beginPath(); ctx.arc(0, 0, coreR, 0, Math.PI * 2); ctx.stroke();
+    ctx.shadowBlur = 0;
     ctx.restore();
 
-    // ── Hit flash ──
-    if (this._hitFlash>0) {
+    // ── Hit flash ─────────────────────────────────────────────
+    if (this._hitFlash > 0) {
       ctx.save();
-      ctx.globalAlpha=(this._hitFlash/0.15)*0.55;
-      ctx.fillStyle='#ffffff';
-      ctx.beginPath(); ctx.arc(0, topY, r*0.7, 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = (this._hitFlash / 0.15) * 0.60;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(0, -r * 0.28, r * 0.85, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
 
-    ctx.restore(); // translate liftY
+    ctx.restore(); // liftY
   }
 
-  // Hexágono regular; `rotation` permite girar o desenho (usado pelos anéis
-  // rotativos e pela gema do núcleo, que giram em velocidades diferentes).
-  _hexagon(ctx, radius, rotation) {
+  // Hexágono regular; `rotation` gira o ponto inicial.
+  _hexagon(ctx, radius, rotation=0) {
     ctx.beginPath();
-    for (let i=0;i<6;i++) {
-      const a=i*Math.PI/3 - Math.PI/6 + rotation;
-      const px=Math.cos(a)*radius, py=Math.sin(a)*radius;
-      if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    for (let i = 0; i < 6; i++) {
+      const a = i * Math.PI / 3 - Math.PI / 6 + rotation;
+      const px = Math.cos(a) * radius, py = Math.sin(a) * radius;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
     }
     ctx.closePath();
   }
 
-  // ── Animação de montagem + surgimento ─────────────────────────
+  // ── Animação de montagem/surgimento (estilo orbital drop) ────
   _drawEmerging(ctx) {
-    const t=this._emergeT;
-    const col=this.color;
-    const r=this.r;
+    const t   = this._emergeT;
+    const col = this.color;
+    const r   = this.r;
 
     ctx.save();
-    ctx.translate(this.x,this.y);
+    ctx.translate(this.x, this.y);
 
-    // Fase 1 (0 → 0.45): plataforma de energia se forma no chão, partículas convergem
-    // Fase 2 (0.35 → 1): estrutura "sobe" do chão e se monta em camadas (rise + assembly)
-    const platformPct = Math.min(1, t/0.45);
-    const rise        = Math.max(0, Math.min(1, (t-0.30)/0.55));
-    const assembly    = Math.max(0, Math.min(1, (t-0.45)/0.55));
+    const platformPct = Math.min(1, t / 0.45);
+    const rise        = Math.max(0, Math.min(1, (t - 0.30) / 0.55));
+    const assembly    = Math.max(0, Math.min(1, (t - 0.45) / 0.55));
 
-    // Anel de energia no chão (plataforma de montagem)
+    // Grade de implantação no chão (círculos concêntricos de targeting)
     ctx.save();
-    ctx.globalAlpha=platformPct*(1-rise*0.5);
-    ctx.scale(1,0.4);
-    const ringR=r*(0.4+platformPct*1.3);
-    ctx.strokeStyle=col; ctx.lineWidth=4;
-    ctx.shadowColor=col; ctx.shadowBlur=24;
-    ctx.beginPath(); ctx.arc(0,0,ringR,0,Math.PI*2); ctx.stroke();
-    ctx.lineWidth=1.4; ctx.globalAlpha*=0.5;
-    ctx.beginPath(); ctx.arc(0,0,ringR*0.7,0,Math.PI*2); ctx.stroke();
-    ctx.shadowBlur=0;
+    ctx.globalAlpha = platformPct * (1 - rise * 0.7);
+    ctx.scale(1, 0.35);
+    for (let i = 1; i <= 3; i++) {
+      const ringR = r * (0.3 + platformPct * i * 0.42);
+      ctx.strokeStyle = i === 1 ? col : col + (i === 2 ? '88' : '44');
+      ctx.lineWidth = i === 1 ? 3 : 1.5;
+      ctx.shadowColor = col; ctx.shadowBlur = i === 1 ? 20 : 8;
+      ctx.beginPath(); ctx.arc(0, 0, ringR, 0, Math.PI * 2); ctx.stroke();
+    }
+    // cruz de mira
+    ctx.strokeStyle = col + '66'; ctx.lineWidth = 1; ctx.shadowBlur = 0;
+    const cr = r * (0.3 + platformPct * 1.26);
+    ctx.beginPath(); ctx.moveTo(-cr, 0); ctx.lineTo(cr, 0); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, -cr); ctx.lineTo(0, cr); ctx.stroke();
     ctx.restore();
 
-    // Feixe de luz vertical (energia condensando)
-    if (platformPct>0.05 && rise<0.95) {
+    // Feixe de queda orbital (vem de cima)
+    if (platformPct > 0.05 && rise < 0.90) {
       ctx.save();
-      const beamA=(1-rise)*platformPct*0.5;
-      const beamGrad=ctx.createLinearGradient(0,-r*2.4,0,r*0.6);
-      beamGrad.addColorStop(0,col+'00');
-      beamGrad.addColorStop(0.6,col+'55');
-      beamGrad.addColorStop(1,col+'00');
-      ctx.globalAlpha=beamA;
-      ctx.fillStyle=beamGrad;
-      ctx.fillRect(-r*0.22,-r*2.4,r*0.44,r*3);
+      const beamA = (1 - rise) * platformPct * 0.55;
+      const bGrad = ctx.createLinearGradient(0, -r * 2.8, 0, r * 0.5);
+      bGrad.addColorStop(0, col + '00');
+      bGrad.addColorStop(0.55, col + '66');
+      bGrad.addColorStop(1, col + '00');
+      ctx.globalAlpha = beamA;
+      ctx.fillStyle = bGrad;
+      ctx.fillRect(-r * 0.18, -r * 2.8, r * 0.36, r * 3.3);
       ctx.restore();
     }
 
-    // Partículas convergindo em espiral para o centro (montagem)
+    // Fragmentos de metal caindo em espiral (detritos da implantação)
     for (const p of this._emergeParticles) {
-      const local=Math.max(0, Math.min(1, (t-p.delay)/(0.85*p.speed)));
-      if (local<=0) continue;
-      const ease=1-Math.pow(1-local,3);
-      const ang=p.a + (1-ease)*4.2;
-      const dist=p.dist*(1-ease);
-      const py=Math.sin(ang)*dist*0.42 - p.h*(1-ease) - rise*r*0.4;
-      const px=Math.cos(ang)*dist;
+      const local = Math.max(0, Math.min(1, (t - p.delay) / (0.85 * p.speed)));
+      if (local <= 0) continue;
+      const ease = 1 - Math.pow(1 - local, 3);
+      const ang  = p.a + (1 - ease) * 3.8;
+      const dist = p.dist * (1 - ease);
+      const px   = Math.cos(ang) * dist;
+      const py   = Math.sin(ang) * dist * 0.38 - p.h * (1 - ease) - rise * r * 0.3;
       ctx.save();
-      ctx.globalAlpha=ease*(1-Math.max(0,(local-0.85)/0.15));
-      ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=8;
-      // estilhaços de cristal (diamantes) em vez de partículas circulares
-      const ps=p.size*(0.4+ease*0.6);
-      ctx.translate(px,py);
-      ctx.rotate(ang);
-      ctx.beginPath();
-      ctx.moveTo(0,-ps); ctx.lineTo(ps*0.6,0); ctx.lineTo(0,ps); ctx.lineTo(-ps*0.6,0);
-      ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = ease * (1 - Math.max(0, (local - 0.82) / 0.18));
+      ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 6;
+      // retângulo girado = fragmento metálico
+      const ps = p.size * (0.5 + ease * 0.5);
+      ctx.translate(px, py);
+      ctx.rotate(ang * 2.5);
+      ctx.fillRect(-ps, -ps * 0.4, ps * 2, ps * 0.8);
       ctx.restore();
     }
 
-    // Estrutura sobe e se monta
-    if (rise>0||assembly>0) {
+    // Estrutura desce do alto e se monta
+    if (rise > 0 || assembly > 0) {
       ctx.save();
-      ctx.globalAlpha=Math.max(rise,assembly);
-      this._drawBody(ctx, col, r, Math.max(rise,0.001), assembly);
+      ctx.globalAlpha = Math.max(rise, assembly);
+      this._drawBody(ctx, col, r, Math.max(rise, 0.001), assembly);
       ctx.restore();
     }
 
-    // Flash final ao concluir a montagem
-    if (t>0.92) {
-      const fp=(t-0.92)/0.08;
+    // Flash de impacto ao pousar
+    if (t > 0.92) {
+      const fp = (t - 0.92) / 0.08;
       ctx.save();
-      ctx.globalAlpha=(1-fp)*0.6;
-      ctx.fillStyle='#ffffff';
-      ctx.beginPath(); ctx.arc(0,-r*0.7, r*1.6*(0.4+fp*0.8), 0, Math.PI*2); ctx.fill();
+      ctx.globalAlpha = (1 - fp) * 0.65;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(0, 0, r * 1.8 * (0.5 + fp * 0.6), 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
 
     // Texto de status
-    if (t<0.97) {
+    if (t < 0.97) {
       ctx.save();
-      ctx.fillStyle=col; ctx.font='bold 12px system-ui'; ctx.textAlign='center';
-      ctx.globalAlpha=0.85;
-      ctx.shadowColor=col; ctx.shadowBlur=6;
+      ctx.fillStyle = col; ctx.font = 'bold 12px system-ui'; ctx.textAlign = 'center';
+      ctx.globalAlpha = 0.88;
+      ctx.shadowColor = col; ctx.shadowBlur = 6;
       const txt = this._rebuilding
-        ? (t<0.45 ? 'RECONSTITUINDO ENERGIA…' : 'RECONSTRUINDO TORRE…')
-        : (t<0.45 ? 'CONVERGINDO ENERGIA…'     : 'MONTANDO TORRE…');
-      ctx.fillText(txt, 0, -r*2.1);
-      ctx.shadowBlur=0;
+        ? (t < 0.45 ? 'RECARREGANDO DEFESAS…' : 'RECONSTITUINDO…')
+        : (t < 0.45 ? 'IMPLANTANDO PLATAFORMA…' : 'ATIVANDO SISTEMAS…');
+      ctx.fillText(txt, 0, -r * 2.2);
+      ctx.shadowBlur = 0;
       ctx.restore();
     }
 
@@ -684,39 +692,62 @@ export class CentralTower extends Tower {
   draw(ctx) {
     if (this.emerging) { this._drawEmerging(ctx); return; }
 
-    const col=this.color;
-    const r=this.r;
+    const col = this.color;
+    const r   = this.r * 1.22; // central é 22% maior visualmente
 
     ctx.save();
-    ctx.translate(this.x,this.y);
+    ctx.translate(this.x, this.y);
+
+    // Aura de alcance pulsante (mais visível na torre central)
+    const pulse = 0.55 + 0.45 * Math.sin(this._ringPulse * 1.8);
+    ctx.globalAlpha = 0.06 * pulse;
+    ctx.strokeStyle = col; ctx.lineWidth = 3;
+    ctx.shadowColor = col; ctx.shadowBlur = 20;
+    ctx.beginPath(); ctx.arc(0, 0, this.r * (820/78), 0, Math.PI * 2); ctx.stroke();
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+
+    // Segundo anel extra de presença (torre central tem 2 anéis de aura)
+    ctx.globalAlpha = 0.035 * pulse;
+    ctx.strokeStyle = col; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(0, 0, this.r * (820/78) * 0.78, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+
     this._drawBody(ctx, col, r, 1, 1);
     ctx.restore();
 
-    const w=160,h=11, bx=this.x-w/2, by=this.y-r*1.55-30;
+    // Barra de HP (mais larga para a torre central)
+    const w = 180, h = 13, bx = this.x - w / 2, by = this.y - r * 1.45 - 32;
     ctx.save();
-    ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(bx-2,by-2,w+4,h+4);
-    ctx.fillStyle='#222'; ctx.fillRect(bx,by,w,h);
-    const pct=this.hp/this.maxHp;
-    const hpGrad=ctx.createLinearGradient(bx,0,bx+w,0);
-    hpGrad.addColorStop(0,col+'88'); hpGrad.addColorStop(1,col);
-    ctx.fillStyle=hpGrad; ctx.shadowColor=col; ctx.shadowBlur=10;
-    ctx.fillRect(bx,by,w*pct,h);
-    ctx.shadowBlur=0;
-    ctx.strokeStyle=col+'66'; ctx.lineWidth=1; ctx.strokeRect(bx,by,w,h);
+    ctx.fillStyle = 'rgba(0,0,0,0.60)'; ctx.fillRect(bx - 2, by - 2, w + 4, h + 4);
+    ctx.fillStyle = '#1a1a1a'; ctx.fillRect(bx, by, w, h);
+    const pct = this.hp / this.maxHp;
+    // muda de cor conforme HP: verde → amarelo → vermelho
+    const hpColor = pct > 0.6 ? col : pct > 0.3 ? '#ffcc00' : '#ff3333';
+    const hpGrad  = ctx.createLinearGradient(bx, 0, bx + w, 0);
+    hpGrad.addColorStop(0, hpColor + '88'); hpGrad.addColorStop(1, hpColor);
+    ctx.fillStyle = hpGrad; ctx.shadowColor = hpColor; ctx.shadowBlur = 12;
+    ctx.fillRect(bx, by, w * pct, h);
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = hpColor + '55'; ctx.lineWidth = 1.5; ctx.strokeRect(bx, by, w, h);
     ctx.restore();
 
+    // Label
     ctx.save();
-    ctx.fillStyle=col; ctx.font='bold 15px system-ui'; ctx.textAlign='center';
-    ctx.shadowColor=col; ctx.shadowBlur=8;
-    ctx.fillText('TORRE CENTRAL — DESTRUA PARA CONQUISTAR', this.x, by-12);
-    ctx.shadowBlur=0;
+    ctx.fillStyle = col; ctx.font = 'bold 14px system-ui'; ctx.textAlign = 'center';
+    ctx.shadowColor = col; ctx.shadowBlur = 10;
+    ctx.fillText('FORTALEZA ORBITAL — DESTRUA PARA VENCER', this.x, by - 13);
+    ctx.font = '11px system-ui'; ctx.shadowBlur = 5;
+    const hpPct = Math.round(pct * 100);
+    ctx.fillText(`[ BLINDAGEM: ${hpPct}% ]`, this.x, by - 1);
+    ctx.shadowBlur = 0;
     ctx.restore();
 
-    if (this._destroyedFlash>0) {
+    // Flash de captura/impacto
+    if (this._destroyedFlash > 0) {
       ctx.save();
-      ctx.globalAlpha=this._destroyedFlash/0.6*0.5;
-      ctx.fillStyle=col;
-      ctx.beginPath(); ctx.arc(this.x,this.y,r*2.6,0,Math.PI*2); ctx.fill();
+      ctx.globalAlpha = (this._destroyedFlash / 0.6) * 0.55;
+      ctx.fillStyle = col;
+      ctx.beginPath(); ctx.arc(this.x, this.y, r * 2.8, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
   }
