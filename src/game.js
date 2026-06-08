@@ -333,7 +333,18 @@ export class Game {
     for (const p of (msg.players||[])) {
       if (p.id===this.net.myId) continue;
       matchPeers.push(p);
-      this.peers[p.id]=new RemotePlayer({id:p.id,name:p.name,skinIndex:p.skinIndex,profileIcon:p.profileIcon,skins:SkinsModule,team:p.team,isBot:false});
+      if (p.isBot) {
+        if (this.isHost) {
+          const {x,y}=this._spawnPosFor(p.team);
+          this.bots.push(new TeamBot({ id:p.id, name:p.name, team:p.team, x, y, difficulty:this.diff, skinIndex:p.skinIndex }));
+        } else {
+          // Clientes não-anfitriões representam bots como RemotePlayers comuns
+          // — o anfitrião replica o estado deles via state/event.
+          this.peers[p.id]=new RemotePlayer({id:p.id,name:p.name,skinIndex:p.skinIndex,skins:SkinsModule,team:p.team,isBot:true});
+        }
+      } else {
+        this.peers[p.id]=new RemotePlayer({id:p.id,name:p.name,skinIndex:p.skinIndex,profileIcon:p.profileIcon,skins:SkinsModule,team:p.team,isBot:false});
+      }
     }
 
     const {x,y}=this._spawnPosFor(this.team);
@@ -500,7 +511,7 @@ export class Game {
       }
     }
 
-    if (this.mode==='equipe_online') {
+    if (this.mode==='equipe_online' || this.mode==='tower_defense') {
       // Anfitrião simula os bots localmente e replica via state/event
       const allUnits=[this.player, ...Object.values(this.peers), ...this.bots];
       if (this.isHost) {
@@ -517,14 +528,12 @@ export class Game {
         }
       }
       this.combat.setPvpContext({ peers:this.peers, bots:this.bots, localTeam:this.team, mode:this.mode, isHost:this.isHost, net:this.net });
-    } else if (this.mode==='tower_defense') {
-      this.combat.setPvpContext({ peers:this.peers, bots:this.bots, localTeam:this.team, mode:this.mode, isHost:this.isHost, net:this.net });
     }
 
     this.combat.update(dt,this.player,this.enemyMgr.enemies);
     for (const id in this.peers) this.peers[id].update(dt);
 
-    if (this.mode==='equipe_online' && this.isHost) {
+    if ((this.mode==='equipe_online' || this.mode==='tower_defense') && this.isHost) {
       this._netT-=dt;
       if (this._netT<=0&&this.net?.connected) {
         this._netT=0.05;

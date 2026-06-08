@@ -152,11 +152,13 @@ function leaveTeamQueue(socket, info) {
 const TD_TEAM_SIZE   = 2;
 const TD_MATCH_SIZE  = TD_TEAM_SIZE * 2;
 const TD_QUEUE_MAX   = 8;
+const TD_WAIT_MS     = 25_000;
 const TD_ROOM_ID     = 'tower_defense_arena';
 let   tdMatchSeq     = 1;
 
 const tdQueue = []; // [{ id, name, skinIndex, profileIcon, socket }] aguardando turno
-let   tdMatch = null; // { roomId, players, teamCounts, started, tournamentEligible }
+let   tdMatch = null; // { roomId, players, teamCounts, started, tournamentEligible, botIds, hostId }
+let   tdWaitTimer = null;
 
 function tdQueuePosition(userId) {
   return tdQueue.findIndex(p => p.id === userId);
@@ -171,26 +173,43 @@ function tdBroadcastQueueState() {
   for (const p of tdQueue) wsSend(p.socket, msg);
 }
 
-// Forma a próxima partida 2x2 assim que houver jogadores suficientes e
-// nenhuma partida estiver em andamento — "turnos revezados": só roda uma
-// disputa por vez, o resto continua na fila aguardando a vez.
-function tdTryStartMatch() {
-  if (tdMatch || tdQueue.length < TD_MATCH_SIZE) return;
+// Forma a próxima partida 2x2: roda assim que 4 jogadores reais estiverem
+// na fila, OU — se não houver gente suficiente — após TD_WAIT_MS de espera,
+// preenchendo as vagas vazias com bots (mesmo padrão do "Equipe Online"),
+// para o torneio nunca ficar travado esperando jogadores que não aparecem.
+// "Turnos revezados": só roda uma disputa por vez.
+function tdTryStartMatch(allowBots = false) {
+  if (tdMatch || tdQueue.length === 0) return;
+  if (!allowBots && tdQueue.length < TD_MATCH_SIZE) return;
 
-  const chosen = tdQueue.splice(0, TD_MATCH_SIZE);
+  if (tdWaitTimer) { clearTimeout(tdWaitTimer); tdWaitTimer = null; }
+
+  const realCount = Math.min(TD_MATCH_SIZE, tdQueue.length);
+  const chosen = tdQueue.splice(0, realCount);
   const teamCounts = { red: 0, blue: 0 };
   const players = chosen.map((p, idx) => {
     const team = tdAssignTeam(teamCounts);
     teamCounts[team]++;
-    return { id: p.id, name: p.name, skinIndex: p.skinIndex, profileIcon: p.profileIcon, socket: p.socket, team, isHost: idx === 0 };
+    return { id: p.id, name: p.name, skinIndex: p.skinIndex, profileIcon: p.profileIcon, socket: p.socket, team, isBot: false, isHost: idx === 0 };
   });
 
+  const slotsToFill = TD_MATCH_SIZE - players.length;
+  const botSlots = [];
   const roomId = `${TD_ROOM_ID}_${tdMatchSeq++}`;
+  for (let i = 0; i < slotsToFill; i++) {
+    const team = tdAssignTeam(teamCounts);
+    teamCounts[team]++;
+    const botId = `bot_${roomId}_${i}`;
+    botSlots.push({ id: botId, name: `BOT-${Math.floor(1000+Math.random()*9000)}`, skinIndex: Math.floor(Math.random()*10), profileIcon: 0, team, isBot: true, isHost: false });
+  }
+
   tdMatch = {
     roomId,
     players,
     teamCounts,
     started: true,
+    botIds: new Set(botSlots.map(b => b.id)),
+    hostId: players[0]?.id ?? null,
     // Carimba a elegibilidade no início da partida — garante que uma
     // disputa iniciada durante a janela do torneio premie o vencedor mesmo
     // que ela termine logo após o prazo (e vice-versa: não premia se
@@ -206,8 +225,8 @@ function tdTryStartMatch() {
   }
 
   const playersPayload = players.map(p => ({
-    id: p.id, name: p.name, skinIndex: p.skinIndex, profileIcon: p.profileIcon, team: p.team, isHost: p.isHost,
-  }));
+    id: p.id, name: p.name, skinIndex: p.skinIndex, profileIcon: p.profileIcon, team: p.team, isBot: false, isHost: p.isHost,
+  })).concat(botSlots);
 
   for (const p of players) {
     wsSend(p.socket, JSON.stringify({
@@ -218,7 +237,7 @@ function tdTryStartMatch() {
     }));
   }
 
-  console.log(`[TORNEIO] Tower Defense iniciado em "${roomId}" — times: vermelho x azul (2x2)`);
+  console.log(`[TORNEIO] Tower Defense iniciado em "${roomId}" — ${players.length} jogador(es) real(is) + ${botSlots.length} bot(s)`);
   tdBroadcastQueueState();
 }
 
@@ -239,6 +258,12 @@ function joinTdQueue(socket, info, name, skinIndex, profileIcon) {
 
   tdBroadcastQueueState();
   tdTryStartMatch();
+
+  // Sem jogadores suficientes para fechar 2x2 real: agenda o preenchimento
+  // com bots após TD_WAIT_MS, para a fila nunca ficar travada indefinidamente.
+  if (!tdMatch && tdQueue.length > 0 && tdQueue.length < TD_MATCH_SIZE && !tdWaitTimer) {
+    tdWaitTimer = setTimeout(() => { tdWaitTimer = null; tdTryStartMatch(true); }, TD_WAIT_MS);
+  }
 }
 
 function leaveTdQueue(socket, info) {
@@ -246,6 +271,10 @@ function leaveTdQueue(socket, info) {
   if (idx !== -1) {
     tdQueue.splice(idx, 1);
     tdBroadcastQueueState();
+  }
+  if (tdQueue.length === 0 && tdWaitTimer) {
+    clearTimeout(tdWaitTimer);
+    tdWaitTimer = null;
   }
 }
 
@@ -277,6 +306,9 @@ function tdEndMatch(roomId, winnerTeam) {
   console.log(`[TORNEIO] Tower Defense "${roomId}" encerrado — vencedor: ${winnerTeam || 'ninguém'}`);
   tdBroadcastQueueState();
   tdTryStartMatch();
+  if (!tdMatch && tdQueue.length > 0 && tdQueue.length < TD_MATCH_SIZE && !tdWaitTimer) {
+    tdWaitTimer = setTimeout(() => { tdWaitTimer = null; tdTryStartMatch(true); }, TD_WAIT_MS);
+  }
 }
 
 function tdHandleDisconnect(socket, info) {
@@ -456,12 +488,14 @@ function handleMsg(socket, raw) {
       break;
     case 'bot_state':
     case 'bot_event': {
-      // Repasse de estado/evento de bots simulados pelo anfitrião do modo
-      // "Equipe Online". Só aceitamos de quem é realmente o anfitrião da
-      // sala, e só para IDs de bot que o servidor atribuiu a essa sala —
-      // evita spoofing de identidade por outros jogadores.
+      // Repasse de estado/evento de bots simulados pelo anfitrião dos modos
+      // "Equipe Online" e "Tower Defense". Só aceitamos de quem é realmente
+      // o anfitrião da sala/partida, e só para IDs de bot que o servidor
+      // atribuiu a essa sala — evita spoofing de identidade por outros jogadores.
       const tr = teamRooms.get(info.roomId);
-      if (!tr || tr.hostId !== info.id || !tr.botIds?.has(msg.botId)) break;
+      const validRoom = (tr && tr.hostId === info.id && tr.botIds?.has(msg.botId))
+        || (tdMatch && tdMatch.roomId === info.roomId && tdMatch.hostId === info.id && tdMatch.botIds?.has(msg.botId));
+      if (!validRoom) break;
       broadcastRoom(info.roomId, {
         type: msg.type === 'bot_state' ? 'state' : 'event',
         id: msg.botId,
