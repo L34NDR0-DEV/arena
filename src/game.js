@@ -670,7 +670,7 @@ export class Game {
           }
         }
       }
-      this.combat.setPvpContext({ peers:this.peers, bots:this.bots, localTeam:this.team, mode:this.mode, isHost:this.isHost, net:this.net });
+      this.combat.setPvpContext({ peers:this.peers, bots:this.bots, localTeam:this.team, mode:this.mode, isHost:this.isHost, net:this.net, onKill:(team)=>this._registerTeamKill(team) });
     }
 
     this.combat.update(dt,this.player,this.enemyMgr.enemies);

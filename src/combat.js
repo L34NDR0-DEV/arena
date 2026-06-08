@@ -47,6 +47,9 @@ export class CombatSystem {
       victimName: victim.name, victimTeam: victim.team,
       isBot: !!victim.isBot,
     };
+    // Atualiza o placar local imediatamente — o servidor faz broadcast para os
+    // outros, mas não devolve o evento para quem enviou, então registramos aqui.
+    this._pvp?.onKill?.(shooterTeam);
     if (shooterIsBot && shooterId!=null) this._pvp?.net?.sendBotEvent(shooterId, payload);
     else this._pvp?.net?.sendEvent(payload);
   }
