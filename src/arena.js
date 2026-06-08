@@ -64,6 +64,7 @@ export class Arena {
     this.stars      = this._genStars();
     this.nebulae    = this._genNebulae();
     this.asteroids  = this._genAsteroids();
+    this.obstacles  = this._genObstacles();
     this._gridPhase = Math.random() * Math.PI * 2;
   }
 
@@ -99,6 +100,55 @@ export class Arena {
   _asteroidColor() {
     const palettes = ['#7a6a55','#8a7060','#6a5a45','#9a8070','#5a4a38'];
     return palettes[Math.floor(Math.random()*palettes.length)];
+  }
+
+  // Gera obstáculos fixos espalhados pela arena — pilares, rochas e ruínas.
+  // Respeitam uma zona central livre (onde o player nasce) e as bordas.
+  // Colisão esférica (mesma API de asteroides) — sem HP, sem movimento.
+  _genObstacles() {
+    const obstacles = [];
+    // Zona central sempre livre (raio seguro ao redor do spawn)
+    const cx = ARENA_W/2, cy = ARENA_H/2, safeR = 500;
+    // Margem das bordas
+    const margin = 180;
+    // Quantidade base: ~1 obstáculo a cada ~600x600px de área (arena 8000x5500 → ~120)
+    const count = Math.round((ARENA_W * ARENA_H) / (600*600));
+    const types = ['pilar','rocha','ruina'];
+
+    let attempts = 0;
+    while (obstacles.length < count && attempts < count*8) {
+      attempts++;
+      const r = 55 + Math.random()*70; // raio 55-125px
+      const x = margin + r + Math.random()*(ARENA_W - margin*2 - r*2);
+      const y = margin + r + Math.random()*(ARENA_H - margin*2 - r*2);
+      // Não nasce na zona central
+      if (Math.hypot(x-cx, y-cy) < safeR + r) continue;
+      // Não sobrepõe outro obstáculo (gap mínimo 40px)
+      if (obstacles.some(o => Math.hypot(o.x-x, o.y-y) < o.r+r+40)) continue;
+      const type = types[Math.floor(Math.random()*types.length)];
+      // Ângulo de rotação aleatório (para variar a aparência)
+      const angle = Math.random()*Math.PI*2;
+      // Número de vértices para polígonos irregulares (usado por rocha/ruina)
+      const pts = type==='pilar' ? 5 : Math.floor(6+Math.random()*4);
+      const verts = Array.from({length:pts}, (_, j) => {
+        const a = (j/pts)*Math.PI*2 + angle;
+        // Pilares são mais pontiagudos (irregularidade maior), rochas mais arredondadas
+        const jitter = type==='pilar' ? 0.5+Math.random()*0.7 : 0.72+Math.random()*0.38;
+        return { x: Math.cos(a)*r*jitter, y: Math.sin(a)*r*jitter };
+      });
+      obstacles.push({ x, y, r, type, angle, verts });
+    }
+    return obstacles;
+  }
+
+  // Retorna o obstáculo colidido (com a normal de empurrão) ou null.
+  // API idêntica a checkAsteroidCollision mas sem dano (obstáculos são indestrutíveis).
+  checkObstacleCollision(px, py, pr) {
+    for (const o of this.obstacles) {
+      const d = Math.hypot(o.x-px, o.y-py);
+      if (d < o.r + pr) return o;
+    }
+    return null;
   }
 
   _genStars() {
@@ -687,6 +737,88 @@ export class Arena {
         const hpPct = a.hp/a.maxHp;
         ctx.fillStyle = hpPct>0.5?'#cc8822':'#ff4422';
         ctx.fillRect(-bw/2, a.r+4, bw*hpPct, bh);
+      }
+
+      ctx.restore();
+    }
+  }
+
+  drawObstacles(ctx) {
+    const t = Date.now()/1000;
+    const cfg = this.cfg;
+    for (const o of this.obstacles) {
+      ctx.save();
+      ctx.translate(o.x, o.y);
+
+      if (o.type === 'pilar') {
+        // Pilar de cristal: polígono pontiagudo com brilho neon
+        const glowColor = cfg.glowColor || '#00aaff';
+        ctx.shadowColor = glowColor; ctx.shadowBlur = 18 + Math.sin(t*1.4+o.x)*6;
+        ctx.beginPath();
+        ctx.moveTo(o.verts[0].x, o.verts[0].y);
+        for (let i=1; i<o.verts.length; i++) ctx.lineTo(o.verts[i].x, o.verts[i].y);
+        ctx.closePath();
+        // Gradiente interno
+        const g = ctx.createRadialGradient(0, -o.r*0.3, 0, 0, 0, o.r);
+        g.addColorStop(0, '#cceeff');
+        g.addColorStop(0.4, glowColor + 'cc');
+        g.addColorStop(1, '#112233');
+        ctx.fillStyle = g;
+        ctx.fill();
+        ctx.strokeStyle = glowColor; ctx.lineWidth = 1.5;
+        ctx.stroke();
+        // Reflexo interno (linha brilhante)
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(o.verts[0].x*0.5, o.verts[0].y*0.5);
+        ctx.lineTo(o.verts[Math.floor(o.verts.length/2)].x*0.5, o.verts[Math.floor(o.verts.length/2)].y*0.5);
+        ctx.stroke();
+
+      } else if (o.type === 'rocha') {
+        // Rocha espacial: polígono irregular escuro com textura
+        ctx.beginPath();
+        ctx.moveTo(o.verts[0].x, o.verts[0].y);
+        for (let i=1; i<o.verts.length; i++) ctx.lineTo(o.verts[i].x, o.verts[i].y);
+        ctx.closePath();
+        const gr = ctx.createRadialGradient(-o.r*0.25, -o.r*0.25, 0, 0, 0, o.r*1.1);
+        gr.addColorStop(0, '#888070');
+        gr.addColorStop(0.6, '#554840');
+        gr.addColorStop(1, '#1a1510');
+        ctx.fillStyle = gr;
+        ctx.fill();
+        ctx.strokeStyle = '#2a2218'; ctx.lineWidth = 2;
+        ctx.stroke();
+        // Crateras decorativas
+        ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 1;
+        for (let i=0; i<3; i++) {
+          const cx2 = Math.cos(o.angle+i*2.1)*o.r*0.28;
+          const cy2 = Math.sin(o.angle+i*1.7)*o.r*0.22;
+          const cr = o.r*(0.08+i*0.05);
+          ctx.beginPath(); ctx.arc(cx2, cy2, cr, 0, Math.PI*2); ctx.stroke();
+        }
+
+      } else { // ruina
+        // Ruína de estrutura: fragmentos retangulares enferrujados
+        const rc = cfg.borderColor || '#553300';
+        ctx.beginPath();
+        ctx.moveTo(o.verts[0].x, o.verts[0].y);
+        for (let i=1; i<o.verts.length; i++) ctx.lineTo(o.verts[i].x, o.verts[i].y);
+        ctx.closePath();
+        const gru = ctx.createRadialGradient(-o.r*0.2, -o.r*0.3, 0, 0, 0, o.r);
+        gru.addColorStop(0, '#887060');
+        gru.addColorStop(0.5, '#443320');
+        gru.addColorStop(1, '#0f0a08');
+        ctx.fillStyle = gru;
+        ctx.fill();
+        ctx.strokeStyle = rc; ctx.lineWidth = 2;
+        ctx.stroke();
+        // Detalhes de painel/estrutura
+        ctx.strokeStyle = 'rgba(200,150,80,0.25)'; ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(-o.r*0.4, -o.r*0.2); ctx.lineTo(o.r*0.4, -o.r*0.2);
+        ctx.moveTo(-o.r*0.3, o.r*0.15); ctx.lineTo(o.r*0.3, o.r*0.15);
+        ctx.stroke();
       }
 
       ctx.restore();

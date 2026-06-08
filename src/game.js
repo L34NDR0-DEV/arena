@@ -751,6 +751,7 @@ export class Game {
 
     this.arena.drawBorder(ctx);
     this.arena.drawAsteroids(ctx);
+    this.arena.drawObstacles(ctx);
     this.towerMgr?.draw(ctx);
     this.towerDefenseMgr?.draw(ctx);
     this.itemMgr.draw(ctx);

@@ -297,6 +297,47 @@ export class CombatSystem {
       }
     }
 
+    // ── Colisões com obstáculos fixos (pilares/rochas/ruínas) ────────────────
+    // Mesmo padrão dos asteroides, mas obstáculos são indestrutíveis (sem HP).
+    if (this.arena?.obstacles) {
+      // Projéteis → obstáculos (destruído ao colidir)
+      this.bullets=this.bullets.filter(b=>{
+        const o=this.arena.checkObstacleCollision(b.x,b.y,4);
+        if (o) { this.spawnExplosion(b.x,b.y,8,'#4488aa'); return false; }
+        return true;
+      });
+
+      // Player → obstáculos (empurrão elástico, sem dano — já é difícil o suficiente)
+      if (!player.dead&&!player.rebuilding) {
+        const o=this.arena.checkObstacleCollision(player.x,player.y,player.r);
+        if (o) {
+          const d=Math.hypot(o.x-player.x,o.y-player.y)||1;
+          const nx=(player.x-o.x)/d, ny=(player.y-o.y)/d;
+          // Empurra para fora do obstáculo
+          const overlap=o.r+player.r-d;
+          player.x+=nx*overlap; player.y+=ny*overlap;
+          // Cancela a componente de velocidade em direção ao obstáculo
+          const dot=player.vx*nx+player.vy*ny;
+          if (dot<0) { player.vx-=dot*nx*1.4; player.vy-=dot*ny*1.4; }
+          this._playCollisionSfx(0.9);
+        }
+      }
+
+      // Inimigos → obstáculos (empurrão, assim como asteroides)
+      for (const e of enemies) {
+        if (e.dead||e._dying) continue;
+        const o=this.arena.checkObstacleCollision(e.x,e.y,e.r);
+        if (o) {
+          const d=Math.hypot(o.x-e.x,o.y-e.y)||1;
+          const nx=(e.x-o.x)/d, ny=(e.y-o.y)/d;
+          const overlap=o.r+e.r-d;
+          e.x+=nx*overlap; e.y+=ny*overlap;
+          const dot=e.vx*nx+e.vy*ny;
+          if (dot<0) { e.vx-=dot*nx*1.3; e.vy-=dot*ny*1.3; }
+        }
+      }
+    }
+
     this.explosions=this.explosions.filter(ex=>{ex.life-=dt*2.8;return ex.life>0;});
 
     // ── Minas de proximidade ─────────────────────────────────
