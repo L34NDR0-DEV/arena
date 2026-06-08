@@ -4,6 +4,31 @@ import { ARENA_W, ARENA_H } from './arena.js';
 const DIFF = { facil:0.6, moderado:1.0, dificil:1.5, insano:2.2 };
 const MAX_LIVES = 5;
 
+// ── Sprites exclusivos de inimigo (nunca aparecem como skin de jogador) ──
+// Mesmo padrão de cache/desenho de src/skins.js, porém local: estas naves
+// são "do jogo" — só a IA inimiga as usa, ninguém pode comprá-las/equipá-las.
+const _enemyImgCache = {};
+function loadEnemyImg(file) {
+  const path = `./src/sprites/${file}`;
+  if (_enemyImgCache[path]) return _enemyImgCache[path];
+  const img = new Image();
+  img.src = path;
+  _enemyImgCache[path] = img;
+  return img;
+}
+
+function drawEnemySprite(ctx, img, size, angle) {
+  if (!img.complete || !img.naturalWidth) return false;
+  ctx.save();
+  ctx.rotate(angle);
+  ctx.drawImage(img, -size/2, -size/2, size, size);
+  ctx.restore();
+  return true;
+}
+
+const ENEMY_SHIP_IMG    = loadEnemyImg('skininimiga.png');
+const ENEMY_DISC_IMG    = loadEnemyImg('skininimigas.png');
+
 // ── Combustão na popa — estilo arcade: núcleo alongado + faíscas ──
 // `angle` é o ângulo de VOO (bico); a chama sempre sai pela popa (oposto).
 function spawnFlame(flames, ex, ey, angle, isAlien=false) {
@@ -384,23 +409,9 @@ export class SmartEnemy {
       ctx.globalAlpha=0.6+0.4*(1-this._respawnTimer/this._respawnDuration);
     }
 
-    ctx.scale(1.35,1.35);
-
-    // Fuselagem (escala 1.5x: r=34)
-    ctx.fillStyle='#660011';
-    ctx.beginPath(); ctx.moveTo(0,-39); ctx.lineTo(21,24); ctx.lineTo(10.5,30); ctx.lineTo(0,22.5); ctx.lineTo(-10.5,30); ctx.lineTo(-21,24); ctx.closePath(); ctx.fill();
-    ctx.fillStyle='#cc2233';
-    ctx.beginPath(); ctx.moveTo(0,-33); ctx.lineTo(13.5,18); ctx.lineTo(0,12); ctx.lineTo(-13.5,18); ctx.closePath(); ctx.fill();
-    ctx.fillStyle='#440008';
-    ctx.beginPath(); ctx.moveTo(-21,15); ctx.lineTo(-42,33); ctx.lineTo(-15,24); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(21,15); ctx.lineTo(42,33); ctx.lineTo(15,24); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle='#ff2244'; ctx.lineWidth=1.5;
-    ctx.beginPath(); ctx.moveTo(-21,15); ctx.lineTo(-39,31.5); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(21,15); ctx.lineTo(39,31.5); ctx.stroke();
-    ctx.fillStyle='#ff000044';
-    ctx.beginPath(); ctx.ellipse(0,-12,6,10.5,0,0,Math.PI*2); ctx.fill();
-    ctx.strokeStyle='#ff4466'; ctx.lineWidth=1.5;
-    ctx.beginPath(); ctx.ellipse(0,-12,6,10.5,0,0,Math.PI*2); ctx.stroke();
+    // Nave — sprite exclusivo de inimigo (caça alienígena angular roxo/verde),
+    // nunca disponível como skin de jogador.
+    drawEnemySprite(ctx, ENEMY_SHIP_IMG, this.r*2.4, 0);
     ctx.restore();
 
     // HP bar
@@ -796,22 +807,9 @@ export class GuardianEnemy {
     ctx.rotate(this.angle);
     ctx.scale(1.35,1.35);
 
-    // Fuselagem dourada/laranja — visual de "guardião"
-    ctx.fillStyle='#5a3300';
-    ctx.beginPath(); ctx.moveTo(0,-36); ctx.lineTo(19,22); ctx.lineTo(9.5,28); ctx.lineTo(0,21); ctx.lineTo(-9.5,28); ctx.lineTo(-19,22); ctx.closePath(); ctx.fill();
-    ctx.fillStyle='#ffaa00';
-    ctx.beginPath(); ctx.moveTo(0,-30); ctx.lineTo(12,16); ctx.lineTo(0,11); ctx.lineTo(-12,16); ctx.closePath(); ctx.fill();
-    ctx.fillStyle='#3a2200';
-    ctx.beginPath(); ctx.moveTo(-19,14); ctx.lineTo(-38,30); ctx.lineTo(-14,22); ctx.closePath(); ctx.fill();
-    ctx.beginPath(); ctx.moveTo(19,14); ctx.lineTo(38,30); ctx.lineTo(14,22); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle='#ffcc44'; ctx.lineWidth=1.5;
-    ctx.beginPath(); ctx.moveTo(-19,14); ctx.lineTo(-35,28); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(19,14); ctx.lineTo(35,28); ctx.stroke();
-    // Núcleo / cockpit em destaque (escudo de guardião)
-    ctx.fillStyle='#ffdd8844';
-    ctx.beginPath(); ctx.ellipse(0,-10,5.5,9,0,0,Math.PI*2); ctx.fill();
-    ctx.strokeStyle='#ffcc44'; ctx.lineWidth=1.5;
-    ctx.beginPath(); ctx.ellipse(0,-10,5.5,9,0,0,Math.PI*2); ctx.stroke();
+    // Nave — sprite exclusivo de inimigo (disco cinza/roxo com núcleo
+    // brilhante), nunca disponível como skin de jogador.
+    drawEnemySprite(ctx, ENEMY_DISC_IMG, this.r*2.4, 0);
     ctx.restore();
 
     // HP bar
