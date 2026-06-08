@@ -261,6 +261,18 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   background:var(--green);box-shadow:0 0 6px var(--green);
 }
 .mode-status-dot.maint{background:#ffcc44;box-shadow:0 0 6px #ffcc44;}
+.pilot-icon-wrap{position:relative;display:inline-flex;flex-shrink:0;}
+.pilot-icon-gear{
+  position:absolute;bottom:-3px;right:-3px;
+  width:11px;height:11px;
+  color:var(--cyan);opacity:.75;
+  background:var(--bg);border-radius:50%;
+  pointer-events:none;
+}
+.pilot-badge-profile:hover .pilot-icon-gear{opacity:1;animation:gear-spin .8s linear infinite;}
+@keyframes gear-spin{to{transform:rotate(360deg);}}
+.pilot-badge-profile:hover .pilot-icon-btn{border-color:var(--cyan);}
+
 .pilot-icon-btn{
   width:22px;height:22px;border-radius:3px;display:flex;align-items:center;justify-content:center;
   background:var(--panel);border:1px solid var(--border);font-size:13px;cursor:pointer;
@@ -1268,3 +1280,12 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   .shop-frame{padding:10px;}
   .icon-picker{padding:10px;}
 }
+
+/* ═══ Configurações — toggle button ══════════════════════════ */
+.setting-toggle{
+  flex-shrink:0;padding:6px 14px;font-family:'Press Start 2P',monospace;font-size:8px;
+  border-radius:4px;border:1.5px solid var(--cyan);color:var(--cyan);
+  background:rgba(0,30,46,.6);cursor:pointer;transition:all .15s;min-width:64px;
+}
+.setting-toggle.on{background:rgba(91,232,255,.25);box-shadow:0 0 10px rgba(91,232,255,.4);}
+.setting-toggle.off{border-color:rgba(255,255,255,.3);color:rgba(255,255,255,.4);}

@@ -26,10 +26,10 @@ const COLORS = {
 // de uma partida 2x2 inteira) e agora REAGE a quem se aproxima — atira em
 // qualquer nave (de qualquer time) que entrar no seu raio de alcance, com
 // dano alto e cadência rápida. Nasce neutra ('neutral'), sem dono, no centro.
-const CENTRAL_TOWER_MAX_HP   = 950;
-const CENTRAL_TOWER_RANGE    = 640;
-const CENTRAL_TOWER_DAMAGE   = 26;
-const CENTRAL_TOWER_SHOOT_CD = 0.62;
+const CENTRAL_TOWER_MAX_HP   = 3500;  // muito mais resistente — objetivo central de uma partida
+const CENTRAL_TOWER_RANGE    = 820;   // alcance maior — pressiona quem fica parado longe
+const CENTRAL_TOWER_DAMAGE   = 55;    // tiro doído — obriga coordenação de time
+const CENTRAL_TOWER_SHOOT_CD = 0.38;  // cadência alta — chuva de tiros sob foco
 
 export class Tower {
   constructor(x, y, side, corner) {

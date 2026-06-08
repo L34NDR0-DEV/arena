@@ -72,10 +72,12 @@
       <span class="mls-line mls-line-sub" id="mls-line-sub"></span>
     </div>
     <div class="menu-header-right">
-      <div class="pilot-badge">
-        <button class="pilot-icon-btn" id="pilot-icon-btn" onclick="openIconPicker()" title="Trocar ícone de perfil"></button>
+      <div class="pilot-badge pilot-badge-profile" onclick="openProfileSettings()" title="Ver perfil e configurações" style="cursor:pointer;">
+        <div class="pilot-icon-wrap">
+          <button class="pilot-icon-btn" id="pilot-icon-btn" tabindex="-1"></button>
+          <svg class="pilot-icon-gear" viewBox="0 0 10 10" fill="currentColor"><path d="M5 3.2 a1.8 1.8 0 1 0 0 3.6 1.8 1.8 0 0 0 0-3.6zm3.6 1.1h-.55a3 3 0 0 0-.22-.53l.39-.39-.87-.87-.39.39a3 3 0 0 0-.53-.22V2.4H5.01v.55a3 3 0 0 0-.53.22l-.39-.39-.87.87.39.39a3 3 0 0 0-.22.53H2.4v1.22h.55a3 3 0 0 0 .22.53l-.39.39.87.87.39-.39a3 3 0 0 0 .53.22v.55h1.22v-.55a3 3 0 0 0 .53-.22l.39.39.87-.87-.39-.39a3 3 0 0 0 .22-.53h.55V4.31z"/></svg>
+        </div>
         <span class="pilot-name" id="menu-pilot-name">JOGADOR</span>
-        <button class="change-pilot-btn" onclick="openNameEdit()" title="Editar nome" aria-label="Editar nome"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.2 L9.8 4 L4 9.8 L2 10 L2.2 8 Z"/></svg></button>
       </div>
       <button class="pilot-badge mode-status-badge" id="mode-status-btn" onclick="openModeStatus()" title="Ver status dos modos de jogo">
         <span class="mode-status-dot" id="mode-status-dot"></span>
@@ -308,6 +310,10 @@
   <div class="pause-game-name">TOWER DEFENSE<br>ON THE SPACE</div>
   <div class="pause-btns">
     <button class="btn btn-primary" onclick="resumeGame()"><svg viewBox="0 0 12 12" fill="currentColor"><polygon points="1,0 12,6 1,12"/></svg>CONTINUAR</button>
+    <button class="btn btn-ghost" id="pause-mute-btn" onclick="pauseToggleMute()">
+      <svg id="pause-mute-icon" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M1 4 L4 4 L7 1 L7 11 L4 8 L1 8 Z"/><path id="pause-sound-waves" d="M8.5 3.5 Q10 6 8.5 8.5 M9.5 2 Q12 6 9.5 10"/></svg>
+      <span id="pause-mute-label">SOM: LIGADO</span>
+    </button>
     <button class="btn btn-danger"  onclick="surrenderGame()"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg>DESISTIR</button>
   </div>
 </div>
@@ -599,6 +605,77 @@
           <li><b>Teste</b> — inimigos não atacam, ideal para testar mecânicas.</li>
           <li><b>Survivor</b> — ondas infinitas de inimigos. Sobreviva o máximo possível.</li>
         </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL PERFIL E CONFIGURAÇÕES ══════════════════════ -->
+<div id="profile-settings-overlay" class="changelog-overlay" style="display:none;" onclick="if(event.target===this)closeProfileSettings()">
+  <div class="changelog-modal" style="max-width:460px;">
+    <div class="changelog-header">
+      <span class="changelog-title">PERFIL E CONFIGURAÇÕES</span>
+      <button class="changelog-close" onclick="closeProfileSettings()">X</button>
+    </div>
+    <div class="changelog-body" style="padding:18px 20px;display:flex;flex-direction:column;gap:18px;">
+
+      <!-- Informações da conta -->
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div style="font-size:8px;letter-spacing:2px;color:var(--cyan);opacity:.7;">CONTA</div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <button class="pilot-icon-btn" id="ps-icon-btn" onclick="openIconPicker()" title="Trocar ícone"></button>
+          <div style="display:flex;flex-direction:column;gap:4px;flex:1;">
+            <span id="ps-pilot-name" style="font-size:11px;color:var(--cyan);"></span>
+            <span id="ps-pilot-email" style="font-size:8px;color:rgba(255,255,255,.4);"></span>
+          </div>
+          <button class="btn btn-ghost" style="font-size:7px;padding:6px 10px;" onclick="closeProfileSettings();openNameEdit()">EDITAR NOME</button>
+        </div>
+      </div>
+
+      <div style="height:1px;background:rgba(91,232,255,.15);"></div>
+
+      <!-- Estatísticas rápidas -->
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <div style="font-size:8px;letter-spacing:2px;color:var(--cyan);opacity:.7;">ESTATÍSTICAS</div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+            <span id="ps-stat-kills" style="font-size:18px;color:var(--cyan);">-</span>
+            <span style="font-size:7px;opacity:.55;">ABATES TOTAIS</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+            <span id="ps-stat-matches" style="font-size:18px;color:var(--gold);">-</span>
+            <span style="font-size:7px;opacity:.55;">PARTIDAS</span>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+            <span id="ps-stat-credits" style="font-size:18px;color:#aaffaa;">-</span>
+            <span style="font-size:7px;opacity:.55;">CREDITOS</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="height:1px;background:rgba(91,232,255,.15);"></div>
+
+      <!-- Configurações (desktop only) -->
+      <div id="ps-desktop-settings" style="display:flex;flex-direction:column;gap:12px;">
+        <div style="font-size:8px;letter-spacing:2px;color:var(--cyan);opacity:.7;">CONFIGURAÇÕES (COMPUTADOR)</div>
+
+        <!-- WASD toggle -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div>
+            <div style="font-size:9px;color:var(--text);">CONTROLE WASD</div>
+            <div style="font-size:7px;opacity:.5;margin-top:2px;">Mover nave com W A S D (complementar ao mouse direito)</div>
+          </div>
+          <button class="setting-toggle" id="wasd-toggle" onclick="toggleWASD()">OFF</button>
+        </div>
+
+        <!-- Volume -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div>
+            <div style="font-size:9px;color:var(--text);">SOM DO JOGO</div>
+            <div style="font-size:7px;opacity:.5;margin-top:2px;">Mutar / Desmutar todos os efeitos sonoros</div>
+          </div>
+          <button class="setting-toggle" id="sound-toggle" onclick="toggleSoundSetting()">LIGADO</button>
+        </div>
       </div>
     </div>
   </div>

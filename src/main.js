@@ -1653,6 +1653,83 @@ window.togglePause=function(){
 
 // ESC é tratado pelo game.js via window.togglePause
 
+// ── Mudo na tela de pausa ─────────────────────────────────
+window.pauseToggleMute=function(){
+  const muted=game?._audio?.toggleMute?.();
+  const label=document.getElementById('pause-mute-label');
+  const waves=document.getElementById('pause-sound-waves');
+  if(label) label.textContent = muted ? 'SOM: MUDO' : 'SOM: LIGADO';
+  if(waves) waves.style.display = muted ? 'none' : '';
+};
+
+// ── Perfil e configurações ────────────────────────────────
+// WASD: persistido em localStorage, lido como window._useWASD pelo game.js
+window._useWASD = !IS_MOBILE && localStorage.getItem('useWASD')==='1';
+
+function _syncProfileSettingsUI(){
+  const wasdBtn=document.getElementById('wasd-toggle');
+  if(wasdBtn){
+    wasdBtn.textContent=window._useWASD?'ON':'OFF';
+    wasdBtn.className='setting-toggle '+(window._useWASD?'on':'off');
+  }
+  const soundBtn=document.getElementById('sound-toggle');
+  const muted=game?._audio?._muted ?? false;
+  if(soundBtn){
+    soundBtn.textContent=muted?'MUDO':'LIGADO';
+    soundBtn.className='setting-toggle '+(muted?'off':'on');
+  }
+  // Esconde configurações de PC em mobile
+  const desktopSettings=document.getElementById('ps-desktop-settings');
+  if(desktopSettings) desktopSettings.style.display=IS_MOBILE?'none':'flex';
+
+  // Preenche dados do perfil
+  const nameEl=document.getElementById('ps-pilot-name');
+  if(nameEl) nameEl.textContent=pilotName||'JOGADOR';
+  const emailEl=document.getElementById('ps-pilot-email');
+  if(emailEl) emailEl.textContent=currentUser?.email||'';
+  const credEl=document.getElementById('ps-stat-credits');
+  if(credEl) credEl.textContent=currentUser?.credits??'-';
+
+  // Ícone de perfil no modal
+  const iconBtn=document.getElementById('ps-icon-btn');
+  if(iconBtn && typeof drawProfileIcon==='function'){
+    iconBtn.innerHTML='';
+    const c=document.createElement('canvas');
+    c.width=40;c.height=40;
+    drawProfileIcon(c.getContext('2d'),profile?profile.profileIcon||0:0,40);
+    iconBtn.appendChild(c);
+  }
+
+  // Estatísticas rápidas do histórico local
+  const hist=loadHistory?.[Symbol.toStringTag]!==undefined ? [] : (() => {
+    try{ return JSON.parse(localStorage.getItem('arena_history')||'[]'); }catch{return [];}
+  })();
+  const kills=hist.reduce((s,m)=>s+(m.kills||0),0);
+  const killEl=document.getElementById('ps-stat-kills');
+  if(killEl) killEl.textContent=kills;
+  const matchEl=document.getElementById('ps-stat-matches');
+  if(matchEl) matchEl.textContent=hist.length;
+}
+
+window.openProfileSettings=function(){
+  _syncProfileSettingsUI();
+  document.getElementById('profile-settings-overlay').style.display='flex';
+};
+window.closeProfileSettings=function(){
+  document.getElementById('profile-settings-overlay').style.display='none';
+};
+window.toggleWASD=function(){
+  window._useWASD=!window._useWASD;
+  localStorage.setItem('useWASD',window._useWASD?'1':'0');
+  _syncProfileSettingsUI();
+};
+window.toggleSoundSetting=function(){
+  if(game?._audio) {
+    game._audio.toggleMute();
+  }
+  _syncProfileSettingsUI();
+};
+
 window.showGameOver=function(data){
   const go=document.getElementById('gameover');
   go.className=data.win?'win':'lose';

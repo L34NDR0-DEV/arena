@@ -409,13 +409,27 @@ export class Game {
   }
 
   _input() {
+    // WASD: move um cursor virtual na direção da tecla e aciona holdRight
+    let wasdActive = false, wasdX = this._mouse.wx, wasdY = this._mouse.wy;
+    if (window._useWASD && !this._touchActive) {
+      const dx = (this._keys['KeyD']?1:0) - (this._keys['KeyA']?1:0);
+      const dy = (this._keys['KeyS']?1:0) - (this._keys['KeyW']?1:0);
+      if (dx || dy) {
+        const len = Math.hypot(dx, dy) || 1;
+        const WASD_DIST = 300;
+        wasdX = this.player.x + (dx/len)*WASD_DIST;
+        wasdY = this.player.y + (dy/len)*WASD_DIST;
+        if (!this.paused && !this.over && !this.player.dead) this.player.moveTo(wasdX, wasdY);
+        wasdActive = true;
+      }
+    }
     return {
       shooting:   this._mouse.left,
       space:      this._keys['Space'],
-      holdRight:  this._mouse.right,
+      holdRight:  this._mouse.right || wasdActive,
       dash:       this._keys['ShiftLeft']||this._keys['ShiftRight'],
-      worldMouseX:this._mouse.wx,
-      worldMouseY:this._mouse.wy,
+      worldMouseX: wasdActive ? wasdX : this._mouse.wx,
+      worldMouseY: wasdActive ? wasdY : this._mouse.wy,
     };
   }
 
@@ -498,13 +512,31 @@ export class Game {
       const allEntities = [this.player, ...this.enemyMgr.enemies.filter(e=>!e.dead), ...Object.values(this.peers), ...this.bots];
       this.portalMgr.update(dt, allEntities);
       // Dano dos buracos negros ao player
-      const bhDmg = this.portalMgr.applyBlackHoles(this.player, dt);
-      if (bhDmg > 0) this.player.takeDamage(bhDmg);
+      if (!this.player.dead && !this.player.rebuilding) {
+        const bh = this.portalMgr.applyBlackHoles(this.player, dt);
+        if (bh.destroyed) {
+          // Destruição pelo núcleo — morte instantânea
+          this.arena.spawnParticles(this.player.x,this.player.y,'#8844ff',35,320);
+          this.ui.notify('Sugado pelo buraco negro!','#8844ff');
+          this._audio.playDeath?.();
+          this.combat._triggerPlayerRebuild(this.player, this.mode==='contra1');
+        } else if (bh.dmg > 0) {
+          const died = this.player.takeDamage(bh.dmg);
+          if (died) this.combat._triggerPlayerRebuild(this.player, this.mode==='contra1');
+        }
+      }
       // Dano dos buracos negros aos inimigos
       for (const e of this.enemyMgr.enemies) {
         if (e.dead) continue;
-        const ed = this.portalMgr.applyBlackHoles(e, dt);
-        if (ed > 0) { e.hp -= ed; if (e.hp < 0) e.hp = 0; }
+        const bhe = this.portalMgr.applyBlackHoles(e, dt);
+        if (bhe.destroyed) {
+          e.hp = 0;
+          this.arena.spawnParticles(e.x,e.y,'#8844ff',20,220);
+          this.player.kills++; this.player.score+=e.score; this.player.addXP(e.score);
+        } else if (bhe.dmg > 0) {
+          e.hp -= bhe.dmg;
+          if (e.hp < 0) e.hp = 0;
+        }
       }
     }
 
@@ -629,6 +661,7 @@ export class Game {
       const hit=towers.damageNearest(b.x,b.y,b.r??5,b.damage,team);
       if (hit) {
         this.combat.spawnExplosion(b.x,b.y,14,b.owner_color||'#ffffff');
+        this._audio.playTowerHit?.();
         handleCapture(hit, team==='player');
         return false;
       }
@@ -739,6 +772,7 @@ export class Game {
       const hit=mgr.damageCentral(b.x,b.y,b.r??5,b.damage,attackerTeam);
       if (hit) {
         this.combat.spawnExplosion(b.x,b.y,14,b.owner_color||'#ffffff');
+        this._audio.playTowerHit?.();
         handleHit(hit);
         return false;
       }

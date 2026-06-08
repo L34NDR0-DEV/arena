@@ -70,7 +70,7 @@ function getRoomOrCreate(roomId) {
 // vagas vazias — o servidor continua "burro", apenas repassando mensagens.
 const TEAM_SIZE        = 3;
 const TEAM_ROOM_MAX    = TEAM_SIZE * 2;
-const TEAM_WAIT_MS     = 25_000;
+const TEAM_WAIT_MS     = 12_000;
 let   teamRoomSeq      = 1;
 const teamRooms        = new Map(); // roomId → { players:[{id,name,skinIndex,socket,team,isHost}], teamCounts:{red,blue}, started, waitTimer }
 
@@ -178,7 +178,7 @@ function leaveTeamQueue(socket, info) {
 const TD_TEAM_SIZE   = 2;
 const TD_MATCH_SIZE  = TD_TEAM_SIZE * 2;
 const TD_QUEUE_MAX   = 8;
-const TD_WAIT_MS     = 25_000;
+const TD_WAIT_MS     = 12_000;
 const TD_ROOM_ID     = 'tower_defense_arena';
 let   tdMatchSeq     = 1;
 

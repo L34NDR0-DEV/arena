@@ -287,6 +287,60 @@ export class AudioEngine {
     setTimeout(() => this.playExplosion(1.5), 200);
   }
 
+  // ── Impacto em estrutura (torre/parede) ───────────────────
+  playTowerHit() {
+    if (!this._ready) return;
+    const ac  = this._ctx;
+    const now = ac.currentTime;
+
+    // Impacto pesado: camada grave + estrondo metálico profundo
+    // (sem a agudez de alumínio do playCollision — sons mais baixos e densos)
+    const dur = 0.25;
+    const bufLen = Math.floor(ac.sampleRate * dur);
+    const buf    = ac.createBuffer(1, bufLen, ac.sampleRate);
+    const data   = buf.getChannelData(0);
+    for (let i = 0; i < bufLen; i++) data[i] = (Math.random() * 2 - 1);
+
+    const src    = ac.createBufferSource();
+    src.buffer   = buf;
+
+    // Filtro passa-baixa bem estreito — só o "thud" grave, sem chirp metálico
+    const filter = ac.createBiquadFilter();
+    filter.type  = 'lowpass';
+    filter.frequency.setValueAtTime(320, now);
+    filter.frequency.exponentialRampToValueAtTime(60, now + dur);
+    filter.Q.value = 0.5;
+
+    const ng = ac.createGain();
+    ng.gain.setValueAtTime(0.55, now);
+    ng.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+    // Sub-grave de impacto
+    const osc  = ac.createOscillator();
+    const og   = ac.createGain();
+    osc.type   = 'sine';
+    osc.frequency.setValueAtTime(75, now);
+    osc.frequency.exponentialRampToValueAtTime(28, now + 0.18);
+    og.gain.setValueAtTime(0.7, now);
+    og.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+    // Camada de "crack" médio — dá sensação de resistência da estrutura
+    const osc2 = ac.createOscillator();
+    const og2  = ac.createGain();
+    osc2.type  = 'triangle';
+    osc2.frequency.setValueAtTime(220, now);
+    osc2.frequency.exponentialRampToValueAtTime(80, now + 0.08);
+    og2.gain.setValueAtTime(0.25, now);
+    og2.gain.exponentialRampToValueAtTime(0.001, now + 0.10);
+
+    src.connect(filter); filter.connect(ng); ng.connect(this._master);
+    osc.connect(og);   og.connect(this._master);
+    osc2.connect(og2); og2.connect(this._master);
+    src.start(now);
+    osc.start(now); osc.stop(now + 0.24);
+    osc2.start(now); osc2.stop(now + 0.11);
+  }
+
   // ── Toggle mudo ───────────────────────────────────────────
   toggleMute() {
     this._muted = !this._muted;
