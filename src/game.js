@@ -79,9 +79,14 @@ export class Game {
     // próprio jogador) para cobrir a arena antes que a conexão complete e
     // o roster real chegue. _refreshMatchLoading() é chamado de novo assim
     // que os dados dos demais jogadores estiverem disponíveis.
+    // Nos modos com lobby (Equipe Online / Tower Defense) o cronômetro de
+    // 3s NÃO é armado aqui — ele só é definido (em 7s) quando a partida
+    // de fato começa (_onMatchStart/_onTdMatchStart). Armar 3s já de cara
+    // faria a tela de carregamento sumir cedo demais enquanto o jogador
+    // ainda está na fila esperando outros jogadores entrarem.
     this._loadingPeers = [];
     this._refreshMatchLoading();
-    this._loadingHideAt = performance.now() + 3000;
+    if (!this._lobby) this._loadingHideAt = performance.now() + 3000;
 
     this._keys={}; this._mouse={wx:ARENA_W/2,wy:ARENA_H/2,left:false,right:false};
     this._bindInput();

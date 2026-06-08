@@ -16,6 +16,18 @@ const ROOT = __dirname;
 // diretamente em src/db.js, src/auth.js, src/api.js e src/payments.js,
 // todas com defaults que funcionam em http://localhost.
 
+// Catálogo de skins (ids 0-15) usado só para sortear a aparência dos bots —
+// o servidor não importa src/skins.js (módulo client-side, usa Image/canvas),
+// então mantemos aqui só a contagem total e os ids "somente recompensa"
+// (devem ficar em sincronia com REWARD_ONLY_SKIN_IDS em src/skins.js).
+const BOT_SKIN_COUNT          = 16;
+const BOT_EXCLUDED_SKIN_IDS   = [10, 12];
+const BOT_SKIN_POOL = Array.from({ length: BOT_SKIN_COUNT }, (_, i) => i)
+  .filter(id => !BOT_EXCLUDED_SKIN_IDS.includes(id));
+function randomBotSkinIndex() {
+  return BOT_SKIN_POOL[Math.floor(Math.random() * BOT_SKIN_POOL.length)];
+}
+
 const MIME = {
   '.html': 'text/html; charset=utf-8',
   '.js':   'application/javascript; charset=utf-8',
@@ -72,7 +84,7 @@ function startTeamMatch(roomId) {
     const team = assignTeam(tr);
     tr.teamCounts[team]++;
     const botId = `bot_${roomId}_${i}`;
-    botSlots.push({ id: botId, name: `BOT-${Math.floor(1000+Math.random()*9000)}`, skinIndex: Math.floor(Math.random()*10), profileIcon: 0, team, isBot: true, isHost: false });
+    botSlots.push({ id: botId, name: `BOT-${Math.floor(1000+Math.random()*9000)}`, skinIndex: randomBotSkinIndex(), profileIcon: 0, team, isBot: true, isHost: false });
   }
 
   const playersPayload = tr.players.map((p, idx) => ({
@@ -91,7 +103,7 @@ function startTeamMatch(roomId) {
       type: 'match_start',
       roomId,
       players: playersPayload,
-      you: { id: p.id, team: p.team, isHost: p.id === tr.players[0].id },
+      you: { id: p.id, team: p.team, isHost: p.id === tr.hostId },
     }));
   }
   console.log(`[MATCH] Equipe Online iniciada em "${roomId}" — ${tr.players.length} jogador(es) real(is) + ${botSlots.length} bot(s)`);
@@ -200,7 +212,7 @@ function tdTryStartMatch(allowBots = false) {
     const team = tdAssignTeam(teamCounts);
     teamCounts[team]++;
     const botId = `bot_${roomId}_${i}`;
-    botSlots.push({ id: botId, name: `BOT-${Math.floor(1000+Math.random()*9000)}`, skinIndex: Math.floor(Math.random()*10), profileIcon: 0, team, isBot: true, isHost: false });
+    botSlots.push({ id: botId, name: `BOT-${Math.floor(1000+Math.random()*9000)}`, skinIndex: randomBotSkinIndex(), profileIcon: 0, team, isBot: true, isHost: false });
   }
 
   tdMatch = {

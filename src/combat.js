@@ -31,7 +31,7 @@ export class CombatSystem {
       if (!rp.dead && rp.team && rp.team!==team) list.push(rp);
     }
     for (const bot of (this._pvp.bots||[])) {
-      if (!bot.dead && bot.team!==team) list.push(bot);
+      if (!bot.dead && bot.team && bot.team!==team) list.push(bot);
     }
     return list;
   }
