@@ -381,10 +381,19 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 /* Modos */
 .mode-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
 .mode-btn{
+  position:relative;
   padding:10px 6px 8px;border-radius:4px;border:1.5px solid transparent;
   cursor:pointer;background:var(--panel2);
   display:flex;flex-direction:column;align-items:center;gap:5px;transition:all .15s;
 }
+.mode-maint-badge{
+  position:absolute;top:3px;right:3px;display:flex;align-items:center;gap:2px;
+  background:rgba(8,12,20,.88);border:1px solid #ffcc4455;border-radius:3px;padding:2px 3px;
+  pointer-events:none;
+}
+.mode-maint-badge svg{width:9px;height:9px;display:block;}
+.mode-maint-badge .maint-arrow{color:#ffcc44;}
+.mode-maint-badge .maint-lock{color:#ff8a55;}
 .mode-btn svg{width:20px;height:20px;transition:transform .15s;}
 .mode-label{font-size:7px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;font-family:'Press Start 2P',monospace;}
 .mode-btn.active svg{transform:scale(1.12);}
@@ -1346,6 +1355,10 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
             <span class="mode-label">Contra 2</span>
           </button>
           <button class="mode-btn mode-equipe-online" onclick="selectMode('equipe_online',this)">
+            <span class="mode-maint-badge" title="Serviço online em manutenção/ajustes">
+              <svg class="maint-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="18" x2="18" y2="6"/><polyline points="9 6 18 6 18 15"/></svg>
+              <svg class="maint-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11 V7 a4 4 0 0 1 8 0 v4"/></svg>
+            </span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 14 L9 6 L12 14" stroke-linejoin="round" stroke="#ff4d6a"/><path d="M12 14 L15 6 L18 14" stroke-linejoin="round" stroke="#4da6ff"/><line x1="4" y1="19" x2="20" y2="19" opacity=".5"/></svg>
             <span class="mode-label">Equipe Online</span>
           </button>
@@ -1354,6 +1367,10 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
             <span class="mode-label">Livre</span>
           </button>
           <button class="mode-btn mode-teste" id="mode-slot-teste" onclick="selectMode(this.dataset.mode,this)" data-mode="teste">
+            <span class="mode-maint-badge" id="mode-slot-teste-badge" style="display:none" title="Serviço online em manutenção/ajustes">
+              <svg class="maint-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="18" x2="18" y2="6"/><polyline points="9 6 18 6 18 15"/></svg>
+              <svg class="maint-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11 V7 a4 4 0 0 1 8 0 v4"/></svg>
+            </span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" id="mode-slot-teste-icon"><rect x="9" y="2" width="6" height="10" rx="1"/><path d="M7 12 L5 20 M17 12 L19 20"/><line x1="5" y1="20" x2="19" y2="20"/></svg>
             <span class="mode-label" id="mode-slot-teste-label">Teste</span>
           </button>
@@ -1864,6 +1881,7 @@ function applyModeSlotToggle(){
   const btn   = document.getElementById('mode-slot-teste');
   const icon  = document.getElementById('mode-slot-teste-icon');
   const label = document.getElementById('mode-slot-teste-label');
+  const badge = document.getElementById('mode-slot-teste-badge');
   if (!btn || !icon || !label) return;
   const tournamentOn = !!(profile && profile.tournament && profile.tournament.active);
   if (tournamentOn) {
@@ -1872,12 +1890,14 @@ function applyModeSlotToggle(){
     btn.classList.remove('mode-teste');
     icon.innerHTML = '<path d="M12 2 L20 7 L20 14 L12 21 L4 14 L4 7 Z"/><path d="M12 2 L12 21 M4 7 L20 14 M20 7 L4 14" opacity=".55"/><circle cx="12" cy="11" r="2.6" fill="currentColor" stroke="none"/>';
     label.textContent = 'Tower Defense';
+    if (badge) badge.style.display = '';
   } else {
     btn.dataset.mode = 'teste';
     btn.classList.add('mode-teste');
     btn.classList.remove('mode-tower-defense');
     icon.innerHTML = '<rect x="9" y="2" width="6" height="10" rx="1"/><path d="M7 12 L5 20 M17 12 L19 20"/><line x1="5" y1="20" x2="19" y2="20"/>';
     label.textContent = 'Teste';
+    if (badge) badge.style.display = 'none';
   }
   // Se o modo selecionado era o do slot que acabou de mudar, realinha a dica.
   if (selectedMode==='teste' || selectedMode==='tower_defense') {
