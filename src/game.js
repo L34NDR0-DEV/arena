@@ -82,6 +82,10 @@ export class Game {
     this.over=false; this.paused=false;
     this._rafId=null; this._last=0;
 
+    // Sistema de kick por inatividade — 60s avisa, 120s expulsa
+    this._idleTime   = 0;   // segundos sem ação do jogador
+    this._idleWarned = false;
+
     // ── Modo "Equipe Online" — PvP em times (até 6, 2 times de 3) ──
     this.team=null;          // 'red' | 'blue' — atribuído pelo servidor
     this.isHost=false;       // anfitrião simula bots locais
@@ -484,7 +488,7 @@ export class Game {
         wasdActive = true;
       }
     }
-    return {
+    const inp = {
       shooting:   this._mouse.left,
       space:      this._keys['Space'],
       holdRight:  this._mouse.right || wasdActive,
@@ -492,6 +496,43 @@ export class Game {
       worldMouseX: wasdActive ? wasdX : this._mouse.wx,
       worldMouseY: wasdActive ? wasdY : this._mouse.wy,
     };
+    // Qualquer ação do jogador reseta o timer de inatividade
+    if (inp.shooting || inp.holdRight || inp.dash || inp.space || wasdActive || this._touchActive) {
+      this._idleTime = 0;
+      this._idleWarned = false;
+    }
+    return inp;
+  }
+
+  _updateIdleKick(dt) {
+    // Não aplica em modos sem oponente ou enquanto está no lobby/morto/pausado
+    if (this.paused || this.over || this.player.dead || this.player.rebuilding) return;
+    if (this._lobby) return;
+
+    this._idleTime += dt;
+
+    // 60s: aviso
+    if (!this._idleWarned && this._idleTime >= 60) {
+      this._idleWarned = true;
+      this.ui.notify('Você está inativo! Mova-se ou será expulso em 1 minuto.', '#ffaa00');
+    }
+
+    // 120s: expulsão
+    if (this._idleTime >= 120) {
+      this._idleKick();
+    }
+  }
+
+  _idleKick() {
+    if (this.over) return;
+    this._idleTime = 0;
+    this.net?.disconnect?.();
+    this.over = true;
+    cancelAnimationFrame(this._rafId);
+    this._audio.stopEngine?.();
+    // Mostra mensagem e volta ao menu após 4s
+    this._idleKicked = true;
+    setTimeout(() => window.exitToMenu?.(), 4000);
   }
 
   start() { this._last=performance.now(); this._audio.startEngine(0.4); this._loop(this._last); }
@@ -565,6 +606,7 @@ export class Game {
     this.camX=Math.max(0,Math.min(ARENA_W-this.W,this.camX));
     this.camY=Math.max(0,Math.min(ARENA_H-this.H,this.camY));
 
+    this._updateIdleKick(dt);
     this.arena.update(dt);
     this.player.update(dt,this._input(),this.combat.bullets,this.combat);
 
@@ -897,6 +939,45 @@ export class Game {
     if (this._audio._muted) {
       ctx.save(); ctx.fillStyle='rgba(255,255,255,0.18)'; ctx.font='10px system-ui'; ctx.textAlign='right';
       ctx.fillText('SOM MUDO — M',W-10,H-10); ctx.restore();
+    }
+
+    // ── Overlay de inatividade ────────────────────────────────
+    if (this._idleKicked) {
+      ctx.save();
+      ctx.fillStyle='rgba(0,0,0,0.78)';
+      ctx.fillRect(0,0,W,H);
+      ctx.textAlign='center';
+      ctx.fillStyle='#ffaa00';
+      ctx.font='bold 28px system-ui';
+      ctx.shadowColor='#ffaa00'; ctx.shadowBlur=20;
+      ctx.fillText('EXPULSO POR INATIVIDADE', W/2, H/2-30);
+      ctx.shadowBlur=0;
+      ctx.fillStyle='#ffffff';
+      ctx.font='16px system-ui';
+      ctx.fillText('Você ficou 2 minutos sem jogar.', W/2, H/2+10);
+      ctx.fillStyle='#aaaaaa';
+      ctx.font='13px system-ui';
+      ctx.fillText('Voltando ao menu...', W/2, H/2+38);
+      ctx.restore();
+    } else if (this._idleWarned && this._idleTime >= 60) {
+      // Aviso progressivo: fica no canto da tela (não bloqueia o jogo)
+      const remaining = Math.ceil(120 - this._idleTime);
+      const urgency = remaining <= 20 ? Math.sin(Date.now()*0.012)*0.4+0.8 : 0.85;
+      const col = remaining <= 20 ? '#ff4444' : '#ffaa00';
+      ctx.save();
+      ctx.globalAlpha = urgency;
+      ctx.fillStyle = 'rgba(0,0,0,0.65)';
+      ctx.fillRect(W/2-160, 18, 320, 54);
+      ctx.textAlign='center';
+      ctx.fillStyle = col;
+      ctx.font = 'bold 15px system-ui';
+      ctx.shadowColor = col; ctx.shadowBlur = 10;
+      ctx.fillText('INATIVO — mova-se para continuar', W/2, 42);
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 20px system-ui';
+      ctx.fillText(`Expulsão em ${remaining}s`, W/2, 62);
+      ctx.restore();
     }
   }
 
