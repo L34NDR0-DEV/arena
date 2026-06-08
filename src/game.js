@@ -211,13 +211,12 @@ export class Game {
       const isTeamMode = this.mode==='equipe_online';
       const isTdMode   = this.mode==='tower_defense';
       this.net=new NetworkClient(`${proto}://${location.host}`,{
+        // 'welcome' só chega como RESPOSTA a join/queue_join/td_queue_join —
+        // por isso o pedido de entrada precisa ser enviado assim que a conexão
+        // abre (NetworkClient enfileira até o WebSocket ficar pronto), não ao
+        // receber 'welcome' (senão nenhum dos dois lados nunca acontece).
         onWelcome:msg=>{
-          if (isTeamMode) {
-            this.net.queueJoin('equipe_online', name, skinIndex, this.profileIcon);
-          } else if (isTdMode) {
-            this.net.tdQueueJoin(name, skinIndex, this.profileIcon);
-          } else {
-            this.net.join(name,skinIndex,roomId,this.profileIcon);
+          if (!isTeamMode && !isTdMode) {
             this._refreshMatchLoading(msg.peers||[]);
             this._loadingHideAt = performance.now() + 3000;
           }
@@ -242,6 +241,13 @@ export class Game {
           window._showSkinReveal?.(skinName);
         },
       });
+
+      // Pedido de entrada — enviado de imediato (NetworkClient enfileira até
+      // o WebSocket abrir); a resposta 'welcome'/'match_start'/etc. chega em
+      // seguida pelos handlers acima.
+      if (isTeamMode)      this.net.queueJoin('equipe_online', name, skinIndex, this.profileIcon);
+      else if (isTdMode)   this.net.tdQueueJoin(name, skinIndex, this.profileIcon);
+      else                 this.net.join(name, skinIndex, roomId, this.profileIcon);
     } catch {}
   }
 

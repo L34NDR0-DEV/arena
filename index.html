@@ -1025,6 +1025,15 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   border-radius:50%;animation:tlSpin 1s linear infinite;}
 @keyframes tlSpin{to{transform:rotate(360deg);}}
 #team-lobby .tl-count{font-family:'Press Start 2P',monospace;font-size:11px;color:#fff;}
+#team-lobby .tl-close{
+  position:absolute;top:18px;right:18px;width:38px;height:38px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;cursor:pointer;
+  background:rgba(255,77,106,.12);border:1.5px solid rgba(255,77,106,.5);color:#ff7a90;
+  transition:background .15s,transform .15s;
+}
+#team-lobby .tl-close:hover{background:rgba(255,77,106,.28);transform:scale(1.08);}
+#team-lobby .tl-close svg{width:16px;height:16px;}
+#team-lobby .tl-cancel-hint{font-family:'Press Start 2P',monospace;font-size:8px;color:#6b8099;margin-top:2px;}
 
 /* ═══ Tela de carregamento de partida online ═══════════════ */
 #match-loading{
@@ -1401,10 +1410,16 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 
 <!-- ═══ Lobby/fila do modo "Equipe Online" ═════════════════════ -->
 <div id="team-lobby">
+  <div class="tl-close" id="team-lobby-close" title="Cancelar busca e voltar ao menu" onclick="window.cancelOnlineQueue()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+      <line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/>
+    </svg>
+  </div>
   <div class="tl-spinner"></div>
   <div class="tl-title">EQUIPE ONLINE</div>
   <div class="tl-sub">Procurando jogadores e formando as equipes...<br>Vagas restantes serão preenchidas com bots.</div>
   <div class="tl-count" id="team-lobby-count">Aguardando...</div>
+  <div class="tl-cancel-hint">Toque no X para sair da fila</div>
 </div>
 
 <!-- ═══ Tela de carregamento de partida online (todos os modos) ═ -->
@@ -3273,6 +3288,16 @@ window.goMenu=function(){
   if(game){game.destroy();game=null;}
   paused=false; showScreen('menu'); loadHistory();
   exitMobileFullscreen();
+};
+
+// Botão "X" do lobby/fila online — avisa o servidor para sair da fila
+// (libera a vaga para outros jogadores na hora) e volta ao menu.
+window.cancelOnlineQueue=function(){
+  if (game?.net) {
+    if (game.mode==='tower_defense') game.net.tdQueueLeave();
+    else game.net.queueLeave();
+  }
+  goMenu();
 };
 
 window.resumeGame=function(){

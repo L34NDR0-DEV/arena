@@ -342,6 +342,20 @@ const server = http.createServer((req, res) => {
   // Segurança: não servir fora do ROOT
   if (!filePath.startsWith(ROOT)) { res.writeHead(403); res.end(); return; }
 
+  // Segurança: nunca servir banco de dados, segredos ou código backend —
+  // só o cliente web (HTML, módulos do jogo, sprites, sons) deve ser público.
+  const PRIVATE_PATTERNS = [
+    /^[\\/]data[\\/]/i,
+    /^[\\/]\.env/i,
+    /^[\\/]\.git/i,
+    /^[\\/]node_modules[\\/]/i,
+    /^[\\/]package(-lock)?\.json$/i,
+    /^[\\/]server\.js$/i,
+    /^[\\/]src[\\/](db|api|auth|economy|payments|ratelimit)\.js$/i,
+  ];
+  const relPath = filePath.slice(ROOT.length);
+  if (PRIVATE_PATTERNS.some(re => re.test(relPath))) { res.writeHead(404); res.end('Not found'); return; }
+
   fs.readFile(filePath, (err, data) => {
     if (err) { res.writeHead(404); res.end('Not found'); return; }
     const ext = path.extname(filePath);
@@ -469,6 +483,9 @@ function handleMsg(socket, raw) {
       wsSend(socket, JSON.stringify({ type: 'welcome', id: info.id, peers: [] }));
       break;
     }
+    case 'queue_leave':
+      leaveTeamQueue(socket, info);
+      break;
     case 'td_queue_leave':
       leaveTdQueue(socket, info);
       break;

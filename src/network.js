@@ -94,6 +94,7 @@ export class NetworkClient {
   queueJoin(mode, name, skinIndex, profileIcon=0) {
     this.send({ type: 'queue_join', mode, name, skinIndex, profileIcon });
   }
+  queueLeave() { this.send({ type: 'queue_leave' }); }
 
   // Fila do Torneio "Tower Defense" — fila global única, até 8 jogadores,
   // partidas 2x2 sequenciais ("turnos revezados"). Servidor responde com

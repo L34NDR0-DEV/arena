@@ -24,14 +24,13 @@ function drawSprite(ctx, img, w, h, angle = 0) {
 function localToWorld(x, y, angle, scale, cx, cy, size) {
   const h = size * scale * 0.5;
   const lx = x * h, ly = y * h;
-  // angle é o ângulo do bico (aponta para frente).
-  // Sprites apontam para CIMA (−Y local). rotate(angle) faz o bico ir para onde o mouse aponta.
-  // Transformação: local(lx,ly) → mundo usando angle-PI/2 como base de rotação canvas.
-  const ca = Math.cos(angle - Math.PI/2);
-  const sa = Math.sin(angle - Math.PI/2);
+  // Mesma rotação usada para desenhar o sprite (ctx.rotate(angle) + drawImage
+  // centralizado), assim o ponto local cai no mesmo lugar do desenho rotacionado.
+  const ca = Math.cos(angle);
+  const sa = Math.sin(angle);
   return {
-    x: cx + ca*ly - sa*lx,
-    y: cy + sa*ly + ca*lx,
+    x: cx + lx*ca - ly*sa,
+    y: cy + lx*sa + ly*ca,
   };
 }
 
@@ -101,16 +100,14 @@ const skinPonta = makeSprite(1, 'Ponta BR', '#ffcc00', 'Ponta.png', {
   ],
 });
 
-// Ghost Verde — sprite vem com o bico apontando para BAIXO (popa nas pontas
-// superiores em V); por isso nozzle/engines ficam invertidos em relação às
-// outras naves, senão a chama saía pela frente.
+// Ghost Verde — motor central + 2 naceles laterais
 const skinVerde = makeSprite(2, 'Ghost Verde', '#00e87a', 'Verde.png', {
   size: 76,
-  nozzle: { x:0, y:0.85 },
+  nozzle: { x:0, y:-0.85 },
   engines: [
-    { x: 0,    y: -0.82 },        // motor central
-    { x:-0.42, y: -0.52 },        // nacel esquerdo
-    { x: 0.42, y: -0.52 },        // nacel direito
+    { x: 0,    y:  0.82 },        // motor central
+    { x:-0.42, y:  0.52 },        // nacel esquerdo
+    { x: 0.42, y:  0.52 },        // nacel direito
   ],
 });
 
