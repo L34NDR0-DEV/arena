@@ -844,6 +844,72 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .go-stat .lbl{font-size:7px;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-top:5px;display:block;font-family:'Press Start 2P',monospace;}
 .go-btns{display:flex;gap:10px;}
 
+/* ═══ Revelação de skin (recompensa do torneio) ══════════════ */
+#skin-reveal{
+  position:absolute;inset:0;z-index:120;display:none;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at 50% 45%,rgba(40,28,4,.92),rgba(2,4,10,.97));
+  cursor:pointer;animation:srFadeIn .4s ease both;
+}
+.sr-content{display:flex;flex-direction:column;align-items:center;gap:18px;}
+.sr-label{font-family:'Press Start 2P',monospace;font-size:11px;letter-spacing:4px;color:var(--gold);
+  text-shadow:0 0 18px #ffcc0066;animation:srLabelPulse 1.6s ease-in-out infinite;}
+.sr-sub{font-family:'Press Start 2P',monospace;font-size:8px;color:var(--text2);letter-spacing:1px;opacity:.8;}
+
+.sr-card{position:relative;width:200px;height:280px;perspective:1200px;}
+.sr-card-face{
+  position:absolute;inset:0;border-radius:14px;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:10px;backface-visibility:hidden;
+  transform-style:preserve-3d;overflow:hidden;
+  border:2px solid var(--gold);box-shadow:0 0 36px #ffcc0044,0 8px 28px rgba(0,0,0,.5);
+}
+.sr-card-back{
+  background:linear-gradient(145deg,#1a1200,#241a06 40%,#0a0800);color:var(--gold);
+  animation:srFlipOut 1.7s cubic-bezier(.5,.05,.2,1) .5s both;
+}
+.sr-card-back svg{width:64px;height:64px;opacity:.85;filter:drop-shadow(0 0 10px #ffcc0066);}
+.sr-card-back-label{font-family:'Press Start 2P',monospace;font-size:9px;letter-spacing:2px;text-align:center;line-height:1.8;color:#caa84d;}
+.sr-card-front{
+  background:radial-gradient(circle at 50% 38%,#241a06,#0a0800 75%);color:#fff;
+  transform:rotateY(180deg);animation:srFlipIn 1.7s cubic-bezier(.5,.05,.2,1) .5s both;
+}
+#sr-skin-canvas{filter:drop-shadow(0 0 16px #ffcc0077);}
+.sr-card-name{font-family:'Press Start 2P',monospace;font-size:11px;letter-spacing:1px;color:var(--gold);text-shadow:0 0 14px #ffcc0055;}
+.sr-card-rarity{font-family:'Press Start 2P',monospace;font-size:6px;letter-spacing:2px;color:#caa84d;opacity:.85;}
+.sr-card-shine{
+  position:absolute;inset:-40%;background:linear-gradient(115deg,transparent 40%,rgba(255,255,255,.35) 50%,transparent 60%);
+  transform:translateX(-120%);animation:srShine 2.6s ease-in-out 2.3s infinite;pointer-events:none;
+}
+
+@keyframes srFadeIn{from{opacity:0;}to{opacity:1;}}
+@keyframes srLabelPulse{0%,100%{opacity:.65;}50%{opacity:1;}}
+@keyframes srFlipOut{
+  0%{transform:rotateY(0deg);}
+  55%{transform:rotateY(0deg);}
+  100%{transform:rotateY(180deg);}
+}
+@keyframes srFlipIn{
+  0%{transform:rotateY(180deg);}
+  55%{transform:rotateY(180deg);}
+  100%{transform:rotateY(360deg);}
+}
+@keyframes srShine{
+  0%{transform:translateX(-120%) rotate(0deg);}
+  35%,100%{transform:translateX(160%) rotate(0deg);}
+}
+
+@media (orientation:landscape) and (max-height:520px){
+  .sr-card{width:148px;height:208px;}
+  .sr-card-back svg{width:46px;height:46px;}
+  .sr-card-back-label{font-size:7px;}
+  #sr-skin-canvas{width:84px;height:84px;}
+  .sr-label{font-size:9px;letter-spacing:2px;}
+  .sr-card-name{font-size:9px;}
+}
+@media (max-width:400px){
+  .sr-card{width:160px;height:224px;}
+  #sr-skin-canvas{width:90px;height:90px;}
+}
+
 /* ═══ Botões ════════════════════════════════════════════════ */
 .btn{padding:10px 22px;border-radius:3px;border:none;cursor:pointer;font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;transition:all .15s;display:flex;align-items:center;gap:6px;font-family:'Press Start 2P',monospace;}
 .btn svg{width:12px;height:12px;}
@@ -985,6 +1051,19 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   .login-panel{padding:12px 18px 12px;}
   .login-panel-title{margin-bottom:12px;}
   .login-field{margin-bottom:8px;}
+
+  /* Tela de vitória/derrota compacta — celulares em paisagem */
+  .go-content{transform:scale(.72);transform-origin:center;}
+  .go-topbar{margin-bottom:12px;}
+  .go-badge{width:48px;height:48px;margin-bottom:8px;}
+  .go-badge svg{width:24px;height:24px;}
+  .go-result-label{margin-bottom:4px;}
+  .go-title{margin-bottom:4px;}
+  .go-sub{margin-bottom:12px;}
+  .go-divider{margin-bottom:10px;}
+  .go-stats{margin-bottom:12px;}
+  .go-stat{padding:6px 10px;min-width:54px;}
+  .go-stat .val{font-size:16px;}
 }
 
 /* ═══ Tela inicial (#menu) e modais — adaptação para celulares ═══ */
@@ -1380,6 +1459,27 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
       <button class="btn btn-primary" onclick="restartGame()"><svg viewBox="0 0 12 12" fill="currentColor"><polygon points="1,0 12,6 1,12"/></svg>JOGAR DE NOVO</button>
       <button class="btn btn-ghost"   onclick="goMenu()"><svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="10" height="10" rx="1"/><line x1="3" y1="4" x2="9" y2="4"/><line x1="3" y1="6" x2="9" y2="6"/><line x1="3" y1="8" x2="7" y2="8"/></svg>MENU</button>
     </div>
+  </div>
+</div>
+
+<!-- ═══ REVELAÇÃO DE SKIN — recompensa do Torneio Tower Defense ═══ -->
+<div id="skin-reveal" style="display:none;" onclick="closeSkinReveal(event)">
+  <div class="sr-content">
+    <div class="sr-label">SKIN DESBLOQUEADA</div>
+    <div class="sr-card" id="sr-card">
+      <div class="sr-card-face sr-card-back">
+        <div class="sr-card-shine"></div>
+        <svg viewBox="0 0 36 36" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 3 L33 11 V25 L18 33 L3 25 V11 Z"/><path d="M18 3 V33 M3 11 L33 25 M33 11 L3 25"/></svg>
+        <div class="sr-card-back-label">TORNEIO<br>TOWER DEFENSE</div>
+      </div>
+      <div class="sr-card-face sr-card-front">
+        <div class="sr-card-shine"></div>
+        <canvas id="sr-skin-canvas" width="120" height="120"></canvas>
+        <div class="sr-card-name" id="sr-skin-name">Hex Champion</div>
+        <div class="sr-card-rarity">EXCLUSIVA · CAMPEÃO</div>
+      </div>
+    </div>
+    <div class="sr-sub">Toque para continuar</div>
   </div>
 </div>
 
@@ -2685,9 +2785,12 @@ function updateOrientationUI(){
   if (!IS_MOBILE) return;
   const inGame = document.getElementById('game-canvas').style.display !== 'none';
   const portrait = isPortrait();
+  const overGameOver = document.getElementById('gameover').style.display !== 'none';
+  const overPause = document.getElementById('pause').style.display !== 'none';
+  const showControls = inGame && !portrait && !overGameOver && !overPause;
   orientationWarning.classList.toggle('show', inGame && portrait);
-  touchControls.classList.toggle('active', inGame && !portrait);
-  if (game) game._touchActive = inGame && !portrait;
+  touchControls.classList.toggle('active', showControls);
+  if (game) game._touchActive = showControls;
   const hudBottom = document.getElementById('hud-bottom');
   if (hudBottom) hudBottom.style.display = 'none';
 }
@@ -2796,27 +2899,10 @@ showScreen = function(name){
   window._touchState = touchState;
   window._touchStick = stickVec;
 
-  // ── Mira automática no inimigo mais próximo (modo touch) ──
-  // No celular não há "ponteiro do mouse": a nave mira sozinha no inimigo
-  // vivo mais próximo enquanto o jogador só controla o deslocamento (analógico)
-  // e o disparo — evita exigir um segundo analógico de mira.
-  function findNearestEnemy(game){
-    const list = game.enemyMgr ? game.enemyMgr.enemies : null;
-    if (!list || !list.length || !game.player) return null;
-    const px = game.player.x, py = game.player.y;
-    let best = null, bestD = Infinity;
-    for (const e of list) {
-      if (e.dead) continue;
-      const d = (e.x-px)*(e.x-px) + (e.y-py)*(e.y-py);
-      if (d < bestD) { bestD = d; best = e; }
-    }
-    return best;
-  }
-
   // ── Injeta os controles touch no fluxo de input do jogo ──
   // O jogo usa "mira/movimento até o ponteiro do mouse"; no touch, a mira
-  // (worldMouseX/Y) trava no inimigo mais próximo, e o movimento
-  // (moveTargetX/Y) segue a direção do analógico — desacoplados.
+  // (worldMouseX/Y) segue a mesma direção para onde o jogador está movendo
+  // a nave pelo analógico — sem mira automática em inimigos.
   const TOUCH_AIM_DIST = 260;
   const origInput = Game.prototype._input;
   Game.prototype._input = function(){
@@ -2826,26 +2912,21 @@ showScreen = function(name){
     const px = this.player ? this.player.x : base.worldMouseX;
     const py = this.player ? this.player.y : base.worldMouseY;
 
-    // Mira: alvo travado no inimigo mais próximo; sem inimigos, mantém a
-    // direção atual da nave (evita "destravar" a mira para o canto da tela)
-    const target = findNearestEnemy(this);
-    this._autoAimTarget = target;
-    let wmx, wmy;
-    if (target) {
-      wmx = target.x; wmy = target.y;
+    // Mira e movimento seguem a mesma direção: o vetor do analógico.
+    // Sem o analógico ativo, mantém a direção atual da nave (evita
+    // "destravar" a mira para o canto da tela).
+    let wmx, wmy, moveTargetX, moveTargetY, holdRight = base.holdRight;
+    if (stickVec.active) {
+      wmx = px + stickVec.x * TOUCH_AIM_DIST;
+      wmy = py + stickVec.y * TOUCH_AIM_DIST;
+      moveTargetX = wmx;
+      moveTargetY = wmy;
+      holdRight = true;
     } else if (this.player) {
       wmx = px + Math.cos(this.player._aimAngle - Math.PI/2) * TOUCH_AIM_DIST;
       wmy = py + Math.sin(this.player._aimAngle - Math.PI/2) * TOUCH_AIM_DIST;
     } else {
       wmx = base.worldMouseX; wmy = base.worldMouseY;
-    }
-
-    // Movimento: projeta um alvo na direção do analógico, independente da mira
-    let moveTargetX, moveTargetY, holdRight = base.holdRight;
-    if (stickVec.active) {
-      moveTargetX = px + stickVec.x * TOUCH_AIM_DIST;
-      moveTargetY = py + stickVec.y * TOUCH_AIM_DIST;
-      holdRight = true;
     }
 
     return {
@@ -2861,8 +2942,25 @@ showScreen = function(name){
   };
 })();
 
+// Tela cheia no mobile ao iniciar partida — esconde as barras do navegador.
+// Precisa ser chamada a partir de um gesto do usuário (toque no botão jogar);
+// iOS Safari não suporta Fullscreen API em elementos comuns, então falha
+// silenciosamente nesse caso (a chamada é apenas "best effort").
+function requestMobileFullscreen(){
+  if (!IS_MOBILE) return;
+  const el = document.documentElement;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen || el.msRequestFullscreen;
+  if (req) { try { req.call(el); } catch {} }
+}
+function exitMobileFullscreen(){
+  if (!document.fullscreenElement && !document.webkitFullscreenElement) return;
+  const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+  if (exit) { try { exit.call(document); } catch {} }
+}
+
 window.startGame=function(){
   const diff=document.getElementById('diff-select').value;
+  requestMobileFullscreen();
   showScreen('game');
   paused=false;
   if(game)game.destroy();
@@ -2877,23 +2975,26 @@ window.restartGame=function(){document.getElementById('gameover').style.display=
 window.goMenu=function(){
   if(game){game.destroy();game=null;}
   paused=false; showScreen('menu'); loadHistory();
+  exitMobileFullscreen();
 };
 
 window.resumeGame=function(){
   document.getElementById('pause').style.display='none';
   paused=false; game?.resume();
+  updateOrientationUI();
 };
 
 window.surrenderGame=function(){
   document.getElementById('pause').style.display='none';
   paused=false; game?.surrender();
+  updateOrientationUI();
 };
 
 window.togglePause=function(){
   if(document.getElementById('gameover').style.display!=='none') return;
   if(!game||game.over) return;
   if(paused){resumeGame();}
-  else{paused=true;game.pause();document.getElementById('pause').style.display='flex';}
+  else{paused=true;game.pause();document.getElementById('pause').style.display='flex';updateOrientationUI();}
 };
 
 // ESC é tratado pelo game.js via window.togglePause
@@ -2902,6 +3003,7 @@ window.showGameOver=function(data){
   const go=document.getElementById('gameover');
   go.className=data.win?'win':'lose';
   go.style.display='flex';
+  updateOrientationUI();
   go.querySelector('.go-icon-win').style.display=data.win?'block':'none';
   go.querySelector('.go-icon-lose').style.display=data.win?'none':'block';
   document.getElementById('go-result-label').textContent=data.win?'VITÓRIA':'DERROTA';
@@ -2966,6 +3068,45 @@ window.showGameOver=function(data){
     });
   }
 };
+
+// ── Carta de revelação da skin de recompensa do torneio (Hex Champion) ──
+window.closeSkinReveal=function(ev){
+  if (ev && ev.target && ev.target.closest && ev.target.closest('#sr-card') && !ev.target.closest('.sr-card-front')) return;
+  const el=document.getElementById('skin-reveal');
+  el.style.display='none';
+  el.classList.remove('show');
+};
+function showSkinRevealCard(skinName){
+  const skin = SKINS.find(s=>s.name===skinName) || SKINS.find(s=>REWARD_ONLY_SKIN_IDS?.includes(s.id));
+  if (!skin) return;
+  const el = document.getElementById('skin-reveal');
+  const card = document.getElementById('sr-card');
+  document.getElementById('sr-skin-name').textContent = skin.name;
+  // Reinicia as animações de flip/brilho
+  card.style.animation='none';
+  card.querySelectorAll('.sr-card-face').forEach(f=>{ f.style.animation='none'; });
+  card.querySelectorAll('.sr-card-shine').forEach(s=>{ s.style.animation='none'; });
+  void card.offsetWidth;
+  card.style.animation='';
+  card.querySelectorAll('.sr-card-face').forEach(f=>{ f.style.animation=''; });
+  card.querySelectorAll('.sr-card-shine').forEach(s=>{ s.style.animation=''; });
+
+  el.style.display='flex';
+  el.classList.add('show');
+
+  const cv = document.getElementById('sr-skin-canvas');
+  const cctx = cv.getContext('2d');
+  function draw(){
+    cctx.clearRect(0,0,cv.width,cv.height);
+    cctx.save();
+    cctx.translate(cv.width/2,cv.height/2);
+    skin.drawPreview(cctx, cv.width/skin._size);
+    cctx.restore();
+  }
+  if (skin.img){ skin.img.onload=draw; setTimeout(draw,300); }
+  draw();
+}
+window._showSkinReveal = showSkinRevealCard;
 
 function showNotify(text){
   const el=document.getElementById('notify');
