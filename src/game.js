@@ -952,114 +952,118 @@ export class Game {
     // ── Overlay de inatividade ────────────────────────────────
     if (this._idleKicked) {
       const t = (performance.now() - (this._idleKickAt||0)) / 1000;
-      const blink = Math.floor(t * 4) % 2 === 0;
+      const blink = Math.floor(t * 2) % 2 === 0;
       ctx.save();
-      // Fundo com scanlines arcade
-      ctx.fillStyle = 'rgba(0,0,0,0.92)';
+      ctx.fillStyle = 'rgba(2,4,10,0.97)';
       ctx.fillRect(0, 0, W, H);
-      // Scanlines
-      ctx.globalAlpha = 0.08;
-      ctx.fillStyle = '#ffffff';
-      for (let sy = 0; sy < H; sy += 4) ctx.fillRect(0, sy, W, 2);
-      ctx.globalAlpha = 1;
 
-      // Painel central
-      const pw = Math.min(520, W - 40), ph = 200;
-      const px = W/2 - pw/2, py = H/2 - ph/2;
-      ctx.fillStyle = '#0a0a0f';
-      ctx.strokeStyle = '#ff3300';
-      ctx.lineWidth = 3;
-      ctx.fillRect(px, py, pw, ph);
-      ctx.strokeRect(px, py, pw, ph);
-      // Borda interna
-      ctx.strokeStyle = 'rgba(255,51,0,0.35)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(px+6, py+6, pw-12, ph-12);
-
-      // Cantos decorativos
-      const corner = 14;
-      ctx.strokeStyle = '#ff3300';
-      ctx.lineWidth = 2;
-      [[px,py],[px+pw,py],[px,py+ph],[px+pw,py+ph]].forEach(([cx,cy],i) => {
-        const sx = i%2===0?1:-1, sy = i<2?1:-1;
-        ctx.beginPath();
-        ctx.moveTo(cx+sx*corner, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy+sy*corner);
-        ctx.stroke();
-      });
+      // Linha decorativa topo (igual ao go-topbar)
+      const barW = Math.min(340, W - 40);
+      const grad = ctx.createLinearGradient(W/2 - barW/2, 0, W/2 + barW/2, 0);
+      grad.addColorStop(0, 'transparent');
+      grad.addColorStop(0.5, '#ff2255');
+      grad.addColorStop(1, 'transparent');
+      ctx.fillStyle = grad;
+      ctx.fillRect(W/2 - barW/2, H/2 - 118, barW, 2);
 
       ctx.textAlign = 'center';
-      // Titulo piscante
+
+      // Label pequeno topo (igual go-result-label)
+      ctx.font = `8px 'Press Start 2P', monospace`;
+      ctx.fillStyle = '#ff2255';
+      ctx.shadowColor = '#ff2255'; ctx.shadowBlur = 8;
+      ctx.letterSpacing = '4px';
+      ctx.fillText('INATIVIDADE', W/2, H/2 - 88);
+      ctx.shadowBlur = 0;
+
+      // Titulo principal piscante (igual go-title)
       if (blink) {
-        ctx.fillStyle = '#ff3300';
-        ctx.shadowColor = '#ff3300'; ctx.shadowBlur = 22;
-        ctx.font = `bold ${Math.round(W*0.042)}px 'Courier New', monospace`;
-        ctx.fillText('!! EXPULSO POR INATIVIDADE !!', W/2, py + 62);
+        ctx.font = `${Math.min(Math.round(W * 0.034), 26)}px 'Press Start 2P', monospace`;
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#ff225555'; ctx.shadowBlur = 30;
+        ctx.fillText('JOGADOR EXPULSO', W/2, H/2 - 52);
         ctx.shadowBlur = 0;
+      } else {
+        ctx.font = `${Math.min(Math.round(W * 0.034), 26)}px 'Press Start 2P', monospace`;
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.fillText('JOGADOR EXPULSO', W/2, H/2 - 52);
       }
 
-      // Linha separadora
-      ctx.strokeStyle = 'rgba(255,51,0,0.5)';
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(px+20, py+78); ctx.lineTo(px+pw-20, py+78); ctx.stroke();
+      // Subtítulo (go-sub)
+      ctx.font = `10px 'Press Start 2P', monospace`;
+      ctx.fillStyle = '#6a8a9a';
+      ctx.fillText('2 minutos sem jogar', W/2, H/2 - 18);
 
-      // Mensagem
-      ctx.fillStyle = '#cccccc';
-      ctx.font = `${Math.round(W*0.022)}px 'Courier New', monospace`;
-      ctx.fillText('VOCE FICOU 2 MINUTOS SEM JOGAR', W/2, py + 110);
+      // Linha divisória (go-divider)
+      const divW = Math.min(300, W - 60);
+      const divG = ctx.createLinearGradient(W/2 - divW/2, 0, W/2 + divW/2, 0);
+      divG.addColorStop(0, 'transparent');
+      divG.addColorStop(0.5, '#1a3a5a');
+      divG.addColorStop(1, 'transparent');
+      ctx.fillStyle = divG;
+      ctx.fillRect(W/2 - divW/2, H/2 + 2, divW, 1);
 
-      // Rodapé piscante
+      // Rodapé piscante (go-result-label estilo)
+      ctx.font = `9px 'Press Start 2P', monospace`;
       if (blink) {
-        ctx.fillStyle = '#ffee00';
-        ctx.shadowColor = '#ffee00'; ctx.shadowBlur = 12;
-        ctx.font = `bold ${Math.round(W*0.024)}px 'Courier New', monospace`;
-        ctx.fillText('>>> RETORNANDO AO INICIO... <<<', W/2, py + 152);
+        ctx.fillStyle = '#00d4ff';
+        ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 12;
+        ctx.fillText('VOLTANDO AO MENU...', W/2, H/2 + 34);
         ctx.shadowBlur = 0;
+      } else {
+        ctx.fillStyle = 'rgba(0,212,255,0.35)';
+        ctx.fillText('VOLTANDO AO MENU...', W/2, H/2 + 34);
       }
 
-      // Barra de progresso (4s)
+      // Barra de progresso (4s) — estilo fino/elegante
       const prog = Math.min(t / 4, 1);
-      const bw = pw - 40;
-      ctx.fillStyle = 'rgba(255,255,255,0.08)';
-      ctx.fillRect(px+20, py+170, bw, 12);
-      ctx.fillStyle = '#ff3300';
-      ctx.shadowColor = '#ff3300'; ctx.shadowBlur = 6;
-      ctx.fillRect(px+20, py+170, bw * prog, 12);
+      const bw = Math.min(300, W - 60);
+      const bx = W/2 - bw/2, by = H/2 + 56;
+      ctx.fillStyle = '#0e1a28';
+      ctx.fillRect(bx, by, bw, 4);
+      const pg = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+      pg.addColorStop(0, '#ff2255');
+      pg.addColorStop(1, '#00d4ff');
+      ctx.fillStyle = pg;
+      ctx.shadowColor = '#ff2255'; ctx.shadowBlur = 6;
+      ctx.fillRect(bx, by, bw * prog, 4);
       ctx.shadowBlur = 0;
 
       ctx.restore();
     } else if (this._idleWarned && this._idleTime >= 60) {
       const remaining = Math.ceil(120 - this._idleTime);
       const urgent = remaining <= 20;
-      const blink = urgent && Math.floor(Date.now() / 250) % 2 === 0;
-      const col = urgent ? '#ff3300' : '#ffaa00';
+      const blink = urgent && Math.floor(Date.now() / 400) % 2 === 0;
+      const col = urgent ? '#ff2255' : '#ffcc00';
       ctx.save();
-      // Painel topo
-      const pw = Math.min(380, W - 40);
-      const px = W/2 - pw/2;
-      ctx.globalAlpha = urgent ? (blink ? 1 : 0.75) : 0.9;
-      ctx.fillStyle = '#0a0a0f';
-      ctx.strokeStyle = col;
-      ctx.lineWidth = 2;
-      ctx.fillRect(px, 12, pw, 58);
-      ctx.strokeRect(px, 12, pw, 58);
-      // Cantos
-      const c = 10;
-      [[px,12],[px+pw,12],[px,70],[px+pw,70]].forEach(([cx,cy],i) => {
-        const sx = i%2===0?1:-1, sy = i<2?1:-1;
-        ctx.beginPath();
-        ctx.moveTo(cx+sx*c, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy+sy*c);
-        ctx.stroke();
-      });
-      ctx.textAlign = 'center';
-      ctx.fillStyle = col;
-      ctx.shadowColor = col; ctx.shadowBlur = 10;
-      ctx.font = `bold ${Math.round(W*0.020)}px 'Courier New', monospace`;
-      ctx.fillText('!! ATENCAO — JOGADOR INATIVO !!', W/2, 34);
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `bold ${Math.round(W*0.024)}px 'Courier New', monospace`;
-      ctx.fillText(`EXPULSAO EM: ${String(remaining).padStart(3,' ')}s`, W/2, 58);
+
+      // Painel no topo — mesmo fundo do gameover
+      const pw = Math.min(360, W - 40), ph = 64;
+      const px = W/2 - pw/2, py = 10;
+      ctx.globalAlpha = blink ? 0.7 : 1;
+      ctx.fillStyle = 'rgba(2,4,10,0.94)';
+      ctx.fillRect(px, py, pw, ph);
+
+      // Linha colorida no topo do painel
+      const tg = ctx.createLinearGradient(px, 0, px+pw, 0);
+      tg.addColorStop(0, 'transparent'); tg.addColorStop(0.5, col); tg.addColorStop(1, 'transparent');
       ctx.globalAlpha = 1;
+      ctx.fillStyle = tg;
+      ctx.fillRect(px, py, pw, 2);
+
+      ctx.textAlign = 'center';
+      // Label pequeno (go-result-label)
+      ctx.font = `7px 'Press Start 2P', monospace`;
+      ctx.fillStyle = col;
+      ctx.shadowColor = col; ctx.shadowBlur = 8;
+      ctx.fillText('ATENCAO — INATIVIDADE', W/2, py + 20);
+      ctx.shadowBlur = 0;
+
+      // Contador (go-stat .val style)
+      ctx.font = `${urgent ? 13 : 11}px 'Press Start 2P', monospace`;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(`EXPULSAO EM  ${remaining}s`, W/2, py + 46);
+
       ctx.restore();
     }
   }
