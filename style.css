@@ -391,14 +391,6 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   cursor:pointer;background:var(--panel2);
   display:flex;flex-direction:column;align-items:center;gap:5px;transition:all .15s;
 }
-.mode-maint-badge{
-  position:absolute;top:3px;right:3px;display:flex;align-items:center;gap:2px;
-  background:rgba(8,12,20,.88);border:1px solid #ffcc4455;border-radius:3px;padding:2px 3px;
-  pointer-events:none;
-}
-.mode-maint-badge svg{width:9px;height:9px;display:block;}
-.mode-maint-badge .maint-arrow{color:#ffcc44;}
-.mode-maint-badge .maint-lock{color:#ff8a55;}
 .mode-btn svg{width:20px;height:20px;transition:transform .15s;}
 .mode-label{font-size:7px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;font-family:'Press Start 2P',monospace;}
 .mode-btn.active svg{transform:scale(1.12);}
@@ -426,7 +418,8 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .skin-price{color:#ffcc44;}
 
 /* Loja — carrossel */
-.shop-panel{width:min(880px,96vw);}
+.shop-panel{width:min(1040px,96vw);max-height:88vh;}
+.shop-coin-icon{width:18px;height:18px;display:block;object-fit:contain;filter:drop-shadow(0 0 4px #ffcc4488);}
 .shop-panel .changelog-header{position:relative;overflow:hidden;}
 .shop-panel .changelog-header::after{
   content:'';position:absolute;inset:0;pointer-events:none;

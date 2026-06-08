@@ -73,7 +73,6 @@ function applyModeSlotToggle(){
   const btn   = document.getElementById('mode-slot-teste');
   const icon  = document.getElementById('mode-slot-teste-icon');
   const label = document.getElementById('mode-slot-teste-label');
-  const badge = document.getElementById('mode-slot-teste-badge');
   if (!btn || !icon || !label) return;
   const tournamentOn = !!(profile && profile.tournament && profile.tournament.active);
   if (tournamentOn) {
@@ -82,14 +81,12 @@ function applyModeSlotToggle(){
     btn.classList.remove('mode-teste');
     icon.innerHTML = '<path d="M12 2 L20 7 L20 14 L12 21 L4 14 L4 7 Z"/><path d="M12 2 L12 21 M4 7 L20 14 M20 7 L4 14" opacity=".55"/><circle cx="12" cy="11" r="2.6" fill="currentColor" stroke="none"/>';
     label.textContent = 'Tower Defense';
-    if (badge) badge.style.display = '';
   } else {
     btn.dataset.mode = 'teste';
     btn.classList.add('mode-teste');
     btn.classList.remove('mode-tower-defense');
     icon.innerHTML = '<rect x="9" y="2" width="6" height="10" rx="1"/><path d="M7 12 L5 20 M17 12 L19 20"/><line x1="5" y1="20" x2="19" y2="20"/>';
     label.textContent = 'Teste';
-    if (badge) badge.style.display = 'none';
   }
   // Se o modo selecionado era o do slot que acabou de mudar, realinha a dica.
   if (selectedMode==='teste' || selectedMode==='tower_defense') {
@@ -358,10 +355,10 @@ function modeStatusEntries(){
   return [
     { id:'contra1',       label:'Contra 1',              maintenance:false },
     { id:'contra2',       label:'Contra 2',              maintenance:false },
-    { id:'equipe_online', label:'Equipe Online',         maintenance:true  },
+    { id:'equipe_online', label:'Equipe Online',         maintenance:false },
     { id:'livre',         label:'Livre',                 maintenance:false },
     tournamentOn
-      ? { id:'tower_defense', label:'Torneio Tower Defense', maintenance:true  }
+      ? { id:'tower_defense', label:'Torneio Tower Defense', maintenance:false }
       : { id:'teste',         label:'Teste',                 maintenance:false },
     { id:'survivor',      label:'Survivor',              maintenance:false },
   ];
