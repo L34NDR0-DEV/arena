@@ -237,5 +237,6 @@ export const SKINS = [
 ];
 
 // IDs de skins que NUNCA aparecem na loja para compra — concedidas apenas
-// por eventos especiais (ex.: recompensa do Torneio Tower Defense).
-export const REWARD_ONLY_SKIN_IDS = [10];
+// por eventos especiais (ex.: recompensa do Torneio Tower Defense) ou
+// presenteadas individualmente a contas específicas (ex.: UFO Dourado).
+export const REWARD_ONLY_SKIN_IDS = [10, 12];
