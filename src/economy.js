@@ -28,14 +28,23 @@ function isTournamentActive(now = Date.now()) {
   return now >= TOURNAMENT_STARTS_AT && now < TOURNAMENT_ENDS_AT;
 }
 
-// Preço efetivo de uma skin para um usuário: aplica o preço promocional
-// somente se a skin está na promoção, a janela está ativa, e o usuário ainda
-// não possui a outra skin do par (a oferta vale para uma única escolha).
+// Preços fixos e permanentes para skins específicas (fora do preço-padrão de
+// SKIN_PRICE e da promoção por tempo limitado) — ex.: skins "Arcade" mais
+// simples saem mais baratas, e a "Amarela" é uma opção intermediária/premium.
+const CUSTOM_SKIN_PRICES = {
+  13: 550, // Amarela — equivalente ao pacote de R$10 (550 créditos)
+  14: 100, // Arcade Branca — equivalente ao pacote de R$1 (100 créditos)
+  15: 100, // Arcade Vermelha — equivalente ao pacote de R$1 (100 créditos)
+};
+
+// Preço efetivo de uma skin para um usuário: aplica (em ordem de prioridade)
+// o preço promocional, depois o preço fixo customizado, e por fim o padrão.
 function skinPriceFor(skinId, ownedSkinIds) {
   if (PROMO_SKIN_IDS.includes(skinId) && isPromoActive()) {
     const otherId = PROMO_SKIN_IDS.find(id => id !== skinId);
     if (!ownedSkinIds.includes(otherId)) return PROMO_PRICE;
   }
+  if (CUSTOM_SKIN_PRICES[skinId] != null) return CUSTOM_SKIN_PRICES[skinId];
   return SKIN_PRICE;
 }
 const REWARD_BLOCK_SIZE = 5;

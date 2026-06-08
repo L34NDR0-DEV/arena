@@ -220,6 +220,42 @@ const skinUfoDourado = makeSprite(12, 'UFO Dourado', '#ffcc33', 'Uforecompensa.p
   spinsOnAxis: true,
 });
 
+// Amarela — caça robusto laranja/dourado, opção intermediária/premium
+// (550 CR — equivalente ao pacote de R$10).
+const skinAmarela = makeSprite(13, 'Amarela', '#ffaa22', 'Amarela.png', {
+  size: 84,
+  nozzle: { x:0, y:-0.85 },
+  engines: [
+    { x: 0,    y:  0.84 },
+    { x:-0.46, y:  0.62 },
+    { x: 0.46, y:  0.62 },
+  ],
+});
+
+// Arcade Branca — nova linha "arcade", visual claro/tecnológico com
+// naceles em arco — opção econômica (100 CR).
+const skinArcadeBranca = makeSprite(14, 'Arcade Branca', '#e8eef5', 'Arcadebranca.png', {
+  size: 84,
+  nozzle:  { x:0, y:-0.85 },
+  engines: [
+    { x:-0.50, y: 0.74 },
+    { x: 0.50, y: 0.74 },
+  ],
+  isArcade: true,
+});
+
+// Arcade Vermelha — nova linha "arcade", silhueta angular vermelho/cobre —
+// opção econômica (100 CR).
+const skinArcadeVermelha = makeSprite(15, 'Arcade Vermelha', '#cc3322', 'Acadevermelha.png', {
+  size: 84,
+  nozzle:  { x:0, y:-0.85 },
+  engines: [
+    { x:-0.46, y: 0.70 },
+    { x: 0.46, y: 0.70 },
+  ],
+  isArcade: true,
+});
+
 export const SKINS = [
   skinVermelho,
   skinPonta,
@@ -234,6 +270,9 @@ export const SKINS = [
   skinArcadeVerde,
   skinHexChampion,
   skinUfoDourado,
+  skinAmarela,
+  skinArcadeBranca,
+  skinArcadeVermelha,
 ];
 
 // IDs de skins que NUNCA aparecem na loja para compra — concedidas apenas
