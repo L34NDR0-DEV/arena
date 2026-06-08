@@ -44,8 +44,21 @@ export class Game {
     // Contra1: 1 único inimigo, partida curta — level-up não faz sentido
     if (mode==='contra1') this.player.levelUpEnabled = false;
 
-    // Portais + Buracos Negros — em todos os modos exceto Teste
-    this.portalMgr = mode!=='teste' ? new PortalManager(this.arena) : null;
+    // Portais + Buracos Negros — em todos os modos exceto Teste.
+    // Passa zonas proibidas: torre central (tower_defense) e centro da arena
+    // (spawn do jogador) para que buracos negros não surjam perto delas.
+    if (mode !== 'teste') {
+      const forbidden = [
+        { x: ARENA_W/2, y: ARENA_H/2, r: 260 }, // centro/spawn do player
+      ];
+      if (mode === 'tower_defense') {
+        // Torre central nasce no centro — raio de influência proibido maior
+        forbidden[0].r = 400;
+      }
+      this.portalMgr = new PortalManager(this.arena, forbidden);
+    } else {
+      this.portalMgr = null;
+    }
 
     // Torres Astrais — disponíveis no modo Teste
     this.towerMgr = mode==='teste' ? new TowerManager() : null;

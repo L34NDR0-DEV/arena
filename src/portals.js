@@ -298,8 +298,10 @@ class BlackHole {
   }
 
   // Aplica gravidade; retorna { dmg, inCore, destroyed }
-  // `entity` deve ter .x, .y; player tem .vx/.vy
+  // `entity` deve ter .x, .y e ser uma nave (não uma torre/estrutura estática).
+  // Objetos com `_static:true` ou sem `r` de nave são ignorados.
   applyTo(entity, dt) {
+    if (entity._static) return { dmg: 0, inCore: false, destroyed: false };
     const dx = this.x - entity.x;
     const dy = this.y - entity.y;
     const d  = Math.hypot(dx, dy) || 0.01;
@@ -450,18 +452,27 @@ class BlackHole {
 
 // ── PortalManager ─────────────────────────────────────────────────────────────
 export class PortalManager {
-  constructor(arena) {
+  // `forbidden` é lista de {x, y, r} — zonas proibidas (ex: torre central).
+  // Buracos negros e portais não spawnam dentro de r + folga dessas zonas.
+  constructor(arena, forbidden = []) {
     this.portals    = [];
     this.blackHoles = [];
-    this._build(arena);
+    this._build(arena, forbidden);
   }
 
-  _build(arena) {
+  _build(arena, forbidden = []) {
     const margin = 400;
+
     const safe = (x, y, r) => {
-      if (!arena?.checkObstacleCollision) return true;
-      return !arena.checkObstacleCollision(x, y, r + 40);
+      // Evita obstáculos da arena
+      if (arena?.checkObstacleCollision && arena.checkObstacleCollision(x, y, r + 40)) return false;
+      // Evita zonas proibidas (torres, etc.) com folga generosa
+      for (const f of forbidden) {
+        if (Math.hypot(f.x - x, f.y - y) < f.r + r + 180) return false;
+      }
+      return true;
     };
+
     const rand   = (min, max) => min + Math.random()*(max-min);
     const tryPos = (r) => {
       let x, y, tries = 0;
@@ -469,7 +480,7 @@ export class PortalManager {
         x = rand(margin, ARENA_W - margin);
         y = rand(margin, ARENA_H - margin);
         tries++;
-      } while (!safe(x, y, r) && tries < 25);
+      } while (!safe(x, y, r) && tries < 30);
       return { x, y };
     };
 
@@ -495,11 +506,13 @@ export class PortalManager {
       this.portals.push(new Portal(posB.x, posB.y, color, i, 'B'));
     }
 
-    // Buracos negros — longe dos portais e entre si
+    // Buracos negros — longe dos portais, entre si e das zonas proibidas.
+    // Distância mínima entre buracos = 2.2x o raio de influência para que
+    // as zonas de gravidade não se sobreponham e pareçam "um só".
     for (let i = 0; i < BLACKHOLE_COUNT; i++) {
       let pos, att = 0;
-      do { pos = tryPos(BLACKHOLE_R*2); att++; }
-      while (!minDist(pos.x, pos.y, BLACKHOLE_INFLUENCE * 0.7) && att < 20);
+      do { pos = tryPos(BLACKHOLE_R * 2); att++; }
+      while (!minDist(pos.x, pos.y, BLACKHOLE_INFLUENCE * 2.2) && att < 40);
       placed.push(pos);
       this.blackHoles.push(new BlackHole(pos.x, pos.y));
     }
