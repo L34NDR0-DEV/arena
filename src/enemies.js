@@ -135,8 +135,14 @@ function drawLives(ctx, x, y, lives, maxLives, color) {
 // ── Números de dano flutuantes ────────────────────────────────
 const _dmgNums = [];
 
+const DMGNUM_MAX = 18;   // máximo de números simultâneos na tela
+const DMGNUM_MIN = 5;    // dano mínimo para exibir (evita spam de dano contínuo)
+
 export function spawnDamageNumber(x, y, value) {
-  _dmgNums.push({ x, y: y - 10, value: Math.round(value), age: 0, maxAge: 1.1, vy: -48 - Math.random()*22, vx: (Math.random()-0.5)*30 });
+  const v = Math.round(value);
+  if (v < DMGNUM_MIN) return;                      // ignora danos minúsculos
+  if (_dmgNums.length >= DMGNUM_MAX) return;       // limite de simultâneos
+  _dmgNums.push({ x, y: y - 10, value: v, age: 0, maxAge: 1.1, vy: -48 - Math.random()*22, vx: (Math.random()-0.5)*30 });
 }
 
 export function updateDamageNumbers(dt) {
