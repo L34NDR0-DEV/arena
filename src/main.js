@@ -52,7 +52,7 @@ async function apiFetch(path, opts={}){
 
 async function refreshProfile(){
   const { ok, data } = await apiFetch('/api/me');
-  if (!ok) return false;
+  if (!ok || data?.loggedIn === false) return false;
   profile = data;
   currentUser = data.user;
   pilotName = currentUser.displayName.toUpperCase();

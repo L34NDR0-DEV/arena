@@ -197,8 +197,10 @@ const ROUTES = [
 
   {
     method: 'GET', path: '/api/me',
-    auth: true,
-    handler: (req, res, { user }) => sendJson(res, 200, profileFor(user)),
+    handler: (req, res, { user }) => {
+      if (!user) return sendJson(res, 200, { loggedIn: false });
+      sendJson(res, 200, profileFor(user));
+    },
   },
 
   {
