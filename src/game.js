@@ -9,6 +9,7 @@ import { AudioEngine }                           from './audio.js';
 import { NetworkClient, RemotePlayer }           from './network.js';
 import { applyStun, applyFreeze, applyConfuse } from './statusEffects.js';
 import { PortalManager }                         from './portals.js';
+import { RechargeManager }                       from './recharge.js';
 import * as SkinsModule                          from './skins.js';
 
 const MATCH_DURATION = 300;
@@ -38,6 +39,7 @@ export class Game {
     this.enemyMgr = new EnemyManager(mode, difficulty);
     this.combat   = new CombatSystem(this.arena);
     this.combat.setEnemyManager(this.enemyMgr);
+    this.combat.setShakeCallback((i) => this.addShake(i));
     this.ui       = new UI();
     this.player   = new Player({ x:ARENA_W/2, y:ARENA_H/2, skinIndex, name:playerName });
     this.profileIcon = profileIcon;
@@ -81,6 +83,13 @@ export class Game {
     this.timeLeft=MATCH_DURATION;
     this.over=false; this.paused=false;
     this._rafId=null; this._last=0;
+
+    // Estações de recarga — somente nos modos online
+    this.rechargeMgr = (mode === 'equipe_online' || mode === 'tower_defense')
+      ? new RechargeManager(mode) : null;
+
+    // Camera shake — { intensity, decay }
+    this._shake = { intensity: 0, decay: 0 };
 
     // Sistema de kick por inatividade — 60s avisa, 120s expulsa
     this._idleTime   = 0;   // segundos sem ação do jogador
@@ -155,6 +164,7 @@ export class Game {
             } else if (result.type==='nuke') {
               this.combat.triggerBomb(px,py,en,this.player,420);
               this.arena.spawnParticles(px,py,'#ff4400',30,280);
+              this.addShake(14);
               this.ui.notify('NUKE!'+bonus,'#ff2200'); this._audio.playBomb?.();
             } else if (result.type==='freeze') {
               for(const e of en){if(!e.dead&&Math.hypot(e.x-px,e.y-py)<320)e._state='dodge';}
@@ -164,6 +174,7 @@ export class Game {
               for(const e of en){if(!e.dead){e.hp=0;e.dead=true;this.player.kills++;this.player.score+=e.score;this.player.addXP(e.score);}}
               this.arena.spawnParticles(px,py,'#ff00ff',35,300);
               this.combat.spawnExplosion(px,py,200,'#ff00ff');
+              this.addShake(18);
               this.ui.notify('NOVA!'+bonus,'#ff00ff'); this._audio.playBomb?.();
             } else if (result.type==='warp') {
               // Teleporta para o cursor do mouse
@@ -607,6 +618,12 @@ export class Game {
     this.camY=Math.max(0,Math.min(ARENA_H-this.H,this.camY));
 
     this._updateIdleKick(dt);
+    // Camera shake decay
+    if (this._shake.intensity > 0) {
+      this._shake.intensity -= this._shake.decay * dt;
+      if (this._shake.intensity < 0) this._shake.intensity = 0;
+    }
+
     this.arena.update(dt);
     this.player.update(dt,this._input(),this.combat.bullets,this.combat);
 
@@ -672,6 +689,11 @@ export class Game {
     if (this.towerDefenseMgr) {
       this.towerDefenseMgr.update(dt, this.combat.bullets, this._tdAttackers());
       this._resolveCentralTowerCombat(dt);
+    }
+
+    // Estações de recarga
+    if (this.rechargeMgr) {
+      this.rechargeMgr.update(dt, this.player, this.peers, this.bots);
     }
 
     const hasExtra = this.player.inventory.isExtraFull();
@@ -872,6 +894,7 @@ export class Game {
       if (hit.destroyed) {
         this._audio.playExplosion(3);
         this.arena.spawnParticles(tower.x,tower.y,tower.color,50,360);
+        this.addShake(20);
       }
     };
 
@@ -902,14 +925,26 @@ export class Game {
     this.combat._triggerPlayerRebuild(this.player,isContra1);
   }
 
+  addShake(intensity) {
+    if (intensity > this._shake.intensity) {
+      this._shake.intensity = intensity;
+      this._shake.decay = intensity * 2.5;
+    }
+  }
+
   _draw() {
     const ctx=this.ctx; const {W,H}=this;
     const ZOOM=0.65; // zoom out: ver mais arena
     const camX=this.camX, camY=this.camY;
 
+    // Camera shake offset
+    const sk = this._shake.intensity;
+    const skX = sk > 0 ? (Math.random()*2-1)*sk : 0;
+    const skY = sk > 0 ? (Math.random()*2-1)*sk : 0;
+
     this.arena.drawBackground(ctx,camX,camY);
     ctx.save();
-    ctx.translate(W/2, H/2);
+    ctx.translate(W/2 + skX, H/2 + skY);
     ctx.scale(ZOOM, ZOOM);
     ctx.translate(-W/2 - camX, -H/2 - camY);
 
@@ -917,6 +952,7 @@ export class Game {
     this.arena.drawAsteroids(ctx);
     this.arena.drawObstacles(ctx);
     this.portalMgr?.draw(ctx);
+    this.rechargeMgr?.draw(ctx);
     this.towerMgr?.draw(ctx);
     this.towerDefenseMgr?.draw(ctx);
     this.itemMgr.draw(ctx);

@@ -17,6 +17,7 @@ export class CombatSystem {
 
   setEnemyManager(mgr) { this._enemyMgr=mgr; }
   setAudio(audio) { this._audio=audio; }
+  setShakeCallback(fn) { this._shake=fn; }
 
   // Contexto do modo "Equipe Online" (PvP): jogadores remotos, bots locais,
   // time do jogador local e referência de rede para reportar abates.
@@ -417,6 +418,7 @@ export class CombatSystem {
   _triggerPlayerRebuild(player, isContra1) {
     this.arena.spawnParticles(player.x,player.y,'#ff4466',20,200);
     this.spawnExplosion(player.x,player.y,60,'#ff4466');
+    this._shake?.(10);
     if (isContra1) {
       this._enemyMgr?.playerLostLife();
       // Iniciar fase de reconstrução (30s)
@@ -572,6 +574,7 @@ export class CombatSystem {
     const color=R>300?'#ff2200':'#ff4400';
     this.spawnExplosion(x,y,R,color);
     this.arena.spawnParticles(x,y,'#ff8800',R>300?32:22,R*0.9);
+    this._shake?.(R > 300 ? 14 : 8);
     for (const e of enemies) {
       if (e.dead||e.isRespawning) continue;
       const d=Math.hypot(e.x-x,e.y-y);
