@@ -248,6 +248,19 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 }
 .pilot-badge svg{width:12px;height:12px;color:var(--cyan);}
 .pilot-name{color:var(--cyan);font-weight:700;}
+
+/* Badge "Status dos modos" — fica ao lado do nome do piloto e abre um
+   painel com a situação (operacional/manutenção) de cada modo de jogo. */
+.mode-status-badge{
+  cursor:pointer;color:var(--text2);font-family:'Segoe UI',system-ui,sans-serif;
+  transition:border-color .15s,color .15s;
+}
+.mode-status-badge:hover{border-color:var(--border2);color:var(--text);}
+.mode-status-dot{
+  width:8px;height:8px;border-radius:50%;flex:none;
+  background:var(--green);box-shadow:0 0 6px var(--green);
+}
+.mode-status-dot.maint{background:#ffcc44;box-shadow:0 0 6px #ffcc44;}
 .pilot-icon-btn{
   width:22px;height:22px;border-radius:3px;display:flex;align-items:center;justify-content:center;
   background:var(--panel);border:1px solid var(--border);font-size:13px;cursor:pointer;
@@ -994,6 +1007,30 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .nm-title{font-family:'Press Start 2P',monospace;font-size:12px;color:#fff;letter-spacing:.5px;}
 .nm-text{font-size:12px;color:var(--text2);line-height:1.7;}
 
+/* Variante "manutenção" do card de aviso — mesma estrutura do #new-mode-overlay,
+   mas em tom âmbar/laranja para comunicar bloqueio temporário (não novidade). */
+.nm-badge.maint{color:#ffcc44;border-color:#ffcc44;}
+.nm-icon.maint{border-color:#ffaa44;color:#ffaa44;box-shadow:0 0 18px rgba(255,170,68,.4);}
+#maintenance-overlay{
+  position:fixed;inset:0;z-index:9996;display:none;align-items:center;justify-content:center;
+  background:rgba(2,5,8,.88);backdrop-filter:blur(6px);padding:24px;animation:srFadeIn .3s ease both;
+}
+
+/* Painel "Status dos Modos" — lista cada modo com uma bolinha indicando
+   se está operacional (verde) ou em manutenção (âmbar). */
+.mode-status-panel{width:min(360px,92vw);}
+.mode-status-list{padding:14px 18px;display:flex;flex-direction:column;gap:8px;}
+.mode-status-row{
+  display:flex;align-items:center;gap:10px;
+  background:var(--panel2);border:1px solid var(--border);border-radius:5px;
+  padding:9px 12px;font-size:11px;
+}
+.mode-status-row-dot{width:8px;height:8px;border-radius:50%;flex:none;background:var(--green);box-shadow:0 0 6px var(--green);}
+.mode-status-row.maint .mode-status-row-dot{background:#ffcc44;box-shadow:0 0 6px #ffcc44;}
+.mode-status-row-label{flex:1;color:var(--text);font-weight:600;}
+.mode-status-row-state{font-size:9px;letter-spacing:.5px;color:var(--green);text-transform:uppercase;}
+.mode-status-row.maint .mode-status-row-state{color:#ffcc44;}
+
 /* ═══ Botões ════════════════════════════════════════════════ */
 .btn{padding:10px 22px;border-radius:3px;border:none;cursor:pointer;font-size:8px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;transition:all .15s;display:flex;align-items:center;gap:6px;font-family:'Press Start 2P',monospace;}
 .btn svg{width:12px;height:12px;}
@@ -1097,7 +1134,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .touch-btn-dash:active,.touch-btn-dash.pressed{background:rgba(255,204,68,.32);box-shadow:0 0 18px var(--gold);}
 .touch-btn-pause{
   position:absolute;top:10px;left:50%;transform:translateX(-50%);
-  width:42px;height:42px;font-size:15px;border-radius:8px;
+  width:44px;height:44px;font-size:15px;border-radius:8px;
   border-color:rgba(91,232,255,.6);color:var(--text);
   background:rgba(0,20,32,.5);z-index:60;pointer-events:auto;
 }
@@ -1106,7 +1143,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .touch-slots{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:8px;pointer-events:none;}
 .touch-slot{
   pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;
-  width:38px;height:38px;border-radius:6px;border:1.5px solid rgba(91,232,255,.5);
+  width:44px;height:44px;border-radius:6px;border:1.5px solid rgba(91,232,255,.5);
   background:rgba(0,20,32,.55);color:var(--text);font-family:'Press Start 2P',monospace;
   font-size:9px;display:flex;align-items:center;justify-content:center;
 }
@@ -1115,6 +1152,9 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   .touch-btn-fire{width:64px;height:64px;}
   .touch-btn-dash{width:50px;height:50px;}
   .touch-stick-zone{width:110px;height:110px;}
+  .touch-slot{width:38px;height:38px;font-size:8px;}
+  .touch-slots{gap:6px;}
+  .touch-btn-pause{width:38px;height:38px;}
 }
 
 /* ═══ Adaptação para telas pequenas (celulares) ══════════════ */
@@ -1163,10 +1203,13 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 @media (max-width:760px){
   .menu-header{padding:10px 14px;gap:10px;}
   .menu-logo-small{font-size:7px;}
-  .pilot-badge{padding:5px 10px;font-size:9px;gap:6px;}
+  /* Toque maior para os botões do cabeçalho — alvo mínimo confortável (~40px) */
+  .pilot-badge{padding:5px 10px;font-size:9px;gap:6px;min-height:40px;}
   .pilot-badge .credits-coin{width:15px;height:15px;}
-  .changelog-btn{padding:7px 9px;font-size:7px;gap:5px;}
-  .play-btn{padding:8px 14px;font-size:7px;}
+  .changelog-btn{padding:9px 10px;font-size:7px;gap:5px;min-height:40px;}
+  .play-btn{padding:10px 16px;font-size:8px;min-height:40px;}
+  .mode-status-badge{font-size:8px;}
+  .mode-status-badge-label{white-space:nowrap;}
 
   .menu-body{flex-direction:column;overflow-y:auto;}
   .menu-left{
@@ -1175,7 +1218,11 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
     box-shadow:0 1px 0 #00d4ff14,0 8px 24px -16px #00d4ff22;
   }
   .menu-right{width:100%;}
+  /* Botões de modo maiores no mobile — alvo de toque confortável e ícone legível */
   .mode-grid{grid-template-columns:1fr 1fr;gap:8px;}
+  .mode-btn{padding:14px 8px 12px;min-height:64px;gap:7px;}
+  .mode-btn svg{width:24px;height:24px;}
+  .mode-label{font-size:8px;}
   .skin-grid{grid-template-columns:repeat(3,1fr);}
   .menu-section{padding:10px 12px;}
 
@@ -1196,6 +1243,9 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   .changelog-panel{width:100%;height:100%;max-height:none;border-radius:0;}
   .changelog-header{padding:12px 14px;}
   .changelog-list{padding:12px 14px;}
+  /* Status dos modos é uma lista curta — mantém como cartão central
+     (não precisa ocupar a tela toda como o changelog, que pode ser longo) */
+  .changelog-panel.mode-status-panel{width:min(360px,92vw);height:auto;max-height:80vh;border-radius:8px;}
   .icon-picker{width:94vw;max-width:340px;padding:14px;}
   .icon-picker-grid{grid-template-columns:repeat(5,1fr);gap:7px;}
 
@@ -1212,6 +1262,9 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   .mode-grid{grid-template-columns:1fr;}
   .skin-grid{grid-template-columns:repeat(2,1fr);}
   .shop-card{width:104px;}
+  /* Em telas bem estreitas, o badge de status vira só a bolinha — economiza espaço */
+  .mode-status-badge-label{display:none;}
+  .mode-status-badge{padding:8px 9px;}
 }
 @media (orientation:landscape) and (max-height:520px){
   .menu-header{padding:6px 12px;}

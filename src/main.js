@@ -96,6 +96,7 @@ function applyModeSlotToggle(){
     selectedMode = btn.dataset.mode;
     document.getElementById('mode-tip').textContent = MODE_TIPS[selectedMode]||'';
   }
+  renderModeStatus();
 }
 
 // ── Tutorial de boas-vindas — guia do piloto para novos usuários ──
@@ -345,6 +346,60 @@ const MODE_TIPS={
   teste:   'TESTE — INIMIGOS NÃO ATACAM.',
   tower_defense: 'TORNEIO TOWER DEFENSE — destrua a torre central para conquistá-la! 2x2 online, vencedores ganham a skin exclusiva "Hex Champion".',
   survivor:'SURVIVOR — ONDAS INFINITAS. SOBREVIVA!',
+};
+
+// ── Status dos modos de jogo (badge perto do nome do piloto) ─────
+// Fonte única de verdade: tanto o bloqueio de acesso (selectMode/startGame)
+// quanto o painel "Status dos Modos" leem essa lista. O slot dinâmico
+// Teste/Tower Defense muda de id conforme `profile.tournament.active`
+// (mesma regra usada em applyModeSlotToggle).
+function modeStatusEntries(){
+  const tournamentOn = !!(profile && profile.tournament && profile.tournament.active);
+  return [
+    { id:'contra1',       label:'Contra 1',              maintenance:false },
+    { id:'contra2',       label:'Contra 2',              maintenance:false },
+    { id:'equipe_online', label:'Equipe Online',         maintenance:true  },
+    { id:'livre',         label:'Livre',                 maintenance:false },
+    tournamentOn
+      ? { id:'tower_defense', label:'Torneio Tower Defense', maintenance:true  }
+      : { id:'teste',         label:'Teste',                 maintenance:false },
+    { id:'survivor',      label:'Survivor',              maintenance:false },
+  ];
+}
+function isModeInMaintenance(mode){
+  return modeStatusEntries().some(m => m.id===mode && m.maintenance);
+}
+
+window.closeMaintenanceAlert = function(){
+  document.getElementById('maintenance-overlay').style.display = 'none';
+};
+function showMaintenanceAlert(mode){
+  const entry = modeStatusEntries().find(m => m.id===mode);
+  document.getElementById('maint-title').textContent = `${entry ? entry.label : 'Este modo'} — em manutenção`;
+  document.getElementById('maint-text').textContent =
+    'Estamos fazendo ajustes nesse modo e ele está temporariamente fora do ar — não é possível entrar agora. Volte em breve, logo, logo ele estará de volta!';
+  document.getElementById('maintenance-overlay').style.display = 'flex';
+}
+
+function renderModeStatus(){
+  const entries = modeStatusEntries();
+  const dot = document.getElementById('mode-status-dot');
+  if (dot) dot.classList.toggle('maint', entries.some(m => m.maintenance));
+  const list = document.getElementById('mode-status-list');
+  if (!list) return;
+  list.innerHTML = entries.map(m => `
+    <div class="mode-status-row${m.maintenance ? ' maint' : ''}">
+      <span class="mode-status-row-dot"></span>
+      <span class="mode-status-row-label">${m.label}</span>
+      <span class="mode-status-row-state">${m.maintenance ? 'Em manutenção' : 'Operacional'}</span>
+    </div>`).join('');
+}
+window.openModeStatus = function(){
+  renderModeStatus();
+  document.getElementById('mode-status-modal').style.display = 'flex';
+};
+window.closeModeStatus = function(){
+  document.getElementById('mode-status-modal').style.display = 'none';
 };
 
 // Monta o logo do menu letra a letra — cada caractere ganha um delay
@@ -1287,6 +1342,7 @@ window.closeHowToPlay=function(){
 };
 
 window.selectMode=function(mode,btn){
+  if (isModeInMaintenance(mode)) { showMaintenanceAlert(mode); return; }
   selectedMode=mode;
   document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
@@ -1306,6 +1362,19 @@ const orientationWarning = document.getElementById('orientation-warning');
 const touchControls      = document.getElementById('touch-controls');
 
 function isPortrait(){ return window.innerHeight > window.innerWidth; }
+
+// Trava a orientação da tela no mobile via Screen Orientation API: menus
+// (login/menu) ficam presos no retrato — onde os botões/textos foram
+// desenhados — e a partida em si fica presa na paisagem. É "best effort":
+// a API exige suporte do navegador (falha silenciosamente no iOS Safari,
+// que não a implementa) e, em vários navegadores, só funciona em
+// fullscreen — por isso é chamada também ao entrar/sair da partida, perto
+// de requestMobileFullscreen/exitMobileFullscreen.
+function lockOrientation(orientation){
+  if (!IS_MOBILE) return;
+  const so = screen.orientation;
+  if (so && typeof so.lock === 'function') so.lock(orientation).catch(()=>{});
+}
 
 function updateOrientationUI(){
   if (!IS_MOBILE) return;
@@ -1327,6 +1396,7 @@ const _origShowScreen = showScreen;
 showScreen = function(name){
   _origShowScreen(name);
   updateOrientationUI();
+  lockOrientation(name==='game' ? 'landscape' : 'portrait');
 };
 
 // ── Controles touch personalizados (joystick virtual + botões) ──
@@ -1485,6 +1555,10 @@ function exitMobileFullscreen(){
 }
 
 window.startGame=function(){
+  // Trava de segurança — impede entrar num modo em manutenção mesmo que
+  // selectedMode tenha ficado "preso" num estado antigo (ex.: torneio
+  // encerrou entre a seleção e o clique em JOGAR).
+  if (isModeInMaintenance(selectedMode)) { showMaintenanceAlert(selectedMode); return; }
   const diff=document.getElementById('diff-select').value;
   requestMobileFullscreen();
   showScreen('game');
