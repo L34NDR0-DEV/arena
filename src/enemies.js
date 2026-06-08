@@ -298,13 +298,20 @@ export class SmartEnemy {
     const dist=Math.hypot(dx,dy)||1;
 
     // ── Estados de IA ──────────────────────────────────────
+    // Limiares lidos de campos de instância com fallback para os valores
+    // originais — TeamBot pode sobrescrever (this._approachRange etc.) para
+    // ajustar a "personalidade" sem duplicar esta máquina de estados; o
+    // SmartEnemy clássico do PvE (sem essas overrides) se comporta IDÊNTICO.
     this._stateTimer-=dt;
     if (this._stateTimer<=0) {
       const hpRatio=this.hp/this.maxHp;
-      if (dist>500) { this._state='approach'; this._stateTimer=1.5; }
+      const approachDist = this._approachRange ?? 500;
+      const retreatHpRatio = this._retreatHpRatio ?? 0.35;
+      const flankChance = this._flankChance ?? 0.3;
+      if (dist>approachDist) { this._state='approach'; this._stateTimer=1.5; }
       else if (dist<120) { this._state='retreat'; this._stateTimer=1.0+Math.random(); }
-      else if (hpRatio<0.35&&Math.random()<0.4) { this._state='retreat'; this._stateTimer=2.0; }
-      else if (Math.random()<0.3) { this._state='flank'; this._dodgeDir=Math.random()<0.5?1:-1; this._stateTimer=1.2+Math.random(); }
+      else if (hpRatio<retreatHpRatio&&Math.random()<0.4) { this._state='retreat'; this._stateTimer=2.0; }
+      else if (Math.random()<flankChance) { this._state='flank'; this._dodgeDir=Math.random()<0.5?1:-1; this._stateTimer=1.2+Math.random(); }
       else { this._state='strafe'; this._dodgeDir=Math.random()<0.5?1:-1; this._stateTimer=0.8+Math.random()*0.6; }
     }
 
@@ -436,8 +443,32 @@ export class SmartEnemy {
 // com x/y/vx/vy do alvo escolhido a cada frame), sem alterar sua classe.
 const TEAM_COLORS = { red:'#ff4d6a', blue:'#4da6ff' };
 
+// ── Perfis fixos de bot — "identidade" reconhecível entre partidas ──────
+// Cada perfil tem nome temático + skin fixa + "traços" de combate (traits)
+// que moldam o estilo de luta sobrescrevendo limiares do _brain (SmartEnemy)
+// já parametrizados acima (_approachRange/_retreatHpRatio/_flankChance).
+//
+// Atribuição: o servidor escolhe o perfil pelo ÍNDICE DO SLOT dentro da sala
+// (ver botProfileForSlot em server.js — MESMA ORDEM, MESMOS NOMES, MESMOS
+// skinIndex; servidor só precisa de name+skinIndex p/ o payload match_start).
+// Assim o 1º bot que entra numa partida é sempre "BOT-Falcão", o 2º sempre
+// "BOT-Centinela" etc — reconhecível e repetível, sem precisar de hash/BD.
+//
+// skinIndex evita ids "somente recompensa" (REWARD_ONLY_SKIN_IDS = [10,12]
+// em skins.js) — estes nunca são sorteados para bots.
+export const BOT_PROFILES = [
+  { name:'BOT-Falcão',    skinIndex:0,  traits:{ aggression:1.35, flankBias:0.65, retreatThreshold:0.15, approachRange:620 } },
+  { name:'BOT-Centinela', skinIndex:3,  traits:{ aggression:0.9,  flankBias:0.15, retreatThreshold:0.28, approachRange:420 } },
+  { name:'BOT-Víbora',    skinIndex:6,  traits:{ aggression:1.2,  flankBias:0.7,  retreatThreshold:0.16, approachRange:560 } },
+  { name:'BOT-Titânio',   skinIndex:7,  traits:{ aggression:1.0,  flankBias:0.2,  retreatThreshold:0.30, approachRange:460 } },
+  { name:'BOT-Rajada',    skinIndex:9,  traits:{ aggression:1.4,  flankBias:0.35, retreatThreshold:0.14, approachRange:560 } },
+  { name:'BOT-Espectro',  skinIndex:11, traits:{ aggression:1.1,  flankBias:0.6,  retreatThreshold:0.17, approachRange:540 } },
+  { name:'BOT-Lâmina',    skinIndex:13, traits:{ aggression:1.25, flankBias:0.4,  retreatThreshold:0.16, approachRange:520 } },
+  { name:'BOT-Cometa',    skinIndex:14, traits:{ aggression:1.15, flankBias:0.5,  retreatThreshold:0.18, approachRange:540 } },
+];
+
 export class TeamBot {
-  constructor({ id, name, team, x, y, difficulty='moderado', skinIndex=0 }) {
+  constructor({ id, name, team, x, y, difficulty='moderado', skinIndex=0, traits=null }) {
     this.id = id;
     this.name = name;
     this.team = team;
@@ -447,7 +478,36 @@ export class TeamBot {
     this.skinIndex = skinIndex;
     this._brain = new SmartEnemy(x, y, difficulty, 1, 1);
     this._brain.color = TEAM_COLORS[team] || '#aaccff';
+
+    // ── Linha de base "implacável" — todo bot de equipe é mais ousado que
+    // o SmartEnemy padrão do PvE: atira mais, hesita menos, só foge em
+    // desespero. Fixos (não escalam com `difficulty`, que já regula
+    // dano/velocidade via DIFF — aqui ajustamos só "personalidade").
+    // O perfil (traits, abaixo) ainda pode suavizar estes valores por cima.
+    this._brain._shootCd        *= 0.8;   // ~20% mais frequência de tiro
+    this._brain._retreatHpRatio  = 0.18;  // foge só com HP < 18% (era 35%)
+    this._brain._flankChance     = 0.38;  // mais manobra ofensiva
+    this._brain._approachRange   = 560;   // persegue de mais longe
+
     this._proxy = { x, y, vx:0, vy:0 };
+    this._applyTraits(traits);
+  }
+
+  // Aplica os "traços" de personalidade do perfil por cima da linha de base
+  // implacável — sobrescrita pós-construção dos campos do _brain (já
+  // parametrizados com fallback em SmartEnemy.update), sem subclassificar
+  // nem duplicar a IA. `traits=null` (ex.: perfil não reconhecido) preserva
+  // a linha de base definida no construtor.
+  _applyTraits(traits) {
+    if (!traits) return;
+    const b = this._brain;
+    if (traits.aggression != null) {
+      b._shootCd = b._shootCd / traits.aggression;        // cooldown menor = atira mais
+      b._predictMult = b._predictMult * Math.min(1.2, traits.aggression);
+    }
+    if (traits.flankBias       != null) b._flankChance    = traits.flankBias;
+    if (traits.retreatThreshold!= null) b._retreatHpRatio = traits.retreatThreshold;
+    if (traits.approachRange   != null) b._approachRange  = traits.approachRange;
   }
 
   get x() { return this._brain.x; }
@@ -460,14 +520,32 @@ export class TeamBot {
   set dead(v) { this._brain.dead = v; }
   set hp(v) { this._brain.hp = v; }
 
-  // Escolhe o alvo vivo mais próximo entre uma lista de "jogadores"
-  // (RemotePlayer locais/remotos e outros TeamBots) do time adversário.
+  // Escolhe o alvo entre os jogadores vivos do time adversário ponderando
+  // proximidade + fraqueza (HP baixo) + isolamento (poucos aliados por
+  // perto) — um bot "implacável" prioriza a presa mais fácil de abater
+  // dentre as que já estão ao alcance, em vez de só a mais próxima.
+  // Pesos somam 1.0 (fácil de calibrar): proximidade pesa mais para evitar
+  // que o time inteiro atravesse o mapa atrás do HP mais baixo (o que
+  // pareceria injusto/estranho de assistir).
+  // Custo: até n² pares (n≤6 no 3x3) — irrelevante a 60fps.
   _pickTarget(players) {
-    let best=null, bestDist=Infinity;
+    let best=null, bestScore=-Infinity;
     for (const p of players) {
       if (!p || p.dead || p.team===this.team) continue;
-      const d=Math.hypot(p.x-this.x, p.y-this.y);
-      if (d<bestDist) { bestDist=d; best=p; }
+      const dist = Math.hypot(p.x-this.x, p.y-this.y);
+      const hpRatio = (p.hp ?? p.maxHp ?? 1) / (p.maxHp || 1);
+
+      let nearbyAllies = 0;
+      for (const q of players) {
+        if (!q || q===p || q.dead || q.team!==p.team) continue;
+        if (Math.hypot(q.x-p.x, q.y-p.y) < 260) nearbyAllies++;
+      }
+
+      const proximityScore = 1 - Math.min(1, dist/800);
+      const weaknessScore  = 1 - hpRatio;
+      const isolationScore = 1/(1+nearbyAllies);
+      const score = proximityScore*0.4 + weaknessScore*0.35 + isolationScore*0.25;
+      if (score > bestScore) { bestScore=score; best=p; }
     }
     return best;
   }

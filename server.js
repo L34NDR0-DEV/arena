@@ -16,16 +16,29 @@ const ROOT = __dirname;
 // diretamente em src/db.js, src/auth.js, src/api.js e src/payments.js,
 // todas com defaults que funcionam em http://localhost.
 
-// Catálogo de skins (ids 0-15) usado só para sortear a aparência dos bots —
-// o servidor não importa src/skins.js (módulo client-side, usa Image/canvas),
-// então mantemos aqui só a contagem total e os ids "somente recompensa"
-// (devem ficar em sincronia com REWARD_ONLY_SKIN_IDS em src/skins.js).
-const BOT_SKIN_COUNT          = 16;
-const BOT_EXCLUDED_SKIN_IDS   = [10, 12];
-const BOT_SKIN_POOL = Array.from({ length: BOT_SKIN_COUNT }, (_, i) => i)
-  .filter(id => !BOT_EXCLUDED_SKIN_IDS.includes(id));
-function randomBotSkinIndex() {
-  return BOT_SKIN_POOL[Math.floor(Math.random() * BOT_SKIN_POOL.length)];
+// Perfis fixos de bot — dão "identidade" reconhecível entre partidas
+// (mesmo nome + mesma skin sempre que aquele slot é preenchido). O servidor
+// só precisa de name+skinIndex para o payload match_start/td_match_start; o
+// "estilo de combate" (traits) mora em src/enemies.js (só importa para quem
+// roda a IA, o cliente anfitrião) — módulo ESM que este arquivo CommonJS não
+// importa (mesmo motivo do antigo BOT_SKIN_POOL: client-side, usa Image/canvas).
+// MANTER EM SINCRONIA com BOT_PROFILES em src/enemies.js: mesma ORDEM, mesmos
+// `name` e `skinIndex` (nenhum deve estar em REWARD_ONLY_SKIN_IDS=[10,12]).
+const BOT_PROFILES = [
+  { name:'BOT-Falcão',    skinIndex:0  },
+  { name:'BOT-Centinela', skinIndex:3  },
+  { name:'BOT-Víbora',    skinIndex:6  },
+  { name:'BOT-Titânio',   skinIndex:7  },
+  { name:'BOT-Rajada',    skinIndex:9  },
+  { name:'BOT-Espectro',  skinIndex:11 },
+  { name:'BOT-Lâmina',    skinIndex:13 },
+  { name:'BOT-Cometa',    skinIndex:14 },
+];
+// Atribuição determinística por slot — o 1º bot de cada partida é sempre
+// "BOT-Falcão", o 2º sempre "BOT-Centinela" etc. Sem hash/sorteio/banco:
+// o índice do laço de criação já é estável (sempre 0,1,2... por sala).
+function botProfileForSlot(i) {
+  return BOT_PROFILES[i % BOT_PROFILES.length];
 }
 
 const MIME = {
@@ -84,7 +97,8 @@ function startTeamMatch(roomId) {
     const team = assignTeam(tr);
     tr.teamCounts[team]++;
     const botId = `bot_${roomId}_${i}`;
-    botSlots.push({ id: botId, name: `BOT-${Math.floor(1000+Math.random()*9000)}`, skinIndex: randomBotSkinIndex(), profileIcon: 0, team, isBot: true, isHost: false });
+    const profile = botProfileForSlot(i);
+    botSlots.push({ id: botId, name: profile.name, skinIndex: profile.skinIndex, profileIcon: 0, team, isBot: true, isHost: false });
   }
 
   const playersPayload = tr.players.map((p, idx) => ({
@@ -212,7 +226,8 @@ function tdTryStartMatch(allowBots = false) {
     const team = tdAssignTeam(teamCounts);
     teamCounts[team]++;
     const botId = `bot_${roomId}_${i}`;
-    botSlots.push({ id: botId, name: `BOT-${Math.floor(1000+Math.random()*9000)}`, skinIndex: randomBotSkinIndex(), profileIcon: 0, team, isBot: true, isHost: false });
+    const profile = botProfileForSlot(i);
+    botSlots.push({ id: botId, name: profile.name, skinIndex: profile.skinIndex, profileIcon: 0, team, isBot: true, isHost: false });
   }
 
   tdMatch = {

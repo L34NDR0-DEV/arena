@@ -1,6 +1,6 @@
 import { Arena, ARENA_W, ARENA_H, ARENA_TYPES, ARENA_W_DEFAULT, ARENA_H_DEFAULT, setArenaSize } from './arena.js';
 import { Player, drawCrosshair } from './player.js';
-import { EnemyManager, TeamBot }                 from './enemies.js';
+import { EnemyManager, TeamBot, BOT_PROFILES }   from './enemies.js';
 import { ItemManager, BorderEffect }              from './items.js';
 import { CombatSystem }                          from './combat.js';
 import { TowerManager, TowerDefenseManager }     from './towers.js';
@@ -292,7 +292,11 @@ export class Game {
       if (p.isBot) {
         if (this.isHost) {
           const {x,y}=this._spawnPosFor(p.team);
-          this.bots.push(new TeamBot({ id:p.id, name:p.name, team:p.team, x, y, difficulty:this.diff, skinIndex:p.skinIndex }));
+          // O servidor manda nome/skin determinísticos por slot (botProfileForSlot);
+          // aqui casamos pelo nome para recuperar os "traits" de personalidade —
+          // só o anfitrião roda a IA, então só ele precisa do estilo de combate.
+          const profile = BOT_PROFILES.find(pr => pr.name === p.name);
+          this.bots.push(new TeamBot({ id:p.id, name:p.name, team:p.team, x, y, difficulty:this.diff, skinIndex:p.skinIndex, traits:profile?.traits ?? null }));
         } else {
           // Clientes não-anfitriões representam bots como RemotePlayers comuns
           // — o anfitrião replica o estado deles via state/event.
@@ -352,7 +356,10 @@ export class Game {
           // Bots do Torneio Tower Defense são sempre "difíceis" — independente
           // da dificuldade escolhida pelo jogador — para a disputa pela torre
           // central exigir mais estratégia e trabalho em equipe real.
-          const bot = new TeamBot({ id:p.id, name:p.name, team:p.team, x, y, difficulty:'dificil', skinIndex:p.skinIndex });
+          // Mesmo casamento nome→perfil do Equipe Online — identidade consistente
+          // entre os dois modos (servidor usa o mesmo botProfileForSlot).
+          const profile = BOT_PROFILES.find(pr => pr.name === p.name);
+          const bot = new TeamBot({ id:p.id, name:p.name, team:p.team, x, y, difficulty:'dificil', skinIndex:p.skinIndex, traits:profile?.traits ?? null });
           bot.setObjective(this.towerDefenseMgr?.tower);
           this.bots.push(bot);
         } else {
