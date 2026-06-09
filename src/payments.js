@@ -59,13 +59,24 @@ async function createCheckout(user, packageId) {
   // configurado em produção, isso fazia toda criação de preferência falhar
   // com "invalid_auto_return" e o checkout nunca abria.
   const isPublicHttps = /^https:\/\//i.test(PUBLIC_URL);
+
+  // Separa nome e sobrenome para melhorar score de aprovação do MP.
+  const nameParts  = (user.display_name || 'Jogador').trim().split(/\s+/);
+  const firstName  = nameParts[0];
+  const lastName   = nameParts.length > 1 ? nameParts.slice(1).join(' ') : firstName;
+
   const body = {
     items: [{
-      title: `${pkg.credits} Créditos — Arena`,
+      title: `${pkg.credits} Créditos — Tower Defense on the Space`,
       quantity: 1,
       unit_price: pkg.priceCents / 100,
       currency_id: 'BRL',
     }],
+    payer: {
+      name:       firstName,
+      surname:    lastName,
+      email:      user.email,
+    },
     external_reference: String(orderId),
     back_urls: {
       success: `${PUBLIC_URL}/?shop=credits&order=${orderId}`,
@@ -73,6 +84,7 @@ async function createCheckout(user, packageId) {
       pending: `${PUBLIC_URL}/?shop=credits&order=${orderId}&status=pending`,
     },
     notification_url: `${PUBLIC_URL}/api/payments/webhook`,
+    statement_descriptor: 'TOWER DEFENSE SPACE',
   };
   if (isPublicHttps) body.auto_return = 'approved';
 
