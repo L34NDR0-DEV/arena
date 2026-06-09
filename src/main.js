@@ -37,66 +37,6 @@ function promoTimeLeftLabel(){
 }
 let authMode    = 'login'; // 'login' | 'register'
 
-// ── Chat do Lobby ────────────────────────────────────────────────
-let _lobbyWs = null;
-
-function _lobbyWsConnect() {
-  if (_lobbyWs && _lobbyWs.readyState <= 1) return;
-  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-  _lobbyWs = new WebSocket(`${proto}://${location.host}`);
-  _lobbyWs.onmessage = (ev) => {
-    try {
-      const msg = JSON.parse(ev.data);
-      if (msg.type === 'online_count') _chatSetOnline(msg.count);
-      if (msg.type === 'lobby_chat')   _chatAddMsg(msg.name, msg.text);
-    } catch {}
-  };
-  _lobbyWs.onclose = () => { setTimeout(_lobbyWsConnect, 3000); };
-  _lobbyWs.onerror = () => {};
-}
-
-function _chatSetOnline(n) {
-  const el = document.getElementById('chat-online-num');
-  if (el) el.textContent = n;
-}
-
-function _chatAddMsg(name, text, system=false) {
-  const box = document.getElementById('chat-messages');
-  if (!box) return;
-  const div = document.createElement('div');
-  if (system) {
-    div.className = 'chat-msg system';
-    div.textContent = text;
-  } else {
-    div.className = 'chat-msg';
-    const isSelf = currentUser && name === currentUser.displayName;
-    div.innerHTML = `<span class="chat-msg-name${isSelf?' self':''}">${_esc(name)}</span><span class="chat-msg-text">${_esc(text)}</span>`;
-  }
-  box.appendChild(div);
-  // Manter máximo de 80 mensagens
-  while (box.children.length > 80) box.removeChild(box.firstChild);
-  box.scrollTop = box.scrollHeight;
-}
-
-function _esc(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-window.sendLobbyChat = function() {
-  const input = document.getElementById('chat-input');
-  if (!input) return;
-  const text = input.value.trim();
-  if (!text || !_lobbyWs || _lobbyWs.readyState !== 1) return;
-  if (!currentUser) { _chatAddMsg('', 'Faça login para enviar mensagens.', true); return; }
-  _lobbyWs.send(JSON.stringify({ type: 'lobby_chat', text }));
-  input.value = '';
-};
-
-// Enter envia
-document.addEventListener('DOMContentLoaded', () => {
-  const input = document.getElementById('chat-input');
-  if (input) input.addEventListener('keydown', e => { if (e.key === 'Enter') window.sendLobbyChat(); });
-});
 
 
 async function apiFetch(path, opts={}){
@@ -368,7 +308,6 @@ async function onAuthSuccess(){
   await refreshProfile();
   loadHistory();
   showScreen('menu');
-  _lobbyWsConnect();
   maybeShowTutorial();
   if (!profile || profile.tutorialSeen) maybeShowNewModeAlert();
 }
@@ -1933,7 +1872,6 @@ function showNotify(text){
   if (hasSession) {
     loadHistory();
     showScreen('menu');
-    _lobbyWsConnect();
     checkPendingCreditOrder();
     maybeShowTutorial();
     if (!profile || profile.tutorialSeen) maybeShowNewModeAlert();
