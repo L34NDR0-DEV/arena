@@ -310,7 +310,14 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .icon-picker-close:hover{color:var(--cyan);border-color:var(--cyan);}
 .credits-badge{gap:7px;}
 .pilot-badge .credits-coin{width:18px;height:18px;flex:none;filter:drop-shadow(0 0 3px #ffcc4455);}
-.credits-amount{color:#ffe9a8;font-weight:700;letter-spacing:.5px;}
+.credits-amount{color:#ffe9a8;font-weight:700;letter-spacing:.5px;transition:color .2s;}
+.credits-gain-pulse{animation:creditsPulse .9s ease-out forwards;}
+@keyframes creditsPulse{
+  0%  {color:#ffe9a8;text-shadow:none;}
+  20% {color:#fffb70;text-shadow:0 0 10px #ffee44,0 0 22px #ffcc0088;}
+  60% {color:#ffee77;text-shadow:0 0 6px #ffcc4466;}
+  100%{color:#ffe9a8;text-shadow:none;}
+}
 .credits-label{color:var(--text2);}
 .change-pilot-btn{
   font-size:9px;color:var(--text2);background:none;border:none;cursor:pointer;

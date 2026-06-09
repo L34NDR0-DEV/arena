@@ -247,6 +247,39 @@ function updateCreditsBadge(){
   if (el && currentUser) el.textContent = currentUser.credits;
 }
 
+// Anima o contador de créditos de `from` até `to` em ~600ms e pulsa o badge.
+function animateCreditsGain(from, to) {
+  const badgeEl  = document.getElementById('credits-amount');
+  const shopEl   = document.getElementById('shop-balance');
+  const profileEl= document.getElementById('ps-stat-credits');
+  if (!badgeEl) return;
+
+  const duration = 600;
+  const start    = performance.now();
+  const diff     = to - from;
+
+  function tick(now) {
+    const t    = Math.min((now - start) / duration, 1);
+    const ease = 1 - Math.pow(1 - t, 3); // ease-out cúbico
+    const val  = Math.round(from + diff * ease);
+    badgeEl.textContent = val;
+    if (shopEl)    shopEl.textContent    = val;
+    if (profileEl) profileEl.textContent = val;
+    if (t < 1) { requestAnimationFrame(tick); return; }
+    // garante valor final exato
+    badgeEl.textContent = to;
+    if (shopEl)    shopEl.textContent    = to;
+    if (profileEl) profileEl.textContent = to;
+  }
+  requestAnimationFrame(tick);
+
+  // Pulso de brilho no badge do menu
+  badgeEl.classList.remove('credits-gain-pulse');
+  void badgeEl.offsetWidth;
+  badgeEl.classList.add('credits-gain-pulse');
+  setTimeout(() => badgeEl.classList.remove('credits-gain-pulse'), 900);
+}
+
 function showAuthError(msg){
   const el = document.getElementById('auth-error');
   el.textContent = msg;
@@ -1021,8 +1054,9 @@ async function pollOrderStatus(orderId, attemptsLeft){
       if (order && order.status === 'approved') {
         statusEl.textContent = 'Pagamento aprovado! Créditos adicionados à sua conta.';
         statusEl.classList.add('success');
+        const prevCredits = currentUser.credits;
         await refreshProfile();
-        document.getElementById('shop-balance').textContent = currentUser.credits;
+        animateCreditsGain(prevCredits, currentUser.credits);
         showNotify('Créditos adicionados com sucesso!');
         return;
       }
@@ -1807,8 +1841,13 @@ window.showGameOver=function(data){
       level: data.level??1,
     }}).then(({ok, data:res})=>{
       if (!ok || !res) return;
+      const prevCredits = currentUser.credits;
       currentUser.credits = res.creditsBalance;
-      updateCreditsBadge();
+      if (res.creditsBalance > prevCredits) {
+        animateCreditsGain(prevCredits, res.creditsBalance);
+      } else {
+        updateCreditsBadge();
+      }
       if (res.rewardGranted) showNotify('+10 Créditos! Recompensa de partidas concedida.');
       loadHistory();
     });
