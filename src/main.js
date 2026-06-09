@@ -2063,7 +2063,6 @@ function maybeShowSkinPromo() {
 }
 
 function _showSkinPromoOverlay(skins) {
-  // Remove overlay anterior se existir
   document.getElementById('skin-promo-overlay')?.remove();
 
   const overlay = document.createElement('div');
@@ -2072,7 +2071,7 @@ function _showSkinPromoOverlay(skins) {
     position:fixed;inset:0;z-index:9998;display:flex;flex-direction:column;
     align-items:center;justify-content:center;
     background:rgba(2,5,13,.92);backdrop-filter:blur(8px);
-    animation:srFadeIn .3s ease both;padding:20px;
+    animation:srFadeIn .3s ease both;padding:20px;box-sizing:border-box;
   `;
 
   overlay.innerHTML = `
@@ -2090,7 +2089,7 @@ function _showSkinPromoOverlay(skins) {
         Customize sua nave com skins exclusivas
       </div>
     </div>
-    <div id="skin-promo-cards" style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;"></div>
+    <div id="skin-promo-cards" style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;align-items:flex-start;"></div>
     <button onclick="document.getElementById('skin-promo-overlay').remove()" style="
       margin-top:28px;font-family:'Press Start 2P',monospace;font-size:8px;
       letter-spacing:1px;background:transparent;color:#4a7a9a;
@@ -2114,15 +2113,12 @@ function _showSkinPromoOverlay(skins) {
     card.style.cssText = `
       background:linear-gradient(160deg,#0b1e33,#040c18);
       border:1px solid #00d4ff22;border-radius:12px;
-      padding:20px 18px;text-align:center;width:180px;
+      padding:20px 16px 16px;text-align:center;width:200px;flex-shrink:0;
       box-shadow:0 0 30px #00d4ff0a;
+      display:flex;flex-direction:column;align-items:center;
       animation:bonusCardIn .4s cubic-bezier(.2,.9,.3,1.3) both;
       animation-delay:${i * 0.12}s;
     `;
-
-    const cv = document.createElement('canvas');
-    cv.width = 120; cv.height = 120;
-    cv.style.cssText = 'display:block;margin:0 auto 12px;';
 
     const badge = document.createElement('div');
     badge.style.cssText = `font-family:'Press Start 2P',monospace;font-size:7px;
@@ -2130,33 +2126,53 @@ function _showSkinPromoOverlay(skins) {
       border-radius:3px;padding:3px 8px;display:inline-block;margin-bottom:10px;`;
     badge.textContent = 'SKIN';
 
+    const cv = document.createElement('canvas');
+    cv.width = 140; cv.height = 140;
+    cv.style.cssText = 'display:block;margin:0 auto 14px;';
+
     const nameEl = document.createElement('div');
-    nameEl.style.cssText = `font-family:'Press Start 2P',monospace;font-size:9px;
-      color:#fff;letter-spacing:.5px;margin-bottom:8px;line-height:1.5;`;
+    nameEl.style.cssText = `font-family:'Press Start 2P',monospace;font-size:8px;
+      color:#fff;letter-spacing:.5px;margin-bottom:8px;line-height:1.7;
+      word-break:break-word;width:100%;`;
     nameEl.textContent = skin.name;
 
     const priceEl = document.createElement('div');
-    priceEl.style.cssText = `font-family:'Press Start 2P',monospace;font-size:14px;
+    priceEl.style.cssText = `font-family:'Press Start 2P',monospace;font-size:13px;
       color:#ffcc44;margin-bottom:14px;text-shadow:0 0 12px #ffcc4466;`;
     priceEl.textContent = `${price} CR`;
 
     const btn = document.createElement('button');
+    const btnLabel = owned ? 'POSSUIDA' : canBuy ? 'COMPRAR' : 'VER NA LOJA';
+    // Estilo igual ao #shop-buy-btn da loja (dourado pulsante)
     btn.style.cssText = `
+      position:relative;overflow:hidden;
       font-family:'Press Start 2P',monospace;font-size:8px;letter-spacing:1px;
-      width:100%;padding:10px 8px;border-radius:6px;cursor:pointer;
-      border:none;transition:.15s;
-      ${canBuy
-        ? 'background:linear-gradient(135deg,#00d4ff,#0088cc);color:#020a14;box-shadow:0 2px 12px #00d4ff33;'
-        : 'background:linear-gradient(135deg,#1a3a5a,#0d2035);color:#4a8aaa;border:1px solid #00d4ff22;'}
+      width:100%;padding:11px 8px;border-radius:6px;cursor:pointer;
+      border:none;transition:transform .15s,box-shadow .15s,filter .15s;
+      ${owned
+        ? 'background:#0d2035;color:#4a8aaa;cursor:default;'
+        : canBuy
+          ? `background:linear-gradient(90deg,#ffaa00,#ffe34d,#ffaa00);background-size:220% 100%;
+             color:#1a1100;font-weight:800;
+             animation:shopBuyGradient 3s linear infinite,shopBuyPulse 2s ease-in-out infinite;`
+          : `background:linear-gradient(90deg,#0050a0,#00aaff,#0050a0);background-size:220% 100%;
+             color:#020a14;font-weight:800;
+             animation:shopBuyGradient 3s linear infinite;`
+      }
     `;
-    btn.textContent = owned ? 'POSSUIDA' : canBuy ? 'COMPRAR' : 'VER NA LOJA';
+    btn.textContent = btnLabel;
     if (owned) btn.disabled = true;
+    if (!owned) {
+      btn.onmouseover = () => { btn.style.filter='brightness(1.12)'; btn.style.transform='translateY(-1px)'; };
+      btn.onmouseout  = () => { btn.style.filter=''; btn.style.transform=''; };
+    }
 
     btn.onclick = async () => {
       if (owned) return;
       if (canBuy) {
         btn.textContent = '...';
         btn.disabled = true;
+        btn.style.animation = 'none';
         try {
           const res = await apiFetch('/api/shop/buy', { method:'POST', body: JSON.stringify({ skinId: skin.id }) });
           if (res.error) throw new Error(res.error);
@@ -2174,7 +2190,6 @@ function _showSkinPromoOverlay(skins) {
           btn.disabled = false;
         }
       } else {
-        // Abre loja e seleciona a skin
         document.getElementById('skin-promo-overlay').remove();
         openShopAt(skin.id);
       }
@@ -2187,15 +2202,17 @@ function _showSkinPromoOverlay(skins) {
     card.appendChild(btn);
     container.appendChild(card);
 
-    // Desenha a skin no canvas
-    setTimeout(() => {
+    // Desenha a skin — aguarda imagem carregar igual às demais telas do jogo
+    const drawPromo = () => {
       const ctx = cv.getContext('2d');
       ctx.clearRect(0, 0, cv.width, cv.height);
       ctx.save();
       ctx.translate(cv.width / 2, cv.height / 2);
-      skin.drawPreview(ctx, cv.width / skin._size);
+      try { skin.drawPreview(ctx, cv.width / skin._size); } catch(e) {}
       ctx.restore();
-    }, i * 120 + 50);
+    };
+    if (skin.img) { skin.img.onload = drawPromo; setTimeout(drawPromo, 300); }
+    drawPromo();
   });
 }
 
