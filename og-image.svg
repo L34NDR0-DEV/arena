@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#0b1e33"/>
+      <stop offset="100%" stop-color="#02050d"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00d4ff" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#00d4ff" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <ellipse cx="600" cy="315" rx="500" ry="300" fill="url(#glow)"/>
+
+  <!-- Stars -->
+  <g fill="white" opacity="0.6">
+    <circle cx="80" cy="50" r="1.5"/><circle cx="200" cy="120" r="1"/><circle cx="350" cy="30" r="2"/>
+    <circle cx="500" cy="80" r="1.5"/><circle cx="700" cy="40" r="1"/><circle cx="900" cy="90" r="2"/>
+    <circle cx="1050" cy="30" r="1.5"/><circle cx="1150" cy="100" r="1"/><circle cx="1100" cy="200" r="1.5"/>
+    <circle cx="50" cy="300" r="1"/><circle cx="150" cy="450" r="2"/><circle cx="1100" cy="400" r="1.5"/>
+    <circle cx="1000" cy="550" r="1"/><circle cx="250" cy="580" r="1.5"/><circle cx="450" cy="520" r="1"/>
+    <circle cx="750" cy="580" r="2"/><circle cx="950" cy="530" r="1.5"/><circle cx="100" cy="180" r="1"/>
+    <circle cx="400" cy="400" r="1.5"/><circle cx="800" cy="150" r="1"/>
+  </g>
+
+  <!-- Nave principal (centro) -->
+  <g transform="translate(600, 270)">
+    <!-- Body da nave -->
+    <polygon points="0,-60 -35,30 0,10 35,30" fill="#00d4ff" opacity="0.9"/>
+    <polygon points="0,-60 -35,30 0,10 35,30" fill="none" stroke="#00d4ff" stroke-width="1.5" opacity="0.5"/>
+    <!-- Cockpit -->
+    <ellipse cx="0" cy="-20" rx="12" ry="20" fill="#0b1e33" stroke="#00d4ff" stroke-width="1"/>
+    <!-- Asas -->
+    <polygon points="-35,30 -70,50 -50,10" fill="#0066aa" opacity="0.8"/>
+    <polygon points="35,30 70,50 50,10" fill="#0066aa" opacity="0.8"/>
+    <!-- Motor glow -->
+    <ellipse cx="0" cy="30" rx="10" ry="5" fill="#00d4ff" filter="url(#blur)" opacity="0.8"/>
+    <ellipse cx="-52" cy="48" rx="7" ry="3" fill="#00aaff" filter="url(#blur)" opacity="0.6"/>
+    <ellipse cx="52" cy="48" rx="7" ry="3" fill="#00aaff" filter="url(#blur)" opacity="0.6"/>
+  </g>
+
+  <!-- Naves menores (decoração) -->
+  <g transform="translate(350, 200) scale(0.5) rotate(-20)">
+    <polygon points="0,-60 -35,30 0,10 35,30" fill="#ff6644" opacity="0.7"/>
+    <polygon points="-35,30 -70,50 -50,10" fill="#aa3300" opacity="0.6"/>
+    <polygon points="35,30 70,50 50,10" fill="#aa3300" opacity="0.6"/>
+  </g>
+  <g transform="translate(850, 210) scale(0.5) rotate(15)">
+    <polygon points="0,-60 -35,30 0,10 35,30" fill="#ffcc44" opacity="0.7"/>
+    <polygon points="-35,30 -70,50 -50,10" fill="#aa8800" opacity="0.6"/>
+    <polygon points="35,30 70,50 50,10" fill="#aa8800" opacity="0.6"/>
+  </g>
+
+  <!-- Anel decorativo -->
+  <circle cx="600" cy="270" r="120" fill="none" stroke="#00d4ff" stroke-width="1" stroke-dasharray="8 6" opacity="0.25"/>
+  <circle cx="600" cy="270" r="180" fill="none" stroke="#00d4ff" stroke-width="0.5" opacity="0.12"/>
+
+  <!-- Título -->
+  <text x="600" y="430" font-family="Arial Black, Arial, sans-serif" font-size="52" font-weight="900"
+        text-anchor="middle" fill="#00d4ff" letter-spacing="4">TOWER DEFENSE</text>
+  <text x="600" y="490" font-family="Arial Black, Arial, sans-serif" font-size="52" font-weight="900"
+        text-anchor="middle" fill="#00d4ff" letter-spacing="4">ON THE SPACE</text>
+
+  <!-- Subtítulo -->
+  <text x="600" y="540" font-family="Arial, sans-serif" font-size="22"
+        text-anchor="middle" fill="#4a9abf" letter-spacing="6">JOGO DE NAVES ONLINE GRATUITO</text>
+
+  <!-- URL -->
+  <text x="600" y="595" font-family="Arial, sans-serif" font-size="18"
+        text-anchor="middle" fill="#2a6a8a" letter-spacing="2">towerdefensespace.com.br</text>
+
+  <!-- Borda decorativa -->
+  <rect x="20" y="20" width="1160" height="590" rx="8" ry="8"
+        fill="none" stroke="#00d4ff" stroke-width="1.5" opacity="0.2"/>
+  <rect x="30" y="30" width="1140" height="570" rx="6" ry="6"
+        fill="none" stroke="#00d4ff" stroke-width="0.5" opacity="0.1"/>
+</svg>
