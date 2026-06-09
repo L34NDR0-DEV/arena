@@ -941,9 +941,19 @@ window.shopScroll = function(dir){
   track.scrollBy({ left: dir * 130, behavior: 'smooth' });
 };
 
-window.openShop = function(){
+window.openShop = async function(){
   if (!currentUser) return;
+  // Atualiza precos/promo antes de mostrar — evita valores stale de sessoes longas
+  try {
+    const { ok, data } = await apiFetch('/api/me');
+    if (ok && data?.loggedIn !== false) {
+      if (data.promo        !== undefined) profile.promo        = data.promo;
+      if (data.customPrices !== undefined) profile.customPrices = data.customPrices;
+      currentUser.credits = data.user?.credits ?? currentUser.credits;
+    }
+  } catch(e) {}
   document.getElementById('shop-balance').textContent = currentUser.credits;
+  updateCreditsDisplay();
   switchShopTab('ships');
   buildShopTrack();
   const available = shopAvailableSkins();
@@ -953,9 +963,18 @@ window.openShop = function(){
   document.getElementById('shop-modal').style.display='flex';
 };
 
-window.openShopAt = function(skinId){
+window.openShopAt = async function(skinId){
   if (!currentUser) return;
+  try {
+    const { ok, data } = await apiFetch('/api/me');
+    if (ok && data?.loggedIn !== false) {
+      if (data.promo        !== undefined) profile.promo        = data.promo;
+      if (data.customPrices !== undefined) profile.customPrices = data.customPrices;
+      currentUser.credits = data.user?.credits ?? currentUser.credits;
+    }
+  } catch(e) {}
   document.getElementById('shop-balance').textContent = currentUser.credits;
+  updateCreditsDisplay();
   switchShopTab('ships');
   buildShopTrack();
   const available = shopAvailableSkins();
