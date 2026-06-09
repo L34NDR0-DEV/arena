@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const fs     = require('fs');
 const path   = require('path');
 
-const { handleApi, isLocked, maintenanceStatus, setNotifyUser } = require('./src/api');
+const { handleApi, isLocked, maintenanceStatus, setNotifyUser, setBroadcastAll } = require('./src/api');
 const auth          = require('./src/auth');
 const economy       = require('./src/economy');
 const db            = require('./src/db');
@@ -670,9 +670,16 @@ function notifyUser(userId, msgObj) {
     if (info.userId === userId) wsSend(socket, text);
   }
 }
-// Injeta a função no módulo api (resolve dependência circular)
+// Envia mensagem para todos os clientes conectados (autenticados ou não).
+function broadcastAll(msgObj) {
+  const text = JSON.stringify(msgObj);
+  for (const socket of socks.keys()) wsSend(socket, text);
+}
+
+// Injeta funções no módulo api (resolve dependência circular)
 setNotifyUser(notifyUser);
-module.exports = { notifyUser };
+setBroadcastAll(broadcastAll);
+module.exports = { notifyUser, broadcastAll };
 
 server.listen(PORT, () => {
   console.log(`\n  Tower Defense on the Space`);

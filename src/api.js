@@ -12,8 +12,10 @@ const { rateLimit } = require('./ratelimit');
 const ADMIN_EMAIL = 'leandrosilva212010@gmail.com';
 
 // Injetado pelo server.js após inicialização (evita dependência circular).
-let _notifyUser = () => {};
-function setNotifyUser(fn) { _notifyUser = fn; }
+let _notifyUser   = () => {};
+let _broadcastAll = () => {};
+function setNotifyUser(fn)   { _notifyUser   = fn; }
+function setBroadcastAll(fn) { _broadcastAll = fn; }
 
 // ── Configuração da loja (preços customizados + promoção) ─────────
 const SHOP_CONFIG_PATH = path.join(__dirname, '..', 'shop-config.json');
@@ -673,11 +675,12 @@ const ROUTES = [
       const target = db.adminFindUser.get(uid);
       if (!target) return sendJson(res, 404, { error: 'not_found' });
       const skins  = db.listOwnedSkins.all(uid).map(r => r.skin_id);
+      const trails = db.listOwnedTrails.all(uid).map(r => r.trail_id);
       const orders = db.adminUserOrders.all(uid);
       sendJson(res, 200, {
         id: target.id, email: target.email, name: target.display_name,
         credits: target.credits, blocked: !!target.blocked,
-        createdAt: target.created_at, skins, orders,
+        createdAt: target.created_at, skins, trails, orders,
       });
     },
   },
@@ -734,6 +737,36 @@ const ROUTES = [
       const skins = db.listOwnedSkins.all(uid).map(r => r.skin_id);
       _notifyUser(uid, { type: 'admin_update', kind: 'skins', skins });
       sendJson(res, 200, { userId: uid, skins });
+    },
+  },
+
+  // Admin: dar ou remover rastro de um usuário
+  {
+    method: 'POST', path: '/api/admin/trail',
+    auth: true,
+    handler: (req, res, { body, user }) => {
+      if (user.email !== ADMIN_EMAIL) return sendJson(res, 403, { error: 'forbidden' });
+      const uid     = Number(body.userId);
+      const trailId = Number(body.trailId);
+      const action  = body.action; // 'grant' | 'revoke' | 'revoke_all'
+      if (!Number.isInteger(uid) || uid <= 0) return sendJson(res, 400, { error: 'invalid_user' });
+      if (!db.adminFindUser.get(uid)) return sendJson(res, 404, { error: 'not_found' });
+      if (action === 'revoke_all') {
+        db.adminRemoveAllTrails.run(uid);
+        console.log(`[ADMIN] Trails removidos: todos do user #${uid}`);
+      } else if (action === 'grant') {
+        if (!Number.isInteger(trailId) || trailId < 1) return sendJson(res, 400, { error: 'invalid_trail' });
+        db.grantTrail.run(uid, trailId);
+        console.log(`[ADMIN] Trail concedido: trail #${trailId} -> user #${uid}`);
+      } else if (action === 'revoke') {
+        if (!Number.isInteger(trailId) || trailId < 1) return sendJson(res, 400, { error: 'invalid_trail' });
+        db.adminRemoveTrail.run(uid, trailId);
+        console.log(`[ADMIN] Trail removido: trail #${trailId} do user #${uid}`);
+      } else {
+        return sendJson(res, 400, { error: 'invalid_action' });
+      }
+      const trails = db.listOwnedTrails.all(uid).map(r => r.trail_id);
+      sendJson(res, 200, { userId: uid, trails });
     },
   },
 
@@ -853,6 +886,7 @@ const ROUTES = [
       // Atualiza economy em memória para que skinPriceFor() use os novos valores imediatamente
       economy.applyAdminPrices(cfg.prices);
       console.log('[ADMIN] Precos da loja atualizados:', cfg.prices);
+      _broadcastAll({ type: 'prices_update', prices: cfg.prices });
       sendJson(res, 200, { ok: true });
     },
   },
@@ -873,6 +907,8 @@ const ROUTES = [
       saveShopConfig(cfg);
       economy.applyAdminPromo(cfg.promo);
       console.log('[ADMIN] Promocao atualizada:', cfg.promo);
+      // Notifica todos os clientes para atualizar preços em tempo real
+      _broadcastAll({ type: 'promo_update', promo: cfg.promo });
       sendJson(res, 200, { ok: true });
     },
   },
@@ -930,4 +966,4 @@ function handleApi(req, res, urlPath) {
   });
 }
 
-module.exports = { handleApi, sendJson, isLocked, isWarning, maintenanceStatus, setNotifyUser };
+module.exports = { handleApi, sendJson, isLocked, isWarning, maintenanceStatus, setNotifyUser, setBroadcastAll };

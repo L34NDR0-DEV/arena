@@ -446,6 +446,15 @@
               </div>
               <div class="skins-grid" id="det-skins"></div>
             </div>
+
+            <div class="detail-section" style="grid-column:1/-1;">
+              <h3>Rastros</h3>
+              <div style="display:flex;gap:6px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
+                <button class="btn btn-red btn-sm" onclick="revokeAllTrails()">Remover Todos</button>
+                <span style="font-size:10px;color:var(--text2);">Clique no rastro para dar ou remover</span>
+              </div>
+              <div class="skins-grid" id="det-trails"></div>
+            </div>
           </div>
 
           <div class="detail-section" style="margin-bottom:12px;">
@@ -715,6 +724,9 @@ async function openDetail(uid) {
   // Skins — grade visual com imagem, nome, preco e botao dar/remover
   renderDetSkins(data.skins);
 
+  // Rastros — grade com nome, preco, dar/remover
+  renderDetTrails(data.trails || []);
+
   // Pedidos
   const ordersEl = document.getElementById('det-orders');
   if (!data.orders || !data.orders.length) {
@@ -823,6 +835,71 @@ async function revokeAllSkins() {
   if (data.error) { toast('Erro: ' + data.error, 'err'); return; }
   toast('Todas as skins removidas');
   renderDetSkins(data.skins || []);
+}
+
+// ── Rastros no painel de detalhe do usuario ────────────────────────
+const TRAIL_CATALOG = [
+  { id:1, name:'Chama Azul',     price:300 },
+  { id:2, name:'Fogo Infernal',  price:300 },
+  { id:3, name:'Nebula Roxa',    price:400 },
+  { id:4, name:'Relampago',      price:400 },
+  { id:5, name:'Ouro Galactico', price:600 },
+  { id:6, name:'Void Escuro',    price:600 },
+];
+
+function renderDetTrails(ownedIds) {
+  const el = document.getElementById('det-trails');
+  if (!el) return;
+  el.style.display = 'grid';
+  el.style.gridTemplateColumns = 'repeat(auto-fill,minmax(110px,1fr))';
+  el.style.gap = '8px';
+  el.innerHTML = TRAIL_CATALOG.map(trail => {
+    const isOwned = ownedIds.includes(trail.id);
+    return `
+      <div onclick="${isOwned ? 'revokeTrail' : 'grantTrail'}(${trail.id})" style="
+        background:${isOwned ? '#0d2a0d' : 'var(--card)'};
+        border:1.5px solid ${isOwned ? '#00ff8855' : 'var(--border)'};
+        border-radius:8px;padding:10px 8px;cursor:pointer;text-align:center;
+        display:flex;flex-direction:column;align-items:center;gap:6px;
+        transition:all .15s;
+      " onmouseover="this.style.borderColor='${isOwned ? '#00ff88' : '#00d4ff'}'"
+         onmouseout="this.style.borderColor='${isOwned ? '#00ff8855' : 'var(--border)'}'">
+        <div style="font-size:18px">${isOwned ? '✦' : '○'}</div>
+        <div style="font-size:9px;font-weight:700;color:${isOwned ? '#00ff88' : 'var(--text)'};line-height:1.4;">${trail.name}</div>
+        <div style="font-size:8px;color:#ffcc44;">${trail.price} CR</div>
+        <div style="font-size:7px;padding:2px 6px;border-radius:3px;font-weight:700;
+          background:${isOwned ? '#00ff8822' : '#ff444422'};
+          color:${isOwned ? '#00ff88' : '#ff6666'};">${isOwned ? 'TEM' : 'NAO'}</div>
+      </div>`;
+  }).join('');
+}
+
+async function grantTrail(trailId) {
+  if (!currentUserId) return;
+  const trail = TRAIL_CATALOG.find(t => t.id === trailId);
+  const data = await api('POST', '/api/admin/trail', { userId: currentUserId, trailId, action: 'grant' });
+  if (data.error) { toast('Erro: ' + data.error, 'err'); return; }
+  toast(`${trail?.name || 'Rastro'} concedido!`);
+  renderDetTrails(data.trails);
+}
+
+async function revokeTrail(trailId) {
+  if (!currentUserId) return;
+  const trail = TRAIL_CATALOG.find(t => t.id === trailId);
+  if (!confirm(`Remover "${trail?.name || 'rastro ' + trailId}" deste usuario?`)) return;
+  const data = await api('POST', '/api/admin/trail', { userId: currentUserId, trailId, action: 'revoke' });
+  if (data.error) { toast('Erro: ' + data.error, 'err'); return; }
+  toast(`${trail?.name || 'Rastro'} removido`);
+  renderDetTrails(data.trails);
+}
+
+async function revokeAllTrails() {
+  if (!currentUserId) return;
+  if (!confirm('Remover TODOS os rastros deste usuario?')) return;
+  const data = await api('POST', '/api/admin/trail', { userId: currentUserId, action: 'revoke_all' });
+  if (data.error) { toast('Erro: ' + data.error, 'err'); return; }
+  toast('Todos os rastros removidos');
+  renderDetTrails(data.trails || []);
 }
 
 // ── Pagina Loja ───────────────────────────────────────────────────

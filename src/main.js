@@ -1258,7 +1258,7 @@ function drawPreviewParticle(ctx, p, a, trailDef, W, H){
 }
 
 async function buyTrail(trailId){
-  const { ok, data } = await apiFetch('/api/shop/trail/buy', 'POST', { trailId });
+  const { ok, data } = await apiFetch('/api/shop/trail/buy', { method:'POST', body:{ trailId } });
   if (!ok) {
     const msg = data?.error === 'already_owned' ? 'Rastro já possuído'
               : data?.error === 'not_enough_credits' ? 'Créditos insuficientes'
@@ -1276,9 +1276,11 @@ async function buyTrail(trailId){
 }
 
 async function equipTrail(trailId){
-  const { ok } = await apiFetch('/api/shop/trail/equip', 'POST', { trailId });
+  const { ok } = await apiFetch('/api/shop/trail/equip', { method:'POST', body:{ trailId } });
   if (!ok) { showNotify('Erro ao equipar rastro'); return; }
   profile.equippedTrail = trailId;
+  // Atualiza também o jogador caso esteja numa partida
+  if (game && game.player) game.player.equippedTrailId = trailId;
   buildTrailsTab();
 }
 
@@ -2401,10 +2403,10 @@ function _showSkinPromoOverlay(skins) {
         btn.disabled = true;
         btn.style.animation = 'none';
         try {
-          const res = await apiFetch('/api/shop/buy', { method:'POST', body: JSON.stringify({ skinId: skin.id }) });
-          if (res.error) throw new Error(res.error);
-          currentUser = res.user || currentUser;
-          profile = { ...profile, ownedSkins: res.ownedSkins || profile.ownedSkins };
+          const { ok: bought, data: bdata } = await apiFetch('/api/shop/buy', { method:'POST', body:{ skinId: skin.id } });
+          if (!bought) throw new Error(bdata?.error || 'Erro');
+          currentUser = bdata.user || currentUser;
+          profile = { ...profile, ownedSkins: bdata.ownedSkins || profile.ownedSkins };
           updateCreditsBadge();
           animateCreditsGain(currentUser.credits + price, currentUser.credits);
           btn.textContent = 'COMPRADA!';
@@ -2627,6 +2629,21 @@ window._handleAdminUpdate = function(msg) {
       showScreen('login');
     }, 2000);
   }
+};
+
+// Atualiza promo em tempo real quando o admin altera (broadcast para todos)
+window._handlePromoUpdate = function(promo) {
+  if (profile) profile.promo = promo || null;
+  // Se a loja estiver aberta, reconstrói o carrossel de naves
+  const shopOpen = document.getElementById('shop-modal')?.style.display !== 'none';
+  if (shopOpen) buildShopTrack();
+};
+
+// Atualiza preços customizados em tempo real quando o admin altera
+window._handlePricesUpdate = function(prices) {
+  if (profile) profile.customPrices = prices || {};
+  const shopOpen = document.getElementById('shop-modal')?.style.display !== 'none';
+  if (shopOpen) buildShopTrack();
 };
 
 // ── Inicialização: tenta sessão existente, senão mostra tela de login ──

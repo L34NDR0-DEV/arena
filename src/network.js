@@ -72,6 +72,14 @@ export class NetworkClient {
         if (typeof window._handleAdminUpdate === 'function')
           window._handleAdminUpdate(msg);
         break;
+      case 'promo_update':
+        if (typeof window._handlePromoUpdate === 'function')
+          window._handlePromoUpdate(msg.promo);
+        break;
+      case 'prices_update':
+        if (typeof window._handlePricesUpdate === 'function')
+          window._handlePricesUpdate(msg.prices);
+        break;
     }
   }
 
