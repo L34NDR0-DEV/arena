@@ -1264,11 +1264,19 @@ function _buildHistoryEntry(e) {
 function _drawShipIconOnCanvas(cv, skinIndex) {
   const skin = SKINS[skinIndex] || SKINS[0];
   const ctx = cv.getContext('2d');
-  ctx.clearRect(0,0,cv.width,cv.height);
-  ctx.save();
-  ctx.translate(cv.width/2, cv.height/2);
-  try { skin.drawPreview(ctx, cv.width/skin._size); } catch(e){}
-  ctx.restore();
+  const doDraw = () => {
+    ctx.clearRect(0,0,cv.width,cv.height);
+    ctx.save();
+    ctx.translate(cv.width/2, cv.height/2);
+    try { skin.drawPreview(ctx, cv.width/skin._size); } catch(e){}
+    ctx.restore();
+  };
+  // Se a imagem ainda não carregou, aguarda o onload antes de desenhar
+  if (skin.img && (!skin.img.complete || !skin.img.naturalWidth)) {
+    skin.img.addEventListener('load', doDraw, { once: true });
+  } else {
+    doDraw();
+  }
 }
 
 // Converte uma linha vinda de GET /api/matches/recent (servidor, sincronizada
