@@ -610,7 +610,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .play-btn.loading{opacity:.6;cursor:wait;pointer-events:none;animation:none!important;}
 
 .shop-tabs{padding:0 18px;margin-top:14px;margin-bottom:0;}
-.shop-credits-body{padding:22px 24px;display:flex;flex-direction:column;gap:18px;}
+.shop-credits-body{padding:22px 24px;display:flex;flex-direction:column;gap:18px;overflow-y:auto;max-height:calc(88vh - 80px);}
 .shop-credits-msg{
   font-size:11px;color:var(--text2);line-height:1.7;text-align:center;
   background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:20px;
