@@ -1,20 +1,54 @@
 'use strict';
-const db = require('./db');
+const fs   = require('fs');
+const path = require('path');
+const db   = require('./db');
 
 const SKIN_PRICE       = 500;
 const FREE_SKIN_ID     = 6; // Shadow Roxa — única skin gratuita
 
-// Promoção por tempo limitado: Ponta BR (id 1) e Alien Disc (id 5) saem por
-// metade do preço durante 10 dias — mas o piloto só pode aproveitar a oferta
-// em UMA das duas (escolha exclusiva, para incentivar a decisão rápida).
-const PROMO_SKIN_IDS   = [1, 5];
-const PROMO_PRICE      = 250;
-const PROMO_STARTS_AT  = Date.parse('2026-06-07T00:00:00Z');
-const PROMO_ENDS_AT    = PROMO_STARTS_AT + 10 * 24 * 60 * 60 * 1000;
+// Promoção padrão de código — pode ser sobrescrita pelo admin via shop-config.json
+let PROMO_SKIN_IDS  = [1, 5];
+let PROMO_PRICE     = 250;
+let PROMO_STARTS_AT = Date.parse('2026-06-07T00:00:00Z');
+let PROMO_ENDS_AT   = PROMO_STARTS_AT + 10 * 24 * 60 * 60 * 1000;
+
+// Preços customizados pelo admin (sobrescrevem CUSTOM_SKIN_PRICES)
+let _adminPrices = {};
 
 function isPromoActive(now = Date.now()) {
   return now >= PROMO_STARTS_AT && now < PROMO_ENDS_AT;
 }
+
+// Chamado pelo api.js quando o admin salva configurações da loja
+function applyAdminPrices(prices) {
+  _adminPrices = prices || {};
+}
+
+function applyAdminPromo(promo) {
+  if (!promo || !promo.skinIds || !promo.skinIds.length || !promo.price) {
+    // Sem promoção ativa — desabilita passando intervalo no passado
+    PROMO_SKIN_IDS  = [];
+    PROMO_PRICE     = 0;
+    PROMO_STARTS_AT = 0;
+    PROMO_ENDS_AT   = 0;
+    return;
+  }
+  PROMO_SKIN_IDS  = promo.skinIds;
+  PROMO_PRICE     = promo.price;
+  PROMO_STARTS_AT = promo.startsAt ? Date.parse(promo.startsAt) : Date.now();
+  PROMO_ENDS_AT   = promo.endsAt   ? Date.parse(promo.endsAt)   : Date.now() + 1;
+}
+
+// Carrega shop-config.json na inicialização para que os preços admin
+// sejam respeitados imediatamente ao reiniciar o servidor.
+try {
+  const cfgPath = path.join(__dirname, '..', 'shop-config.json');
+  if (fs.existsSync(cfgPath)) {
+    const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+    if (cfg.prices) applyAdminPrices(cfg.prices);
+    if (cfg.promo)  applyAdminPromo(cfg.promo);
+  }
+} catch(e) {}
 
 // Torneio "Tower Defense": modo online por tempo limitado, ativo até
 // 21/06/2026 — depois desse prazo o modo desaparece da seleção (mas o
@@ -37,14 +71,16 @@ const CUSTOM_SKIN_PRICES = {
   15: 100, // Arcade Vermelha — equivalente ao pacote de R$1 (100 créditos)
 };
 
-// Preço efetivo de uma skin para um usuário: aplica (em ordem de prioridade)
-// o preço promocional, depois o preço fixo customizado, e por fim o padrão.
+// Preço efetivo de uma skin: promo admin > promo código > preço admin > preço fixo > padrão
 function skinPriceFor(skinId, ownedSkinIds) {
   if (PROMO_SKIN_IDS.includes(skinId) && isPromoActive()) {
-    const otherId = PROMO_SKIN_IDS.find(id => id !== skinId);
-    if (!ownedSkinIds.includes(otherId)) return PROMO_PRICE;
+    // Promoção exclusiva: só vale se o usuário não tiver outra skin da mesma promo
+    const others = PROMO_SKIN_IDS.filter(id => id !== skinId);
+    const hasOther = others.length > 0 && others.every(id => ownedSkinIds.includes(id));
+    if (!hasOther) return PROMO_PRICE;
   }
-  if (CUSTOM_SKIN_PRICES[skinId] != null) return CUSTOM_SKIN_PRICES[skinId];
+  if (_adminPrices[skinId] != null)        return _adminPrices[skinId];
+  if (CUSTOM_SKIN_PRICES[skinId] != null)  return CUSTOM_SKIN_PRICES[skinId];
   return SKIN_PRICE;
 }
 const REWARD_BLOCK_SIZE = 5;
@@ -105,4 +141,5 @@ module.exports = {
   SKIN_PRICE, FREE_SKIN_ID, REWARD_BLOCK_SIZE, REWARD_AMOUNT, REWARD_MIN_MODES, recordMatchAndMaybeReward,
   PROMO_SKIN_IDS, PROMO_PRICE, PROMO_STARTS_AT, PROMO_ENDS_AT, isPromoActive, skinPriceFor,
   TOURNAMENT_SKIN_ID, TOURNAMENT_STARTS_AT, TOURNAMENT_ENDS_AT, isTournamentActive,
+  applyAdminPrices, applyAdminPromo,
 };

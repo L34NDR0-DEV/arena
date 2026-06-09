@@ -1,4 +1,6 @@
 'use strict';
+const fs       = require('fs');
+const path     = require('path');
 const db       = require('./db');
 const auth     = require('./auth');
 const economy  = require('./economy');
@@ -12,6 +14,21 @@ const ADMIN_EMAIL = 'leandrosilva212010@gmail.com';
 // Injetado pelo server.js após inicialização (evita dependência circular).
 let _notifyUser = () => {};
 function setNotifyUser(fn) { _notifyUser = fn; }
+
+// ── Configuração da loja (preços customizados + promoção) ─────────
+const SHOP_CONFIG_PATH = path.join(__dirname, '..', 'shop-config.json');
+
+function loadShopConfig() {
+  try {
+    if (fs.existsSync(SHOP_CONFIG_PATH))
+      return JSON.parse(fs.readFileSync(SHOP_CONFIG_PATH, 'utf8'));
+  } catch(e) {}
+  return { prices: {}, promo: {} };
+}
+
+function saveShopConfig(cfg) {
+  fs.writeFileSync(SHOP_CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf8');
+}
 
 const COOKIE_SECURE = process.env.COOKIE_SECURE === '1';
 
@@ -755,6 +772,52 @@ const ROUTES = [
       console.log(`[ADMIN] Conta #${uid} ${blocked ? 'BLOQUEADA' : 'DESBLOQUEADA'}`);
       _notifyUser(uid, { type: 'admin_update', kind: 'blocked', blocked: !!blocked });
       sendJson(res, 200, { userId: uid, blocked: !!blocked });
+    },
+  },
+
+  // Admin: ler configuração da loja (preços + promoção)
+  {
+    method: 'GET', path: '/api/admin/shop',
+    auth: true,
+    handler: (req, res, { user }) => {
+      if (user.email !== ADMIN_EMAIL) return sendJson(res, 403, { error: 'forbidden' });
+      sendJson(res, 200, loadShopConfig());
+    },
+  },
+
+  // Admin: salvar preços customizados das skins
+  {
+    method: 'POST', path: '/api/admin/shop/prices',
+    auth: true,
+    handler: (req, res, { body, user }) => {
+      if (user.email !== ADMIN_EMAIL) return sendJson(res, 403, { error: 'forbidden' });
+      const cfg = loadShopConfig();
+      cfg.prices = body.prices || {};
+      saveShopConfig(cfg);
+      // Atualiza economy em memória para que skinPriceFor() use os novos valores imediatamente
+      economy.applyAdminPrices(cfg.prices);
+      console.log('[ADMIN] Precos da loja atualizados:', cfg.prices);
+      sendJson(res, 200, { ok: true });
+    },
+  },
+
+  // Admin: salvar promoção por tempo limitado
+  {
+    method: 'POST', path: '/api/admin/shop/promo',
+    auth: true,
+    handler: (req, res, { body, user }) => {
+      if (user.email !== ADMIN_EMAIL) return sendJson(res, 403, { error: 'forbidden' });
+      const cfg = loadShopConfig();
+      cfg.promo = {
+        skinIds:  body.skinIds  || [],
+        price:    Number(body.price) || 0,
+        startsAt: body.startsAt || null,
+        endsAt:   body.endsAt   || null,
+      };
+      saveShopConfig(cfg);
+      economy.applyAdminPromo(cfg.promo);
+      console.log('[ADMIN] Promocao atualizada:', cfg.promo);
+      sendJson(res, 200, { ok: true });
     },
   },
 ];

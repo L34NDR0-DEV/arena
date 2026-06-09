@@ -139,6 +139,49 @@
   .online-dot.is-offline{background:#4a5568;box-shadow:none;}
   @keyframes dotPulse{0%,100%{box-shadow:0 0 4px #00ffaa88}50%{box-shadow:0 0 10px #00ffaadd,0 0 18px #00ffaa44}}
 
+  /* ── Cards de skin (painel usuario + loja) ── */
+  .skin-card{
+    background:#060e1c;border:1px solid var(--border2);border-radius:8px;
+    padding:10px;text-align:center;cursor:pointer;transition:border-color .15s,box-shadow .15s;
+    position:relative;
+  }
+  .skin-card:hover{border-color:#00d4ff44;box-shadow:0 0 12px #00d4ff11;}
+  .skin-card.owned{border-color:#00ffaa55;box-shadow:0 0 10px #00ffaa0a;}
+  .skin-card.owned .skin-card-img{filter:none;}
+  .skin-card:not(.owned) .skin-card-img{filter:grayscale(70%) brightness(.5);}
+  .skin-card-img{width:64px;height:64px;object-fit:contain;display:block;margin:0 auto 6px;image-rendering:pixelated;}
+  .skin-card-name{font-family:'Press Start 2P',monospace;font-size:7px;color:#fff;margin-bottom:4px;line-height:1.5;}
+  .skin-card-price{font-size:10px;color:var(--gold);font-weight:700;}
+  .skin-card-badge{
+    position:absolute;top:6px;right:6px;
+    font-size:8px;padding:2px 6px;border-radius:10px;font-weight:700;
+  }
+  .skin-card-badge.has{background:#00ffaa22;color:#00ffaa;border:1px solid #00ffaa44;}
+  .skin-card-badge.no{background:#ff445522;color:#ff4455;border:1px solid #ff445544;}
+
+  /* Card de skin na loja (gerencia preco) */
+  .shop-skin-card{
+    background:#060e1c;border:1px solid var(--border2);border-radius:8px;
+    padding:12px 10px 10px;text-align:center;
+  }
+  .shop-skin-card img{width:72px;height:72px;object-fit:contain;display:block;margin:0 auto 8px;image-rendering:pixelated;}
+  .shop-skin-card .ssn{font-family:'Press Start 2P',monospace;font-size:7px;color:#fff;margin-bottom:8px;line-height:1.5;}
+  .shop-skin-card input[type=number]{
+    width:100%;background:#040c18;border:1px solid var(--border2);border-radius:4px;
+    color:var(--cyan);font-size:12px;font-weight:700;padding:6px 8px;text-align:center;outline:none;
+  }
+  .shop-skin-card input[type=number]:focus{border-color:var(--cyan);}
+  .shop-skin-card .orig{font-size:9px;color:var(--text2);margin-top:4px;}
+
+  /* Chips de skin selecionada na promo */
+  .promo-chip{
+    display:flex;align-items:center;gap:6px;
+    background:#00d4ff0a;border:1px solid var(--border2);border-radius:6px;
+    padding:6px 10px;cursor:pointer;font-size:11px;transition:border-color .15s;
+  }
+  .promo-chip.sel{border-color:#00d4ff88;background:#00d4ff16;color:var(--cyan);}
+  .promo-chip img{width:28px;height:28px;object-fit:contain;image-rendering:pixelated;}
+
   /* ── Inputs / Buttons ── */
   input,select{
     background:#040c18;border:1px solid var(--border2);border-radius:6px;
@@ -291,6 +334,10 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
         Pedidos
       </button>
+      <button class="nav-btn" onclick="showPage('shop',this)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        Loja
+      </button>
     </div>
     <div id="content">
 
@@ -391,20 +438,11 @@
               <div style="font-size:12px;color:var(--text2);">Atual: <span id="det-credits" style="color:var(--cyan);font-weight:700;"></span> CR</div>
             </div>
 
-            <div class="detail-section">
+            <div class="detail-section" style="grid-column:1/-1;">
               <h3>Skins</h3>
-              <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;">
-                <select id="skin-select" style="max-width:120px;">
-                  <option value="">Skin #</option>
-                  <option value="0">0 - Padrao</option>
-                  <option value="1">1</option><option value="2">2</option><option value="3">3</option>
-                  <option value="4">4</option><option value="5">5</option><option value="6">6</option>
-                  <option value="7">7</option><option value="8">8</option><option value="9">9</option>
-                  <option value="10">10</option><option value="11">11</option><option value="12">12</option>
-                  <option value="13">13</option><option value="14">14</option><option value="15">15</option>
-                </select>
-                <button class="btn btn-green btn-sm" onclick="grantSkin()">Dar</button>
+              <div style="display:flex;gap:6px;margin-bottom:12px;align-items:center;flex-wrap:wrap;">
                 <button class="btn btn-red btn-sm" onclick="revokeAllSkins()">Remover Todas</button>
+                <span style="font-size:10px;color:var(--text2);">Clique na skin para dar ou remover</span>
               </div>
               <div class="skins-grid" id="det-skins"></div>
             </div>
@@ -429,6 +467,50 @@
               </tr></thead>
               <tbody id="orders-tbody"></tbody>
             </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOJA -->
+      <div class="page" id="page-shop">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Gerenciar Precos das Skins</div>
+          <p style="font-size:11px;color:var(--text2);margin-bottom:16px;line-height:1.6;">
+            Defina o preco de cada skin em CR. Deixe em branco para usar o preco padrao (500 CR).<br>
+            Skins gratuitas ou de recompensa nao aparecem aqui.
+          </p>
+          <div id="shop-skins-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-bottom:18px;"></div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <button class="btn btn-cyan" onclick="saveShopPrices()">Salvar Precos</button>
+            <button class="btn btn-ghost btn-sm" onclick="resetShopPrices()">Restaurar Padroes</button>
+            <span id="shop-save-status" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .3s;"></span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Promocao por Tempo Limitado</div>
+          <p style="font-size:11px;color:var(--text2);margin-bottom:14px;line-height:1.6;">
+            Define uma promocao que expira numa data. Skins em promocao aparecem com preco riscado na loja.
+          </p>
+          <div id="promo-skins-list" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;max-width:500px;margin-bottom:14px;">
+            <div>
+              <label style="font-size:10px;color:var(--text2);display:block;margin-bottom:4px;">Preco Promo (CR)</label>
+              <input type="number" id="promo-price-input" min="1" placeholder="ex: 250" style="width:100%;">
+            </div>
+            <div>
+              <label style="font-size:10px;color:var(--text2);display:block;margin-bottom:4px;">Inicio</label>
+              <input type="datetime-local" id="promo-start-input" style="width:100%;">
+            </div>
+            <div>
+              <label style="font-size:10px;color:var(--text2);display:block;margin-bottom:4px;">Fim</label>
+              <input type="datetime-local" id="promo-end-input" style="width:100%;">
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <button class="btn btn-gold" onclick="savePromo()">Salvar Promocao</button>
+            <button class="btn btn-ghost btn-sm" onclick="clearPromo()">Cancelar Promocao</button>
+            <span id="promo-status" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .3s;"></span>
           </div>
         </div>
       </div>
@@ -518,6 +600,7 @@ function showPage(id, btn) {
   (btn || event?.currentTarget)?.classList.add('active');
   if (id === 'orders') loadOrders();
   if (id === 'users')  loadAllUsers();
+  if (id === 'shop')   loadShopPage();
 }
 
 // ── Dashboard ────────────────────────────────────────────────────
@@ -617,15 +700,8 @@ async function openDetail(uid) {
     blockBtn.dataset.blocked = '0';
   }
 
-  // Skins
-  const skinsEl = document.getElementById('det-skins');
-  if (data.skins.length === 0) {
-    skinsEl.innerHTML = '<span style="color:var(--text2);font-size:11px;">Nenhuma skin</span>';
-  } else {
-    skinsEl.innerHTML = data.skins.map(sid =>
-      `<div class="skin-chip">Skin ${sid}<span class="rm" onclick="revokeSkin(${sid})" title="Remover">x</span></div>`
-    ).join('');
-  }
+  // Skins — grade visual com imagem, nome, preco e botao dar/remover
+  renderDetSkins(data.skins);
 
   // Pedidos
   const ordersEl = document.getElementById('det-orders');
@@ -657,24 +733,75 @@ async function adjustCredits() {
   loadDashboard();
 }
 
+// ── Catálogo de skins (usado no painel usuario + loja) ───────────
+const SKIN_CATALOG = [
+  { id:0,  name:'Falcon Vermelho', img:'Vermelho.png',    price:500 },
+  { id:1,  name:'Ponta BR',        img:'Ponta.png',       price:500 },
+  { id:2,  name:'Ghost Verde',     img:'Verde.png',       price:500 },
+  { id:3,  name:'Valkyrie Azul',   img:'Azul.png',        price:500 },
+  { id:4,  name:'Stealthwing',     img:'Triangulo.png',   price:500 },
+  { id:5,  name:'Alien Disc',      img:'Alien.png',       price:500 },
+  { id:6,  name:'Shadow Roxa',     img:'Roxa.png',        price:0,    free:true },
+  { id:7,  name:'Stratos Azul',    img:'Marromeazul.png', price:500 },
+  { id:8,  name:'Aurora Rosa',     img:'Rosaeverde.png',  price:500 },
+  { id:9,  name:'Nebula Rosa',     img:'Rosa.png',        price:500 },
+  { id:10, name:'Hex Champion',    img:'Triangulo.png',   price:0,    reward:true },
+  { id:11, name:'Arcade Verde',    img:'Arcadeverde.png', price:500 },
+  { id:12, name:'UFO Dourado',     img:'Uforecompensa.png',price:0,   reward:true },
+  { id:13, name:'Amarela',         img:'Amarela.png',     price:550 },
+  { id:14, name:'Arcade Branca',   img:'Arcadebranca.png',price:100 },
+  { id:15, name:'Arcade Vermelha', img:'Acadevermelha.png',price:100 },
+];
+
+function skinImgUrl(imgFile) { return `/src/sprites/${imgFile}`; }
+
+// Preço efetivo: sobrescrito pelo admin via customPrices
+let _customPrices = {};
+
+function effectivePrice(skin) {
+  if (skin.free || skin.reward) return skin.price;
+  return _customPrices[skin.id] ?? skin.price;
+}
+
+// Renderiza a grade de skins no painel de detalhe do usuario
+function renderDetSkins(ownedIds) {
+  const el = document.getElementById('det-skins');
+  el.style.display = 'grid';
+  el.style.gridTemplateColumns = 'repeat(auto-fill,minmax(100px,1fr))';
+  el.style.gap = '8px';
+  el.innerHTML = SKIN_CATALOG.map(skin => {
+    const isOwned = ownedIds.includes(skin.id);
+    const price   = effectivePrice(skin);
+    const priceLabel = skin.free ? 'Gratis' : skin.reward ? 'Recompensa' : `${price} CR`;
+    const action  = isOwned ? 'remover' : 'dar';
+    const actionFn = isOwned ? `revokeSkin(${skin.id})` : `grantSkin(${skin.id})`;
+    return `
+      <div class="skin-card ${isOwned ? 'owned' : ''}" onclick="${actionFn}" title="${action} ${skin.name}">
+        <img class="skin-card-img" src="${skinImgUrl(skin.img)}" alt="${skin.name}" loading="lazy">
+        <div class="skin-card-name">${skin.name}</div>
+        <div class="skin-card-price">${priceLabel}</div>
+        <span class="skin-card-badge ${isOwned ? 'has' : 'no'}">${isOwned ? 'TEM' : 'NAO'}</span>
+      </div>`;
+  }).join('');
+}
+
 // ── Skins ────────────────────────────────────────────────────────
-async function grantSkin() {
+async function grantSkin(skinId) {
   if (!currentUserId) return;
-  const skinId = Number(document.getElementById('skin-select').value);
-  if (isNaN(skinId)) { toast('Selecione uma skin', 'err'); return; }
   const data = await api('POST', '/api/admin/skin', { userId: currentUserId, skinId, action: 'grant' });
   if (data.error) { toast('Erro: ' + data.error, 'err'); return; }
-  toast(`Skin ${skinId} concedida!`);
-  openDetail(currentUserId);
+  toast(`${SKIN_CATALOG.find(s=>s.id===skinId)?.name || 'Skin'} concedida!`);
+  renderDetSkins(data.skins);
 }
 
 async function revokeSkin(skinId) {
   if (!currentUserId) return;
-  if (!confirm(`Remover skin ${skinId} deste usuario?`)) return;
+  const skin = SKIN_CATALOG.find(s => s.id === skinId);
+  if (!confirm(`Remover "${skin?.name || 'skin ' + skinId}" deste usuario?`)) return;
   const data = await api('POST', '/api/admin/skin', { userId: currentUserId, skinId, action: 'revoke' });
   if (data.error) { toast('Erro: ' + data.error, 'err'); return; }
-  toast(`Skin ${skinId} removida`);
-  openDetail(currentUserId);
+  toast(`${skin?.name || 'Skin'} removida`);
+  renderDetSkins(data.skins);
 }
 
 async function revokeAllSkins() {
@@ -683,7 +810,125 @@ async function revokeAllSkins() {
   const data = await api('POST', '/api/admin/skin', { userId: currentUserId, action: 'revoke_all' });
   if (data.error) { toast('Erro: ' + data.error, 'err'); return; }
   toast('Todas as skins removidas');
-  openDetail(currentUserId);
+  renderDetSkins(data.skins || []);
+}
+
+// ── Pagina Loja ───────────────────────────────────────────────────
+// Skins vendaveis (nao gratuitas, nao recompensa)
+const SHOP_SKINS = SKIN_CATALOG.filter(s => !s.free && !s.reward);
+// Ids selecionados para promo
+let _promoSelected = [];
+
+async function loadShopPage() {
+  // Carrega config atual do servidor
+  const data = await api('GET', '/api/admin/shop');
+  _customPrices = data.prices || {};
+  const promo   = data.promo  || {};
+
+  // Grade de precos
+  const grid = document.getElementById('shop-skins-grid');
+  grid.innerHTML = SHOP_SKINS.map(skin => {
+    const cur = _customPrices[skin.id] ?? skin.price;
+    return `
+      <div class="shop-skin-card">
+        <img src="${skinImgUrl(skin.img)}" alt="${skin.name}" loading="lazy">
+        <div class="ssn">${skin.name}</div>
+        <input type="number" id="sp-${skin.id}" value="${cur}" min="0" step="50" placeholder="${skin.price}">
+        <div class="orig">Padrao: ${skin.price} CR</div>
+      </div>`;
+  }).join('');
+
+  // Chips de selecao de skins para promo
+  _promoSelected = promo.skinIds || [];
+  renderPromoChips();
+
+  // Datas
+  if (promo.price)   document.getElementById('promo-price-input').value = promo.price;
+  if (promo.startsAt) document.getElementById('promo-start-input').value = toLocalDT(promo.startsAt);
+  if (promo.endsAt)   document.getElementById('promo-end-input').value   = toLocalDT(promo.endsAt);
+}
+
+function renderPromoChips() {
+  const el = document.getElementById('promo-skins-list');
+  el.innerHTML = SHOP_SKINS.map(skin => {
+    const sel = _promoSelected.includes(skin.id);
+    return `
+      <div class="promo-chip ${sel ? 'sel' : ''}" onclick="togglePromoSkin(${skin.id})">
+        <img src="${skinImgUrl(skin.img)}" alt="${skin.name}">
+        ${skin.name}
+      </div>`;
+  }).join('');
+}
+
+function togglePromoSkin(id) {
+  if (_promoSelected.includes(id)) _promoSelected = _promoSelected.filter(x => x !== id);
+  else _promoSelected.push(id);
+  renderPromoChips();
+}
+
+async function saveShopPrices() {
+  const prices = {};
+  for (const skin of SHOP_SKINS) {
+    const val = Number(document.getElementById(`sp-${skin.id}`)?.value);
+    if (!isNaN(val) && val >= 0) prices[skin.id] = val;
+  }
+  const data = await api('POST', '/api/admin/shop/prices', { prices });
+  if (data.error) { toast('Erro ao salvar: ' + data.error, 'err'); return; }
+  _customPrices = prices;
+  const st = document.getElementById('shop-save-status');
+  st.textContent = 'Salvo!'; st.style.opacity = '1';
+  setTimeout(() => st.style.opacity = '0', 2000);
+  toast('Precos atualizados!');
+}
+
+async function resetShopPrices() {
+  if (!confirm('Restaurar todos os precos para os valores padrao?')) return;
+  await api('POST', '/api/admin/shop/prices', { prices: {} });
+  _customPrices = {};
+  for (const skin of SHOP_SKINS) {
+    const el = document.getElementById(`sp-${skin.id}`);
+    if (el) el.value = skin.price;
+  }
+  toast('Precos restaurados');
+}
+
+async function savePromo() {
+  if (!_promoSelected.length) { toast('Selecione ao menos uma skin para a promocao', 'err'); return; }
+  const price    = Number(document.getElementById('promo-price-input').value);
+  const startsAt = document.getElementById('promo-start-input').value;
+  const endsAt   = document.getElementById('promo-end-input').value;
+  if (!price || !startsAt || !endsAt) { toast('Preencha preco, inicio e fim', 'err'); return; }
+  const data = await api('POST', '/api/admin/shop/promo', {
+    skinIds: _promoSelected, price,
+    startsAt: new Date(startsAt).toISOString(),
+    endsAt:   new Date(endsAt).toISOString(),
+  });
+  if (data.error) { toast('Erro: ' + data.error, 'err'); return; }
+  const st = document.getElementById('promo-status');
+  st.textContent = 'Promocao salva!'; st.style.opacity = '1';
+  setTimeout(() => st.style.opacity = '0', 2500);
+  toast('Promocao ativada!');
+}
+
+async function clearPromo() {
+  if (!confirm('Cancelar a promocao ativa?')) return;
+  await api('POST', '/api/admin/shop/promo', { skinIds: [], price: 0, startsAt: null, endsAt: null });
+  _promoSelected = [];
+  renderPromoChips();
+  document.getElementById('promo-price-input').value = '';
+  document.getElementById('promo-start-input').value = '';
+  document.getElementById('promo-end-input').value   = '';
+  toast('Promocao cancelada');
+}
+
+function toLocalDT(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.getFullYear() + '-' +
+    String(d.getMonth()+1).padStart(2,'0') + '-' +
+    String(d.getDate()).padStart(2,'0') + 'T' +
+    String(d.getHours()).padStart(2,'0') + ':' +
+    String(d.getMinutes()).padStart(2,'0');
 }
 
 // ── Bloquear ─────────────────────────────────────────────────────
