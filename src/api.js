@@ -167,6 +167,7 @@ function profileFor(user) {
       price: economy.PROMO_PRICE,
       endsAt: economy.PROMO_ENDS_AT,
     } : null,
+    customPrices: loadShopConfig().prices || {},
     tournament: {
       active: economy.isTournamentActive(),
       endsAt: economy.TOURNAMENT_ENDS_AT,

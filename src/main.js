@@ -13,19 +13,27 @@ const economy_FREE_SKIN_ID = 6;
 let currentUser = null; // {id,email,displayName,credits,equippedSkin}
 let profile     = null; // {user,ownedSkins,equippedSkin,rewardProgress,promo}
 
-// Preço efetivo de uma skin para o piloto atual — considera a promoção
-// (Ponta BR / Alien Disc, escolha exclusiva entre as duas) vinda do servidor.
+// Preço efetivo de uma skin para o piloto atual.
+// Prioridade: promoção ativa > preço customizado pelo admin > padrão.
 function shopPriceFor(skinId){
   const promo = profile?.promo;
   if (promo && promo.skinIds.includes(skinId)) {
-    const otherId = promo.skinIds.find(id => id !== skinId);
+    const others = promo.skinIds.filter(id => id !== skinId);
     const owned = shopOwnedSet();
-    if (!owned.has(otherId)) return promo.price;
+    const hasOther = others.length > 0 && others.every(id => owned.has(id));
+    if (!hasOther) return promo.price;
   }
+  const custom = profile?.customPrices;
+  if (custom && custom[skinId] != null) return custom[skinId];
   return SHOP_PRICE;
 }
 function shopIsPromo(skinId){
-  return shopPriceFor(skinId) !== SHOP_PRICE;
+  const promo = profile?.promo;
+  if (!promo || !promo.skinIds.includes(skinId)) return false;
+  const others = promo.skinIds.filter(id => id !== skinId);
+  const owned = shopOwnedSet();
+  const hasOther = others.length > 0 && others.every(id => owned.has(id));
+  return !hasOther;
 }
 function promoTimeLeftLabel(){
   const promo = profile?.promo;
@@ -2010,18 +2018,8 @@ const SKIN_PROMO_SEEN_KEY  = 'skin_promo_seen_ids';
 const SKIN_PROMO_INTERVAL  = 20;
 
 function _skinPromoPrice(skin) {
-  const owned = profile?.ownedSkins || [];
-  // Replica lógica de economy.js no cliente
-  const PROMO_IDS = [1, 5];
-  const PROMO_PRICE = 250;
-  const PROMO_ENDS = 1750118399000; // mesmo PROMO_ENDS_AT do economy.js
-  const CUSTOM = { 13: 550, 14: 100, 15: 100 };
-  if (PROMO_IDS.includes(skin.id) && Date.now() < PROMO_ENDS) {
-    const otherId = PROMO_IDS.find(id => id !== skin.id);
-    if (!owned.includes(otherId)) return PROMO_PRICE;
-  }
-  if (CUSTOM[skin.id] != null) return CUSTOM[skin.id];
-  return 500;
+  // Usa exatamente a mesma lógica de shopPriceFor — fonte única de verdade
+  return shopPriceFor(skin.id);
 }
 
 function _skinPromoNextBatch() {
