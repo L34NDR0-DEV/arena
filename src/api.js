@@ -687,11 +687,12 @@ const ROUTES = [
     },
   },
 
-  // Público: status de manutenção (cliente verifica periodicamente)
+  // Público: status do servidor (manutenção + modos desativados)
   {
     method: 'GET', path: '/api/server/status',
     handler: (req, res) => {
-      sendJson(res, 200, maintenanceStatus());
+      const cfg = loadShopConfig();
+      sendJson(res, 200, { ...maintenanceStatus(), disabledModes: cfg.disabledModes || [] });
     },
   },
 
@@ -775,13 +776,18 @@ const ROUTES = [
     },
   },
 
-  // Admin: ler configuração da loja (preços + promoção)
+  // Admin: ler configuração da loja (preços + promoção + modos)
   {
     method: 'GET', path: '/api/admin/shop',
     auth: true,
     handler: (req, res, { user }) => {
       if (user.email !== ADMIN_EMAIL) return sendJson(res, 403, { error: 'forbidden' });
-      sendJson(res, 200, loadShopConfig());
+      const cfg = loadShopConfig();
+      sendJson(res, 200, {
+        prices:        cfg.prices        || {},
+        promo:         cfg.promo         || {},
+        disabledModes: cfg.disabledModes || [],
+      });
     },
   },
 
@@ -818,6 +824,20 @@ const ROUTES = [
       economy.applyAdminPromo(cfg.promo);
       console.log('[ADMIN] Promocao atualizada:', cfg.promo);
       sendJson(res, 200, { ok: true });
+    },
+  },
+
+  // Admin: salvar modos desativados
+  {
+    method: 'POST', path: '/api/admin/shop/modes',
+    auth: true,
+    handler: (req, res, { body, user }) => {
+      if (user.email !== ADMIN_EMAIL) return sendJson(res, 403, { error: 'forbidden' });
+      const cfg = loadShopConfig();
+      cfg.disabledModes = Array.isArray(body.disabledModes) ? body.disabledModes : [];
+      saveShopConfig(cfg);
+      console.log('[ADMIN] Modos desativados:', cfg.disabledModes);
+      sendJson(res, 200, { ok: true, disabledModes: cfg.disabledModes });
     },
   },
 ];

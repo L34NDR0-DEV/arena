@@ -1538,6 +1538,10 @@ window.closeHowToPlay=function(){
 };
 
 window.selectMode=function(mode,btn){
+  if (_disabledModes.includes(mode)) {
+    showNotify('Este modo foi desativado temporariamente pelo administrador.');
+    return;
+  }
   if (isModeInMaintenance(mode)) { showMaintenanceAlert(mode); return; }
   selectedMode=mode;
   document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
@@ -2288,11 +2292,28 @@ function _hideMaintBanner() {
   if (_maintCountdownInterval) { clearInterval(_maintCountdownInterval); _maintCountdownInterval = null; }
 }
 
+// Modos desativados pelo admin — atualizado a cada poll de status
+let _disabledModes = [];
+
+function _applyDisabledModes(modes) {
+  _disabledModes = modes || [];
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    const mode = btn.dataset.mode || btn.getAttribute('onclick')?.match(/selectMode\('([^']+)'/)?.[1];
+    if (!mode) return;
+    const disabled = _disabledModes.includes(mode);
+    btn.classList.toggle('mode-disabled-admin', disabled);
+    btn.title = disabled ? 'Modo desativado pelo administrador' : '';
+  });
+}
+
 async function _checkMaintenanceStatus() {
   try {
     const res  = await fetch('/api/server/status');
     const data = await res.json();
     const phase = data.phase;
+
+    // Atualiza modos desativados independentemente da fase
+    _applyDisabledModes(data.disabledModes || []);
 
     if (phase === _maintPhase) {
       // Só atualiza o countdown sem redesenhar

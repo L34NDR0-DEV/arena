@@ -137,9 +137,22 @@ function recordMatchAndMaybeReward(userId, { mode, win }) {
   return { rewardGranted, progress: count, modesSeen: modes };
 }
 
+// Getters para que módulos que importam antes de applyAdminPromo ser chamado
+// sempre leiam os valores atuais (exportar primitivos congela o valor no require).
+function getPromoSkinIds()  { return PROMO_SKIN_IDS; }
+function getPromoPrice()    { return PROMO_PRICE; }
+function getPromoStartsAt() { return PROMO_STARTS_AT; }
+function getPromoEndsAt()   { return PROMO_ENDS_AT; }
+
 module.exports = {
   SKIN_PRICE, FREE_SKIN_ID, REWARD_BLOCK_SIZE, REWARD_AMOUNT, REWARD_MIN_MODES, recordMatchAndMaybeReward,
-  PROMO_SKIN_IDS, PROMO_PRICE, PROMO_STARTS_AT, PROMO_ENDS_AT, isPromoActive, skinPriceFor,
+  // Manter exports diretos para compatibilidade com código que já usa economy.PROMO_*
+  get PROMO_SKIN_IDS()  { return PROMO_SKIN_IDS; },
+  get PROMO_PRICE()     { return PROMO_PRICE; },
+  get PROMO_STARTS_AT() { return PROMO_STARTS_AT; },
+  get PROMO_ENDS_AT()   { return PROMO_ENDS_AT; },
+  isPromoActive, skinPriceFor,
+  getPromoSkinIds, getPromoPrice, getPromoStartsAt, getPromoEndsAt,
   TOURNAMENT_SKIN_ID, TOURNAMENT_STARTS_AT, TOURNAMENT_ENDS_AT, isTournamentActive,
   applyAdminPrices, applyAdminPromo,
 };

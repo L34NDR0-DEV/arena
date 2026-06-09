@@ -429,6 +429,8 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .mode-survivor{border-color:var(--orange);color:var(--orange);}
 .mode-btn:not(.active){opacity:.5;}
 .mode-btn:hover{opacity:1;}
+.mode-btn.mode-disabled-admin{opacity:.2!important;cursor:not-allowed;filter:grayscale(1);border-style:dashed;}
+.mode-btn.mode-disabled-admin:hover{opacity:.2!important;}
 .mode-tip{font-size:9px;color:var(--gold);margin-top:8px;padding:5px 8px;background:#121000;border-radius:3px;border-left:2px solid var(--gold);font-family:'Press Start 2P',monospace;line-height:1.6;}
 
 /* Skins */

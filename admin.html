@@ -513,6 +513,18 @@
             <span id="promo-status" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .3s;"></span>
           </div>
         </div>
+
+        <div class="card">
+          <div class="card-title">Modos de Jogo</div>
+          <p style="font-size:11px;color:var(--text2);margin-bottom:16px;line-height:1.6;">
+            Modos desativados ficam bloqueados para todos os jogadores. A mudanca entra em vigor em ate 30 segundos.
+          </p>
+          <div id="modes-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:16px;"></div>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <button class="btn btn-cyan" onclick="saveModes()">Salvar Modos</button>
+            <span id="modes-save-status" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .3s;"></span>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -842,10 +854,68 @@ async function loadShopPage() {
   _promoSelected = promo.skinIds || [];
   renderPromoChips();
 
-  // Datas
-  if (promo.price)   document.getElementById('promo-price-input').value = promo.price;
-  if (promo.startsAt) document.getElementById('promo-start-input').value = toLocalDT(promo.startsAt);
-  if (promo.endsAt)   document.getElementById('promo-end-input').value   = toLocalDT(promo.endsAt);
+  // Datas e preco da promo
+  document.getElementById('promo-price-input').value = promo.price || '';
+  document.getElementById('promo-start-input').value = toLocalDT(promo.startsAt);
+  document.getElementById('promo-end-input').value   = toLocalDT(promo.endsAt);
+
+  // Modos
+  renderModesGrid(data.disabledModes || []);
+}
+
+// ── Modos de Jogo ─────────────────────────────────────────────────
+const ALL_MODES = [
+  { id:'contra1',       label:'Contra 1',              icon:'🎯' },
+  { id:'contra2',       label:'Contra 2',              icon:'🎮' },
+  { id:'equipe_online', label:'Equipe Online',         icon:'⚔' },
+  { id:'livre',         label:'Livre',                 icon:'🌐' },
+  { id:'teste',         label:'Teste',                 icon:'🧪' },
+  { id:'tower_defense', label:'Tower Defense',         icon:'🏆' },
+  { id:'survivor',      label:'Survivor',              icon:'💀' },
+];
+
+let _disabledModes = [];
+
+function renderModesGrid(disabled) {
+  _disabledModes = disabled || [];
+  const el = document.getElementById('modes-grid');
+  el.innerHTML = ALL_MODES.map(m => {
+    const off = _disabledModes.includes(m.id);
+    return `
+      <div onclick="toggleMode('${m.id}')" style="
+        display:flex;align-items:center;gap:10px;padding:12px 14px;
+        background:${off ? '#1a0000' : '#00100a'};
+        border:1px solid ${off ? '#ff445544' : '#00ffaa33'};
+        border-radius:8px;cursor:pointer;transition:.15s;
+        user-select:none;
+      ">
+        <div style="
+          width:10px;height:10px;border-radius:50%;flex-shrink:0;
+          background:${off ? '#ff4455' : '#00ffaa'};
+          box-shadow:0 0 6px ${off ? '#ff445588' : '#00ffaa88'};
+        "></div>
+        <div>
+          <div style="font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;
+            color:${off ? 'var(--red)' : 'var(--green)'};">${m.label}</div>
+          <div style="font-size:9px;color:var(--text2);margin-top:2px;">${off ? 'DESATIVADO' : 'ATIVO'}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function toggleMode(id) {
+  if (_disabledModes.includes(id)) _disabledModes = _disabledModes.filter(x => x !== id);
+  else _disabledModes.push(id);
+  renderModesGrid(_disabledModes);
+}
+
+async function saveModes() {
+  const data = await api('POST', '/api/admin/shop/modes', { disabledModes: _disabledModes });
+  if (data.error) { toast('Erro: ' + data.error, 'err'); return; }
+  const st = document.getElementById('modes-save-status');
+  st.textContent = 'Salvo!'; st.style.opacity = '1';
+  setTimeout(() => st.style.opacity = '0', 2000);
+  toast(_disabledModes.length ? `${_disabledModes.length} modo(s) desativado(s)` : 'Todos os modos ativos');
 }
 
 function renderPromoChips() {
