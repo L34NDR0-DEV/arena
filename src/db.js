@@ -128,6 +128,7 @@ const stmts = {
   purgeExpiredSessions: db.prepare(`DELETE FROM sessions WHERE expires_at < datetime('now')`),
 
   insertOrder:          db.prepare(`INSERT INTO credit_orders (user_id, package_id, credits_amount, price_cents, status) VALUES (?, ?, ?, ?, 'pending')`),
+  deleteOrder:          db.prepare(`DELETE FROM credit_orders WHERE id = ?`),
   findOrderById:        db.prepare(`SELECT * FROM credit_orders WHERE id = ?`),
   findOrderByPreference:db.prepare(`SELECT * FROM credit_orders WHERE mp_preference_id = ?`),
   findOrderByPaymentId: db.prepare(`SELECT * FROM credit_orders WHERE mp_payment_id = ?`),

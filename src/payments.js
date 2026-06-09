@@ -79,6 +79,8 @@ async function createCheckout(user, packageId) {
   try {
     result = await mp.preference.create({ body });
   } catch (err) {
+    // Remove a ordem pendente para não deixar registros órfãos no banco.
+    try { db.deleteOrder.run(orderId); } catch {}
     // O SDK do Mercado Pago expõe os detalhes do erro da API em `err.cause`
     // (array de {code, description}) — sem logar isso, só vemos "Error"
     // genérico e fica impossível saber o motivo real da rejeição.
@@ -91,7 +93,10 @@ async function createCheckout(user, packageId) {
   }
 
   db.setOrderPreference.run(result.id, orderId);
-  return { checkoutUrl: result.init_point, orderId };
+  // Tokens de teste começam com "TEST-" — usar sandbox_init_point nesses casos.
+  const isTest = MP_ACCESS_TOKEN.startsWith('TEST-');
+  const checkoutUrl = isTest ? result.sandbox_init_point : result.init_point;
+  return { checkoutUrl, orderId };
 }
 
 // Processa notificações do Mercado Pago. Nunca confia no payload da
@@ -101,10 +106,12 @@ async function handleWebhook(query, body) {
   const mp = getMp();
   if (!mp) return { ok: false, reason: 'payments_disabled' };
 
+  // IPN v1: ?topic=payment&id=123
+  // Webhooks v2: ?data.id=123&type=payment  OU  body.type + body.data.id
   const paymentId = (query && (query['data.id'] || query.id))
                  || (body && body.data && body.data.id)
                  || null;
-  const type = (query && query.type) || (body && body.type);
+  const type = (query && (query.type || query.topic)) || (body && body.type);
   if (type !== 'payment' || !paymentId) return { ok: false, reason: 'ignored' };
 
   let payment;
@@ -112,7 +119,7 @@ async function handleWebhook(query, body) {
   catch (err) { return { ok: false, reason: 'payment_lookup_failed' }; }
 
   const orderId = Number(payment.external_reference);
-  if (!Number.isInteger(orderId)) return { ok: false, reason: 'missing_external_reference' };
+  if (!Number.isInteger(orderId) || orderId <= 0) return { ok: false, reason: 'missing_external_reference' };
 
   const order = db.findOrderById.get(orderId);
   if (!order) return { ok: false, reason: 'order_not_found' };

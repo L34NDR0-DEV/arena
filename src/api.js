@@ -394,14 +394,30 @@ const ROUTES = [
     },
   },
 
+  // IPN v1: MP envia GET ?topic=payment&id=123
+  {
+    method: 'GET', path: '/api/payments/webhook',
+    handler: async (req, res, { query }) => {
+      try {
+        const result = await payments.handleWebhook(query, null);
+        if (!result.ok) console.warn('[ANTIFRAUDE] webhook GET rejeitado:', result.reason);
+      } catch (err) {
+        console.error('[PAGAMENTOS] erro ao processar webhook GET:', err.message);
+      }
+      res.writeHead(200);
+      res.end();
+    },
+  },
+
+  // Webhooks v2: MP envia POST com body JSON { type, data: { id } }
   {
     method: 'POST', path: '/api/payments/webhook',
     handler: async (req, res, { body, query }) => {
       try {
         const result = await payments.handleWebhook(query, body);
-        if (!result.ok) console.warn('[ANTIFRAUDE] webhook de pagamento rejeitado:', result.reason);
+        if (!result.ok) console.warn('[ANTIFRAUDE] webhook POST rejeitado:', result.reason);
       } catch (err) {
-        console.error('[PAGAMENTOS] erro ao processar webhook:', err.message);
+        console.error('[PAGAMENTOS] erro ao processar webhook POST:', err.message);
       }
       // O Mercado Pago espera 200 rapidamente, independentemente do resultado
       // interno — reenvios de notificação são tratados de forma idempotente.
