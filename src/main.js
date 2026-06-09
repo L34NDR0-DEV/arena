@@ -954,7 +954,7 @@ window.openShop = async function(){
     }
   } catch(e) {}
   document.getElementById('shop-balance').textContent = currentUser.credits;
-  updateCreditsDisplay();
+  updateCreditsBadge();
   switchShopTab('ships');
   buildShopTrack();
   const available = shopAvailableSkins();
@@ -975,7 +975,7 @@ window.openShopAt = async function(skinId){
     }
   } catch(e) {}
   document.getElementById('shop-balance').textContent = currentUser.credits;
-  updateCreditsDisplay();
+  updateCreditsBadge();
   switchShopTab('ships');
   buildShopTrack();
   const available = shopAvailableSkins();
@@ -991,6 +991,7 @@ window.openShopAt = async function(skinId){
 };
 
 window.closeShop = function(){
+  _stopAllTrailPreviews();
   document.getElementById('shop-modal').style.display='none';
 };
 
@@ -1081,40 +1082,75 @@ window.switchShopTab = function(tab){
 };
 
 // ── Loja: aba de Rastros ──────────────────────────────────────
+let _trailPreviewCanvases = [];
+
+function _stopAllTrailPreviews(){
+  _trailPreviewCanvases.forEach(cv => {
+    if (cv._trailAnimId) { cancelAnimationFrame(cv._trailAnimId); cv._trailAnimId = null; }
+  });
+  _trailPreviewCanvases = [];
+}
+
 function buildTrailsTab(){
+  _stopAllTrailPreviews();
   const grid = document.getElementById('shop-trails-grid');
   if (!grid) return;
-  const owned   = new Set(profile?.ownedTrails  || []);
+  const owned    = new Set(profile?.ownedTrails || []);
   const equipped = profile?.equippedTrail ?? 0;
   grid.innerHTML = '';
+
   TRAILS.forEach(trail => {
     const isOwned    = trail.free || owned.has(trail.id);
     const isEquipped = equipped === trail.id;
+
     const card = document.createElement('div');
     card.className = 'trail-card' + (isEquipped ? ' trail-equipped' : '');
+
     // Canvas preview animado
     const cv = document.createElement('canvas');
     cv.width = 80; cv.height = 80;
+    _trailPreviewCanvases.push(cv);
     startTrailPreview(cv, trail);
-    // Info
+
+    // Nome
     const nameEl = document.createElement('div');
     nameEl.className = 'trail-card-name';
     nameEl.textContent = trail.name;
+
+    // Preço (só para rastros pagos não possuídos)
+    let priceEl = null;
+    if (!isOwned && trail.price > 0) {
+      priceEl = document.createElement('div');
+      priceEl.className = 'trail-card-price';
+      priceEl.textContent = trail.price + ' CR';
+    }
+
     // Botão
     const btn = document.createElement('button');
     btn.className = 'play-btn trail-card-btn';
+    btn.setAttribute('aria-label', trail.name);
     if (isEquipped) {
       btn.textContent = 'EQUIPADO';
       btn.disabled = true;
-      btn.style.background = 'linear-gradient(90deg,#0a4,#0f8)';
+      btn.style.cssText = 'background:linear-gradient(90deg,#0a4,#0f8);color:#020a14;cursor:default;';
     } else if (isOwned) {
       btn.textContent = 'EQUIPAR';
-      btn.onclick = () => equipTrail(trail.id);
+      btn.addEventListener('click', (e) => { e.stopPropagation(); equipTrail(trail.id); });
     } else {
-      btn.textContent = trail.price + ' CR';
-      btn.onclick = () => buyTrail(trail.id);
+      btn.textContent = 'COMPRAR';
+      btn.addEventListener('click', (e) => { e.stopPropagation(); buyTrail(trail.id); });
     }
-    card.append(cv, nameEl, btn);
+
+    // Clicar no card equipa/compra também (exceto se já equipado)
+    if (!isEquipped) {
+      card.style.cursor = 'pointer';
+      card.addEventListener('click', () => isOwned ? equipTrail(trail.id) : buyTrail(trail.id));
+    }
+
+    const els = [cv, nameEl];
+    if (priceEl) els.push(priceEl);
+    els.push(btn);
+    card.append(...els);
     grid.appendChild(card);
   });
 }
@@ -1124,36 +1160,46 @@ function startTrailPreview(canvas, trailDef){
   const W = canvas.width, H = canvas.height;
   let t = 0;
   let points = [];
-  let animId = canvas._trailAnimId;
-  if (animId) cancelAnimationFrame(animId);
+  if (canvas._trailAnimId) cancelAnimationFrame(canvas._trailAnimId);
+
+  // Para "Sem Rastro" só desenha a nave parada
+  if (trailDef.style === 'none') {
+    ctx.clearRect(0, 0, W, H);
+    ctx.save();
+    ctx.translate(W/2, H/2);
+    ctx.beginPath();
+    ctx.moveTo(0, -9); ctx.lineTo(7, 8); ctx.lineTo(-7, 8);
+    ctx.closePath();
+    ctx.fillStyle = '#aaddff';
+    ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 10;
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
 
   function tick(){
     t += 0.04;
     ctx.clearRect(0, 0, W, H);
-    // Posição da nave: circulo no centro
-    const cx = W/2 + Math.cos(t) * 20;
-    const cy = H/2 + Math.sin(t) * 20;
-    // Emite partícula
+    const r = Math.min(W, H) * 0.28;
+    const cx = W/2 + Math.cos(t) * r;
+    const cy = H/2 + Math.sin(t) * r;
+    // Emite partícula a cada tick
     points.push({ x: cx, y: cy, life: 1 });
-    // Atualiza e desenha
     points = points.filter(p => p.life > 0);
     points.forEach(p => {
-      p.life -= 0.06;
-      if (p.life <= 0) return;
-      const a = p.life;
-      drawPreviewParticle(ctx, p, a, trailDef);
+      p.life -= 0.055;
+      if (p.life > 0) drawPreviewParticle(ctx, p, p.life, trailDef, W, H);
     });
-    // Desenha triângulo da nave
+    // Nave
+    const ang = Math.atan2(Math.sin(t + Math.PI/2) * r, Math.cos(t + Math.PI/2) * r);
     ctx.save();
-    const ang = Math.atan2(Math.sin(t + Math.PI/2)*20, Math.cos(t + Math.PI/2)*20);
     ctx.translate(cx, cy);
     ctx.rotate(ang);
     ctx.beginPath();
-    ctx.moveTo(0, -7);
-    ctx.lineTo(5, 6);
-    ctx.lineTo(-5, 6);
+    ctx.moveTo(0, -7); ctx.lineTo(5, 6); ctx.lineTo(-5, 6);
     ctx.closePath();
     ctx.fillStyle = '#aaddff';
+    ctx.shadowColor = '#00d4ff88'; ctx.shadowBlur = 8;
     ctx.fill();
     ctx.restore();
     canvas._trailAnimId = requestAnimationFrame(tick);
@@ -1161,31 +1207,47 @@ function startTrailPreview(canvas, trailDef){
   tick();
 }
 
-function drawPreviewParticle(ctx, p, a, trailDef){
-  if (trailDef.style === 'none') return;
+function drawPreviewParticle(ctx, p, a, trailDef, W, H){
   const color = trailDef.colors[Math.floor(Math.random() * trailDef.colors.length)];
   ctx.save();
-  ctx.globalAlpha = a * 0.85;
-  if (trailDef.style === 'flame' || trailDef.style === 'sparkle') {
-    const r = 4 * a;
-    const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 2.5);
+  ctx.globalAlpha = a * 0.9;
+  if (trailDef.style === 'flame') {
+    const r = 5 * a;
+    const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 2.8);
     grd.addColorStop(0, color);
     grd.addColorStop(1, 'transparent');
     ctx.beginPath();
-    ctx.arc(p.x, p.y, r * 2.5, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y, r * 2.8, 0, Math.PI * 2);
     ctx.fillStyle = grd;
     ctx.fill();
+  } else if (trailDef.style === 'sparkle') {
+    const sz = 4 * a;
+    ctx.fillStyle = color;
+    ctx.shadowColor = trailDef.glow || color;
+    ctx.shadowBlur = 6;
+    // Estrela de 4 pontas
+    for (let i = 0; i < 4; i++) {
+      const ang = (i / 4) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(p.x, p.y);
+      ctx.lineTo(p.x + Math.cos(ang) * sz, p.y + Math.sin(ang) * sz);
+      ctx.lineWidth = 1.5 * a;
+      ctx.strokeStyle = color;
+      ctx.stroke();
+    }
   } else if (trailDef.style === 'lightning') {
     ctx.strokeStyle = color;
-    ctx.lineWidth = 1.2 * a;
+    ctx.lineWidth = 1.5 * a;
+    ctx.shadowColor = trailDef.glow || color;
+    ctx.shadowBlur = 8;
     ctx.beginPath();
     ctx.moveTo(p.x, p.y);
-    ctx.lineTo(p.x + (Math.random()-0.5)*8, p.y + (Math.random()-0.5)*8);
+    ctx.lineTo(p.x + (Math.random()-0.5)*10, p.y + (Math.random()-0.5)*10);
     ctx.stroke();
   } else { // smoke
-    const r = 6 * a;
+    const r = 7 * a;
     const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
-    grd.addColorStop(0, color + 'aa');
+    grd.addColorStop(0, color + 'cc');
     grd.addColorStop(1, 'transparent');
     ctx.beginPath();
     ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
@@ -1197,10 +1259,16 @@ function drawPreviewParticle(ctx, p, a, trailDef){
 
 async function buyTrail(trailId){
   const { ok, data } = await apiFetch('/api/shop/trail/buy', 'POST', { trailId });
-  if (!ok) { showNotify(data?.error || 'Erro ao comprar rastro'); return; }
+  if (!ok) {
+    const msg = data?.error === 'already_owned' ? 'Rastro já possuído'
+              : data?.error === 'not_enough_credits' ? 'Créditos insuficientes'
+              : (data?.error || 'Erro ao comprar rastro');
+    showNotify(msg);
+    return;
+  }
   currentUser.credits = data.credits;
   document.getElementById('shop-balance').textContent = data.credits;
-  updateCreditsDisplay();
+  updateCreditsBadge();
   if (!profile.ownedTrails) profile.ownedTrails = [];
   profile.ownedTrails.push(trailId);
   showNotify('Rastro desbloqueado!');
@@ -1208,8 +1276,8 @@ async function buyTrail(trailId){
 }
 
 async function equipTrail(trailId){
-  const { ok, data } = await apiFetch('/api/shop/trail/equip', 'POST', { trailId });
-  if (!ok) { showNotify(data?.error || 'Erro ao equipar rastro'); return; }
+  const { ok } = await apiFetch('/api/shop/trail/equip', 'POST', { trailId });
+  if (!ok) { showNotify('Erro ao equipar rastro'); return; }
   profile.equippedTrail = trailId;
   buildTrailsTab();
 }
@@ -2337,7 +2405,7 @@ function _showSkinPromoOverlay(skins) {
           if (res.error) throw new Error(res.error);
           currentUser = res.user || currentUser;
           profile = { ...profile, ownedSkins: res.ownedSkins || profile.ownedSkins };
-          updateCreditsDisplay();
+          updateCreditsBadge();
           animateCreditsGain(currentUser.credits + price, currentUser.credits);
           btn.textContent = 'COMPRADA!';
           btn.style.background = 'linear-gradient(135deg,#00ffaa,#00cc88)';
@@ -2546,7 +2614,7 @@ window._handleAdminUpdate = function(msg) {
   if (msg.kind === 'credits') {
     const prev = currentUser.credits ?? 0;
     currentUser.credits = msg.credits;
-    updateCreditsDisplay();
+    updateCreditsBadge();
     // Animação de ganho/perda de créditos igual à da loja
     if (msg.credits !== prev) animateCreditsGain(prev, msg.credits);
   } else if (msg.kind === 'skins') {
