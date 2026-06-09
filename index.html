@@ -163,6 +163,24 @@
 
     </div>
 
+    <!-- ═══ CHAT DO LOBBY ══════════════════════════════════════ -->
+    <div class="menu-chat" id="menu-chat">
+      <div class="chat-header">
+        <span class="chat-title">CHAT</span>
+        <span class="chat-online" id="chat-online-count">
+          <svg viewBox="0 0 8 8" fill="currentColor"><circle cx="4" cy="4" r="3"/></svg>
+          <span id="chat-online-num">0</span> online
+        </span>
+      </div>
+      <div class="chat-messages" id="chat-messages"></div>
+      <div class="chat-input-row">
+        <input class="chat-input" id="chat-input" type="text" maxlength="200" placeholder="Mensagem..." autocomplete="off"/>
+        <button class="chat-send" id="chat-send" onclick="window.sendLobbyChat()">
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M1 1l14 7-14 7V9l10-1L1 7V1z"/></svg>
+        </button>
+      </div>
+    </div>
+
     <div class="menu-right">
       <div class="menu-section">
         <h3>Arena</h3>

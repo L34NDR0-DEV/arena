@@ -102,6 +102,8 @@ if (!matchColumns.includes('details')) {
 }
 
 const stmts = {
+  listUsers:            db.prepare(`SELECT id, email, display_name, credits, created_at FROM users ORDER BY created_at DESC LIMIT 200`),
+  countUsers:           db.prepare(`SELECT COUNT(*) AS total FROM users`),
   insertUser:           db.prepare(`INSERT INTO users (email, display_name, password_hash, google_id) VALUES (?, ?, ?, ?)`),
   findUserByEmail:      db.prepare(`SELECT * FROM users WHERE email = ?`),
   findUserByGoogleId:   db.prepare(`SELECT * FROM users WHERE google_id = ?`),

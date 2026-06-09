@@ -204,6 +204,20 @@ const ROUTES = [
   },
 
   {
+    method: 'GET', path: '/api/admin/users',
+    auth: true,
+    handler: (req, res, { user }) => {
+      if (user.email !== 'leandrosilva212010@gmail.com') return sendJson(res, 403, { error: 'forbidden' });
+      const total = db.countUsers.get().total;
+      const users = db.listUsers.all().map(u => ({
+        id: u.id, email: u.email, name: u.display_name,
+        credits: u.credits, createdAt: u.created_at,
+      }));
+      sendJson(res, 200, { total, users });
+    },
+  },
+
+  {
     method: 'POST', path: '/api/shop/buy',
     auth: true,
     rateLimit: rateLimited('shop_buy', 5, 10_000, (req, { user }) => user.id),

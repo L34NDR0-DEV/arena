@@ -469,12 +469,26 @@ server.on('upgrade', (req, socket) => {
 
   socket.on('close', () => onDisconnect(socket));
   socket.on('error', () => onDisconnect(socket));
+  // Informa a todos o novo total de conectados
+  broadcastOnlineCount();
 });
+
+function broadcastOnlineCount() {
+  const count = socks.size;
+  const msg = JSON.stringify({ type: 'online_count', count });
+  for (const [s] of socks) wsSend(s, msg);
+}
+
+function broadcastLobbyChat(from, text) {
+  const msg = JSON.stringify({ type: 'lobby_chat', name: from, text });
+  for (const [s] of socks) wsSend(s, msg);
+}
 
 function onDisconnect(socket) {
   const info = socks.get(socket);
   if (!info) return;
   socks.delete(socket);
+  broadcastOnlineCount();
   if (info.roomId && info.roomId.startsWith('equipe_online_')) leaveTeamQueue(socket, info);
   if (info.roomId && info.roomId.startsWith(TD_ROOM_ID)) tdHandleDisconnect(socket, info);
   else leaveTdQueue(socket, info);
@@ -583,6 +597,12 @@ function handleMsg(socket, raw) {
     case 'chat':
       broadcastRoom(info.roomId, { type: 'chat', id: info.id, name: info.name, text: msg.text });
       break;
+    case 'lobby_chat': {
+      const text = String(msg.text || '').trim().slice(0, 200);
+      if (!text) break;
+      broadcastLobbyChat(info.name, text);
+      break;
+    }
     case 'ping':
       // Eco simples para medição de latência local — devolve o timestamp
       // enviado pelo cliente, que calcula o RTT (round-trip time) sozinho.
