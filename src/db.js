@@ -92,6 +92,9 @@ if (!userColumns.includes('profile_icon')) {
 if (!userColumns.includes('tutorial_seen')) {
   db.exec(`ALTER TABLE users ADD COLUMN tutorial_seen INTEGER NOT NULL DEFAULT 0`);
 }
+if (!userColumns.includes('blocked')) {
+  db.exec(`ALTER TABLE users ADD COLUMN blocked INTEGER NOT NULL DEFAULT 0`);
+}
 
 // `details` guarda um JSON com dados ricos da partida (itens coletados, nível,
 // nome da skin, contagem por tipo de item) que não têm coluna própria — usado
@@ -102,7 +105,14 @@ if (!matchColumns.includes('details')) {
 }
 
 const stmts = {
-  listUsers:            db.prepare(`SELECT id, email, display_name, credits, created_at FROM users ORDER BY created_at DESC LIMIT 200`),
+  listUsers:            db.prepare(`SELECT id, email, display_name, credits, blocked, created_at FROM users ORDER BY created_at DESC LIMIT 200`),
+  adminFindUser:        db.prepare(`SELECT * FROM users WHERE id = ?`),
+  adminSetCredits:      db.prepare(`UPDATE users SET credits = ? WHERE id = ?`),
+  adminSetBlocked:      db.prepare(`UPDATE users SET blocked = ? WHERE id = ?`),
+  adminRemoveSkin:      db.prepare(`DELETE FROM owned_skins WHERE user_id = ? AND skin_id = ?`),
+  adminRemoveAllSkins:  db.prepare(`DELETE FROM owned_skins WHERE user_id = ?`),
+  adminUserOrders:      db.prepare(`SELECT * FROM credit_orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 20`),
+  adminSearch:          db.prepare(`SELECT id, email, display_name, credits, blocked, created_at FROM users WHERE email LIKE ? OR display_name LIKE ? ORDER BY created_at DESC LIMIT 50`),
   countUsers:           db.prepare(`SELECT COUNT(*) AS total FROM users`),
   insertUser:           db.prepare(`INSERT INTO users (email, display_name, password_hash, google_id) VALUES (?, ?, ?, ?)`),
   findUserByEmail:      db.prepare(`SELECT * FROM users WHERE email = ?`),

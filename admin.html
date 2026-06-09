@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Admin — Tower Defense on the Space</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --bg:#02050d;--panel:#080f1a;--border:#00d4ff22;--border2:#00d4ff44;
+    --cyan:#00d4ff;--gold:#ffcc44;--red:#ff4455;--green:#00ffaa;
+    --text:#c8d8e8;--text2:#4a7a9a;
+  }
+  body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;}
+
+  /* ── Layout ── */
+  #app{display:none;flex-direction:column;min-height:100vh;}
+  #header{background:var(--panel);border-bottom:1px solid var(--border2);padding:14px 24px;
+    display:flex;align-items:center;justify-content:space-between;gap:16px;}
+  #header h1{font-size:16px;color:var(--cyan);letter-spacing:2px;font-weight:700;}
+  #header .badge{font-size:11px;color:var(--text2);background:#ffffff08;
+    padding:4px 10px;border-radius:20px;border:1px solid var(--border);}
+  #main{display:flex;flex:1;gap:0;}
+
+  /* ── Sidebar ── */
+  #sidebar{width:220px;min-width:220px;background:var(--panel);border-right:1px solid var(--border);
+    padding:16px 12px;display:flex;flex-direction:column;gap:6px;}
+  .nav-btn{background:none;border:none;color:var(--text2);font-size:12px;text-align:left;
+    padding:10px 14px;border-radius:6px;cursor:pointer;transition:.15s;width:100%;
+    display:flex;align-items:center;gap:8px;}
+  .nav-btn:hover{background:#ffffff08;color:var(--text);}
+  .nav-btn.active{background:#00d4ff15;color:var(--cyan);border-left:2px solid var(--cyan);}
+  .nav-sep{height:1px;background:var(--border);margin:6px 0;}
+
+  /* ── Content ── */
+  #content{flex:1;padding:24px;overflow-y:auto;}
+  .page{display:none;}
+  .page.active{display:block;}
+
+  /* ── Cards / Panels ── */
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:20px;margin-bottom:16px;}
+  .card-title{font-size:11px;color:var(--cyan);letter-spacing:2px;text-transform:uppercase;
+    margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border);}
+
+  /* ── Stats ── */
+  .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px;}
+  .stat-box{background:var(--panel);border:1px solid var(--border);border-radius:8px;
+    padding:16px;text-align:center;}
+  .stat-val{font-size:28px;font-weight:700;color:var(--cyan);}
+  .stat-lbl{font-size:10px;color:var(--text2);margin-top:4px;text-transform:uppercase;letter-spacing:1px;}
+
+  /* ── Tabela ── */
+  .table-wrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th{text-align:left;padding:8px 10px;color:var(--text2);font-size:10px;letter-spacing:1px;
+    text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap;}
+  td{padding:9px 10px;border-bottom:1px solid #ffffff06;vertical-align:middle;}
+  tr:hover td{background:#ffffff04;}
+  .badge-blocked{background:#ff445522;color:var(--red);border:1px solid #ff445544;
+    padding:2px 8px;border-radius:20px;font-size:10px;}
+  .badge-ok{background:#00ffaa15;color:var(--green);border:1px solid #00ffaa33;
+    padding:2px 8px;border-radius:20px;font-size:10px;}
+  .badge-order{padding:2px 8px;border-radius:20px;font-size:10px;}
+  .badge-approved{background:#00ffaa15;color:var(--green);border:1px solid #00ffaa33;}
+  .badge-pending{background:#ffcc4415;color:var(--gold);border:1px solid #ffcc4433;}
+  .badge-refunded{background:#ff880015;color:#ff8800;border:1px solid #ff880033;}
+
+  /* ── Inputs / Buttons ── */
+  input,select{background:#040c18;border:1px solid var(--border2);border-radius:6px;
+    color:var(--text);padding:8px 12px;font-size:12px;outline:none;width:100%;}
+  input:focus,select:focus{border-color:var(--cyan);}
+  .input-row{display:flex;gap:8px;align-items:flex-end;margin-bottom:12px;flex-wrap:wrap;}
+  .input-row label{font-size:10px;color:var(--text2);letter-spacing:1px;display:block;margin-bottom:4px;}
+  .input-row .field{flex:1;min-width:120px;}
+  .btn{padding:8px 16px;border-radius:6px;border:none;cursor:pointer;font-size:12px;
+    font-weight:600;transition:.15s;white-space:nowrap;}
+  .btn-cyan{background:var(--cyan);color:#020a14;}
+  .btn-cyan:hover{background:#00b8dd;}
+  .btn-red{background:var(--red);color:#fff;}
+  .btn-red:hover{background:#dd2233;}
+  .btn-green{background:var(--green);color:#020a14;}
+  .btn-green:hover{background:#00ddaa;}
+  .btn-gold{background:var(--gold);color:#020a14;}
+  .btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--text2);}
+  .btn-ghost:hover{border-color:var(--cyan);color:var(--cyan);}
+  .btn-sm{padding:4px 10px;font-size:11px;}
+
+  /* ── User detail panel ── */
+  #user-detail{background:var(--panel);border:1px solid var(--border2);border-radius:8px;
+    padding:20px;margin-bottom:16px;display:none;}
+  #user-detail.open{display:block;}
+  .detail-header{display:flex;justify-content:space-between;align-items:center;
+    margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+  .detail-name{font-size:18px;font-weight:700;color:var(--cyan);}
+  .detail-email{font-size:11px;color:var(--text2);margin-top:2px;}
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+  .detail-section{background:#040c18;border-radius:6px;padding:14px;}
+  .detail-section h3{font-size:10px;color:var(--text2);letter-spacing:2px;text-transform:uppercase;
+    margin-bottom:10px;}
+  .skins-grid{display:flex;flex-wrap:wrap;gap:6px;}
+  .skin-chip{background:#ffffff08;border:1px solid var(--border);border-radius:4px;
+    padding:4px 10px;font-size:11px;display:flex;align-items:center;gap:6px;}
+  .skin-chip .rm{cursor:pointer;color:var(--red);font-size:14px;line-height:1;}
+  .skin-chip .rm:hover{color:#ff8888;}
+
+  /* ── Toast ── */
+  #toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;
+    font-size:13px;font-weight:600;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;}
+  #toast.show{opacity:1;}
+  #toast.ok{background:#00ffaa22;border:1px solid var(--green);color:var(--green);}
+  #toast.err{background:#ff445522;border:1px solid var(--red);color:var(--red);}
+
+  /* ── Login overlay ── */
+  #login-overlay{position:fixed;inset:0;background:var(--bg);display:flex;
+    align-items:center;justify-content:center;z-index:100;}
+  .login-box{background:var(--panel);border:1px solid var(--border2);border-radius:12px;
+    padding:40px 36px;text-align:center;max-width:360px;width:90%;}
+  .login-box h2{color:var(--cyan);font-size:14px;letter-spacing:2px;margin-bottom:6px;}
+  .login-box p{color:var(--text2);font-size:11px;margin-bottom:24px;}
+  .login-box input{margin-bottom:12px;}
+  #login-error{color:var(--red);font-size:11px;margin-top:8px;min-height:16px;}
+
+  @media(max-width:640px){
+    #main{flex-direction:column;}
+    #sidebar{width:100%;min-width:0;flex-direction:row;flex-wrap:wrap;border-right:none;
+      border-bottom:1px solid var(--border);}
+    .nav-btn{width:auto;padding:8px 12px;}
+    .detail-grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div id="login-overlay">
+  <div class="login-box">
+    <h2>PAINEL ADMIN</h2>
+    <p>Tower Defense on the Space</p>
+    <input type="email" id="adm-email" placeholder="E-mail admin" autocomplete="username"/>
+    <input type="password" id="adm-pass" placeholder="Senha" autocomplete="current-password"/>
+    <button class="btn btn-cyan" style="width:100%;margin-top:4px;" onclick="adminLogin()">Entrar</button>
+    <div id="login-error"></div>
+  </div>
+</div>
+
+<div id="app">
+  <div id="header">
+    <h1>TOWER DEFENSE — ADMIN</h1>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <span class="badge" id="admin-badge"></span>
+      <button class="btn btn-ghost btn-sm" onclick="adminLogout()">Sair</button>
+    </div>
+  </div>
+  <div id="main">
+    <div id="sidebar">
+      <button class="nav-btn active" onclick="showPage('dashboard')">Visao Geral</button>
+      <button class="nav-btn" onclick="showPage('users')">Usuarios</button>
+      <div class="nav-sep"></div>
+      <button class="nav-btn" onclick="showPage('orders')">Pedidos</button>
+    </div>
+    <div id="content">
+
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="stats-grid" id="stats-grid">
+          <div class="stat-box"><div class="stat-val" id="s-users">—</div><div class="stat-lbl">Usuarios</div></div>
+          <div class="stat-box"><div class="stat-val" id="s-orders">—</div><div class="stat-lbl">Pedidos</div></div>
+          <div class="stat-box"><div class="stat-val" id="s-revenue">—</div><div class="stat-lbl">Receita</div></div>
+          <div class="stat-box"><div class="stat-val" id="s-approved">—</div><div class="stat-lbl">Aprovados</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Ultimos Pedidos</div>
+          <div class="table-wrap" id="dash-orders-wrap"><div style="color:var(--text2);font-size:12px;">Carregando...</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Ultimos Usuarios</div>
+          <div class="table-wrap" id="dash-users-wrap"><div style="color:var(--text2);font-size:12px;">Carregando...</div></div>
+        </div>
+      </div>
+
+      <!-- USUARIOS -->
+      <div class="page" id="page-users">
+        <div class="card">
+          <div class="card-title">Buscar Usuario</div>
+          <div class="input-row">
+            <div class="field">
+              <label>Nome ou e-mail</label>
+              <input type="text" id="search-input" placeholder="Digite para buscar..." onkeyup="if(event.key==='Enter')searchUsers()"/>
+            </div>
+            <button class="btn btn-cyan" onclick="searchUsers()">Buscar</button>
+            <button class="btn btn-ghost" onclick="loadAllUsers()">Ver todos</button>
+          </div>
+          <div class="table-wrap">
+            <table id="users-table">
+              <thead><tr>
+                <th>ID</th><th>Nome</th><th>E-mail</th><th>Creditos</th>
+                <th>Status</th><th>Cadastro</th><th>Acoes</th>
+              </tr></thead>
+              <tbody id="users-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Painel de detalhes do usuário -->
+        <div id="user-detail">
+          <div class="detail-header">
+            <div>
+              <div class="detail-name" id="det-name"></div>
+              <div class="detail-email" id="det-email"></div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-ghost btn-sm" id="det-block-btn" onclick="toggleBlock()"></button>
+              <button class="btn btn-ghost btn-sm" onclick="closeDetail()">Fechar</button>
+            </div>
+          </div>
+
+          <div class="detail-grid">
+            <div class="detail-section">
+              <h3>Creditos</h3>
+              <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;">
+                <input type="number" id="cr-amount" placeholder="Quantidade" min="0" style="max-width:140px;"/>
+                <select id="cr-mode" style="max-width:110px;">
+                  <option value="add">Adicionar</option>
+                  <option value="subtract">Remover</option>
+                  <option value="set">Definir</option>
+                </select>
+                <button class="btn btn-gold btn-sm" onclick="adjustCredits()">Aplicar</button>
+              </div>
+              <div style="font-size:12px;color:var(--text2);">Atual: <span id="det-credits" style="color:var(--cyan);font-weight:700;"></span> CR</div>
+            </div>
+
+            <div class="detail-section">
+              <h3>Skins</h3>
+              <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;">
+                <select id="skin-select" style="max-width:120px;">
+                  <option value="">Skin #</option>
+                  <option value="0">0 - Padrao</option>
+                  <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+                  <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+                  <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+                  <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+                  <option value="13">13</option><option value="14">14</option><option value="15">15</option>
+                </select>
+                <button class="btn btn-green btn-sm" onclick="grantSkin()">Dar</button>
+                <button class="btn btn-red btn-sm" onclick="revokeAllSkins()">Remover Todas</button>
+              </div>
+              <div class="skins-grid" id="det-skins"></div>
+            </div>
+          </div>
+
+          <div class="detail-section" style="margin-bottom:12px;">
+            <h3>Pedidos do Usuario</h3>
+            <div class="table-wrap" id="det-orders"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PEDIDOS -->
+      <div class="page" id="page-orders">
+        <div class="card">
+          <div class="card-title">Pedidos Recentes</div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>#</th><th>Usuario</th><th>Pacote</th><th>Creditos</th>
+                <th>Valor</th><th>Status</th><th>Data</th>
+              </tr></thead>
+              <tbody id="orders-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── Estado ──────────────────────────────────────────────────────
+let currentUserId = null;
+
+// ── Utilitários ─────────────────────────────────────────────────
+function toast(msg, type='ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `show ${type}`;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function fmtDate(s) {
+  if (!s) return '—';
+  return new Date(s).toLocaleString('pt-BR', {
+    day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'
+  });
+}
+
+function fmtCents(c) {
+  return (c/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+}
+
+async function api(method, path, body) {
+  const opts = { method, credentials: 'include', headers: {} };
+  if (body) { opts.body = JSON.stringify(body); opts.headers['Content-Type'] = 'application/json'; }
+  const res = await fetch(path, opts);
+  if (res.status === 401) { showLoginOverlay(); throw new Error('unauthenticated'); }
+  return res.json();
+}
+
+// ── Login / Logout ───────────────────────────────────────────────
+async function adminLogin() {
+  const email = document.getElementById('adm-email').value.trim();
+  const pass  = document.getElementById('adm-pass').value;
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  try {
+    const data = await api('POST', '/api/login', { email, password: pass });
+    if (data.error) { errEl.textContent = 'Credenciais invalidas ou sem permissao.'; return; }
+    // Verifica se é admin
+    const me = await api('GET', '/api/me');
+    if (!me.loggedIn) { errEl.textContent = 'Erro ao verificar sessao.'; return; }
+    document.getElementById('admin-badge').textContent = me.name || me.email;
+    showApp();
+  } catch(e) {
+    errEl.textContent = 'Erro de conexao.';
+  }
+}
+
+async function adminLogout() {
+  await api('POST', '/api/logout');
+  location.reload();
+}
+
+function showLoginOverlay() {
+  document.getElementById('login-overlay').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+}
+
+function showApp() {
+  document.getElementById('login-overlay').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  loadDashboard();
+}
+
+// ── Navegação ────────────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (id === 'orders') loadOrders();
+  if (id === 'users')  loadAllUsers();
+}
+
+// ── Dashboard ────────────────────────────────────────────────────
+async function loadDashboard() {
+  const [usersData, ordersData] = await Promise.all([
+    api('GET', '/api/admin/users?limit=5'),
+    api('GET', '/api/admin/orders?limit=50'),
+  ]);
+
+  document.getElementById('s-users').textContent  = usersData.total ?? '—';
+  const orders = ordersData.orders || [];
+  document.getElementById('s-orders').textContent   = orders.length;
+  const approved = orders.filter(o => o.status === 'approved');
+  document.getElementById('s-approved').textContent = approved.length;
+  const revenue = approved.reduce((s, o) => s + (o.price_cents || 0), 0);
+  document.getElementById('s-revenue').textContent  = fmtCents(revenue);
+
+  // Últimos pedidos
+  document.getElementById('dash-orders-wrap').innerHTML = buildOrdersTable(orders.slice(0, 10));
+
+  // Últimos usuários
+  const users = (usersData.users || []).slice(0, 5);
+  document.getElementById('dash-users-wrap').innerHTML = buildUsersTable(users, false);
+}
+
+// ── Usuários ─────────────────────────────────────────────────────
+async function loadAllUsers() {
+  const data = await api('GET', '/api/admin/users');
+  renderUsersTable(data.users || []);
+}
+
+async function searchUsers() {
+  const q = document.getElementById('search-input').value.trim();
+  if (!q) return loadAllUsers();
+  const data = await api('GET', `/api/admin/search?q=${encodeURIComponent(q)}`);
+  renderUsersTable(data.users || []);
+}
+
+function renderUsersTable(users) {
+  document.getElementById('users-tbody').innerHTML = buildUsersTableRows(users, true);
+  closeDetail();
+}
+
+function buildUsersTable(users, actions) {
+  return `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <thead><tr>
+      <th style="padding:8px 10px;color:var(--text2);font-size:10px;border-bottom:1px solid var(--border);">ID</th>
+      <th style="padding:8px 10px;color:var(--text2);font-size:10px;border-bottom:1px solid var(--border);">Nome</th>
+      <th style="padding:8px 10px;color:var(--text2);font-size:10px;border-bottom:1px solid var(--border);">E-mail</th>
+      <th style="padding:8px 10px;color:var(--text2);font-size:10px;border-bottom:1px solid var(--border);">Creditos</th>
+      <th style="padding:8px 10px;color:var(--text2);font-size:10px;border-bottom:1px solid var(--border);">Cadastro</th>
+    </tr></thead>
+    <tbody>${buildUsersTableRows(users, false)}</tbody>
+  </table>`;
+}
+
+function buildUsersTableRows(users, actions) {
+  if (!users.length) return `<tr><td colspan="7" style="color:var(--text2);padding:16px;text-align:center;">Nenhum usuario encontrado</td></tr>`;
+  return users.map(u => `
+    <tr>
+      <td style="color:var(--text2);">#${u.id}</td>
+      <td style="font-weight:600;">${esc(u.name)}</td>
+      <td style="color:var(--text2);font-size:11px;">${esc(u.email)}</td>
+      <td style="color:var(--cyan);font-weight:700;">${u.credits}</td>
+      ${actions ? `<td>${u.blocked ? '<span class="badge-blocked">Bloqueado</span>' : '<span class="badge-ok">Ativo</span>'}</td>` : ''}
+      <td style="color:var(--text2);font-size:11px;">${fmtDate(u.createdAt)}</td>
+      ${actions ? `<td><button class="btn btn-ghost btn-sm" onclick="openDetail(${u.id})">Detalhes</button></td>` : ''}
+    </tr>
+  `).join('');
+}
+
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Detalhe do Usuário ───────────────────────────────────────────
+async function openDetail(uid) {
+  currentUserId = uid;
+  const data = await api('GET', `/api/admin/user?id=${uid}`);
+  if (data.error) { toast('Erro ao carregar usuario', 'err'); return; }
+
+  document.getElementById('det-name').textContent    = data.name;
+  document.getElementById('det-email').textContent   = data.email;
+  document.getElementById('det-credits').textContent = data.credits;
+
+  const blockBtn = document.getElementById('det-block-btn');
+  if (data.blocked) {
+    blockBtn.textContent = 'Desbloquear Conta';
+    blockBtn.className = 'btn btn-green btn-sm';
+    blockBtn.dataset.blocked = '1';
+  } else {
+    blockBtn.textContent = 'Bloquear Conta';
+    blockBtn.className = 'btn btn-red btn-sm';
+    blockBtn.dataset.blocked = '0';
+  }
+
+  // Skins
+  const skinsEl = document.getElementById('det-skins');
+  if (data.skins.length === 0) {
+    skinsEl.innerHTML = '<span style="color:var(--text2);font-size:11px;">Nenhuma skin</span>';
+  } else {
+    skinsEl.innerHTML = data.skins.map(sid =>
+      `<div class="skin-chip">Skin ${sid}<span class="rm" onclick="revokeSkin(${sid})" title="Remover">x</span></div>`
+    ).join('');
+  }
+
+  // Pedidos
+  const ordersEl = document.getElementById('det-orders');
+  if (!data.orders || !data.orders.length) {
+    ordersEl.innerHTML = '<span style="color:var(--text2);font-size:11px;">Sem pedidos</span>';
+  } else {
+    ordersEl.innerHTML = buildOrdersTable(data.orders);
+  }
+
+  document.getElementById('user-detail').classList.add('open');
+  document.getElementById('user-detail').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function closeDetail() {
+  document.getElementById('user-detail').classList.remove('open');
+  currentUserId = null;
+}
+
+// ── Creditos ─────────────────────────────────────────────────────
+async function adjustCredits() {
+  if (!currentUserId) return;
+  const amount = Number(document.getElementById('cr-amount').value);
+  const mode   = document.getElementById('cr-mode').value;
+  if (!Number.isInteger(amount) || amount < 0) { toast('Valor invalido', 'err'); return; }
+  const data = await api('POST', '/api/admin/credits', { userId: currentUserId, amount, mode });
+  if (data.error) { toast('Erro: ' + data.error, 'err'); return; }
+  document.getElementById('det-credits').textContent = data.credits;
+  toast(`Creditos atualizados: ${data.credits} CR`);
+  loadDashboard();
+}
+
+// ── Skins ────────────────────────────────────────────────────────
+async function grantSkin() {
+  if (!currentUserId) return;
+  const skinId = Number(document.getElementById('skin-select').value);
+  if (isNaN(skinId)) { toast('Selecione uma skin', 'err'); return; }
+  const data = await api('POST', '/api/admin/skin', { userId: currentUserId, skinId, action: 'grant' });
+  if (data.error) { toast('Erro: ' + data.error, 'err'); return; }
+  toast(`Skin ${skinId} concedida!`);
+  openDetail(currentUserId);
+}
+
+async function revokeSkin(skinId) {
+  if (!currentUserId) return;
+  if (!confirm(`Remover skin ${skinId} deste usuario?`)) return;
+  const data = await api('POST', '/api/admin/skin', { userId: currentUserId, skinId, action: 'revoke' });
+  if (data.error) { toast('Erro: ' + data.error, 'err'); return; }
+  toast(`Skin ${skinId} removida`);
+  openDetail(currentUserId);
+}
+
+async function revokeAllSkins() {
+  if (!currentUserId) return;
+  if (!confirm('Remover TODAS as skins deste usuario?')) return;
+  const data = await api('POST', '/api/admin/skin', { userId: currentUserId, action: 'revoke_all' });
+  if (data.error) { toast('Erro: ' + data.error, 'err'); return; }
+  toast('Todas as skins removidas');
+  openDetail(currentUserId);
+}
+
+// ── Bloquear ─────────────────────────────────────────────────────
+async function toggleBlock() {
+  if (!currentUserId) return;
+  const btn     = document.getElementById('det-block-btn');
+  const blocked = btn.dataset.blocked === '0';
+  if (!confirm(blocked ? 'Bloquear esta conta? O usuario nao conseguira mais logar.' : 'Desbloquear esta conta?')) return;
+  const data = await api('POST', '/api/admin/block', { userId: currentUserId, blocked });
+  if (data.error) { toast('Erro: ' + data.error, 'err'); return; }
+  toast(data.blocked ? 'Conta bloqueada' : 'Conta desbloqueada', data.blocked ? 'err' : 'ok');
+  openDetail(currentUserId);
+}
+
+// ── Pedidos ───────────────────────────────────────────────────────
+async function loadOrders() {
+  const data = await api('GET', '/api/admin/orders?limit=100');
+  document.getElementById('orders-tbody').innerHTML =
+    buildOrdersTableRows(data.orders || []);
+}
+
+function buildOrdersTable(orders) {
+  return `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+    <thead><tr>
+      <th style="padding:6px 8px;color:var(--text2);font-size:10px;border-bottom:1px solid var(--border);">#</th>
+      <th style="padding:6px 8px;color:var(--text2);font-size:10px;border-bottom:1px solid var(--border);">Usuario</th>
+      <th style="padding:6px 8px;color:var(--text2);font-size:10px;border-bottom:1px solid var(--border);">Pacote</th>
+      <th style="padding:6px 8px;color:var(--text2);font-size:10px;border-bottom:1px solid var(--border);">CR</th>
+      <th style="padding:6px 8px;color:var(--text2);font-size:10px;border-bottom:1px solid var(--border);">Valor</th>
+      <th style="padding:6px 8px;color:var(--text2);font-size:10px;border-bottom:1px solid var(--border);">Status</th>
+      <th style="padding:6px 8px;color:var(--text2);font-size:10px;border-bottom:1px solid var(--border);">Data</th>
+    </tr></thead>
+    <tbody>${buildOrdersTableRows(orders)}</tbody>
+  </table>`;
+}
+
+function buildOrdersTableRows(orders) {
+  if (!orders.length) return `<tr><td colspan="7" style="color:var(--text2);padding:12px;text-align:center;">Nenhum pedido</td></tr>`;
+  return orders.map(o => {
+    const cls = o.status === 'approved' ? 'approved' : o.status === 'pending' ? 'pending' : 'refunded';
+    return `<tr>
+      <td style="color:var(--text2);">#${o.id}</td>
+      <td style="font-size:11px;">${esc(o.display_name || o.email || o.user_id)}</td>
+      <td style="color:var(--text2);font-size:11px;">${esc(o.package_id)}</td>
+      <td style="color:var(--cyan);font-weight:700;">${o.credits_amount}</td>
+      <td style="color:var(--gold);">${fmtCents(o.price_cents)}</td>
+      <td><span class="badge-order badge-${cls}">${o.status}</span></td>
+      <td style="color:var(--text2);font-size:11px;">${fmtDate(o.created_at)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Init ─────────────────────────────────────────────────────────
+(async () => {
+  try {
+    const me = await api('GET', '/api/me');
+    if (me.loggedIn) {
+      document.getElementById('admin-badge').textContent = me.name || me.email;
+      showApp();
+    } else {
+      showLoginOverlay();
+    }
+  } catch(e) {
+    showLoginOverlay();
+  }
+})();
+
+document.getElementById('adm-pass').addEventListener('keyup', e => {
+  if (e.key === 'Enter') adminLogin();
+});
+</script>
+</body>
+</html>

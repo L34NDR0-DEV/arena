@@ -520,6 +520,110 @@ const ROUTES = [
       sendJson(res, 200, { refunded: true, orderId });
     },
   },
+
+  // Admin: busca usuários por nome ou email
+  {
+    method: 'GET', path: '/api/admin/search',
+    auth: true,
+    handler: (req, res, { user, query }) => {
+      if (user.email !== ADMIN_EMAIL) return sendJson(res, 403, { error: 'forbidden' });
+      const q = `%${(query.q || '').trim()}%`;
+      const users = db.adminSearch.all(q, q).map(u => ({
+        id: u.id, email: u.email, name: u.display_name,
+        credits: u.credits, blocked: !!u.blocked, createdAt: u.created_at,
+      }));
+      sendJson(res, 200, { users });
+    },
+  },
+
+  // Admin: detalhes completos de um usuário (skins + pedidos)
+  {
+    method: 'GET', path: '/api/admin/user',
+    auth: true,
+    handler: (req, res, { user, query }) => {
+      if (user.email !== ADMIN_EMAIL) return sendJson(res, 403, { error: 'forbidden' });
+      const uid = Number(query.id);
+      if (!Number.isInteger(uid) || uid <= 0) return sendJson(res, 400, { error: 'invalid_id' });
+      const target = db.adminFindUser.get(uid);
+      if (!target) return sendJson(res, 404, { error: 'not_found' });
+      const skins  = db.listOwnedSkins.all(uid).map(r => r.skin_id);
+      const orders = db.adminUserOrders.all(uid);
+      sendJson(res, 200, {
+        id: target.id, email: target.email, name: target.display_name,
+        credits: target.credits, blocked: !!target.blocked,
+        createdAt: target.created_at, skins, orders,
+      });
+    },
+  },
+
+  // Admin: ajusta créditos de um usuário (valor absoluto ou delta)
+  {
+    method: 'POST', path: '/api/admin/credits',
+    auth: true,
+    handler: (req, res, { body, user }) => {
+      if (user.email !== ADMIN_EMAIL) return sendJson(res, 403, { error: 'forbidden' });
+      const uid    = Number(body.userId);
+      const amount = Number(body.amount);
+      const mode   = body.mode || 'set'; // 'set' | 'add' | 'subtract'
+      if (!Number.isInteger(uid) || uid <= 0) return sendJson(res, 400, { error: 'invalid_user' });
+      if (!Number.isInteger(amount) || amount < 0) return sendJson(res, 400, { error: 'invalid_amount' });
+      const target = db.adminFindUser.get(uid);
+      if (!target) return sendJson(res, 404, { error: 'not_found' });
+      let newCredits;
+      if (mode === 'add')      newCredits = target.credits + amount;
+      else if (mode === 'subtract') newCredits = Math.max(0, target.credits - amount);
+      else                     newCredits = amount;
+      db.adminSetCredits.run(newCredits, uid);
+      console.log(`[ADMIN] Créditos: user #${uid} ${target.credits} -> ${newCredits} (${mode} ${amount})`);
+      sendJson(res, 200, { userId: uid, credits: newCredits });
+    },
+  },
+
+  // Admin: dar ou remover uma skin de um usuário
+  {
+    method: 'POST', path: '/api/admin/skin',
+    auth: true,
+    handler: (req, res, { body, user }) => {
+      if (user.email !== ADMIN_EMAIL) return sendJson(res, 403, { error: 'forbidden' });
+      const uid    = Number(body.userId);
+      const skinId = Number(body.skinId);
+      const action = body.action; // 'grant' | 'revoke' | 'revoke_all'
+      if (!Number.isInteger(uid) || uid <= 0) return sendJson(res, 400, { error: 'invalid_user' });
+      if (!db.adminFindUser.get(uid)) return sendJson(res, 404, { error: 'not_found' });
+      if (action === 'revoke_all') {
+        db.adminRemoveAllSkins.run(uid);
+        console.log(`[ADMIN] Skins removidas: todas do user #${uid}`);
+      } else if (action === 'grant') {
+        if (!Number.isInteger(skinId)) return sendJson(res, 400, { error: 'invalid_skin' });
+        db.grantSkin.run(uid, skinId);
+        console.log(`[ADMIN] Skin concedida: skin #${skinId} -> user #${uid}`);
+      } else if (action === 'revoke') {
+        if (!Number.isInteger(skinId)) return sendJson(res, 400, { error: 'invalid_skin' });
+        db.adminRemoveSkin.run(uid, skinId);
+        console.log(`[ADMIN] Skin removida: skin #${skinId} do user #${uid}`);
+      } else {
+        return sendJson(res, 400, { error: 'invalid_action' });
+      }
+      const skins = db.listOwnedSkins.all(uid).map(r => r.skin_id);
+      sendJson(res, 200, { userId: uid, skins });
+    },
+  },
+
+  // Admin: bloquear ou desbloquear conta
+  {
+    method: 'POST', path: '/api/admin/block',
+    auth: true,
+    handler: (req, res, { body, user }) => {
+      if (user.email !== ADMIN_EMAIL) return sendJson(res, 403, { error: 'forbidden' });
+      const uid     = Number(body.userId);
+      const blocked = body.blocked ? 1 : 0;
+      if (!Number.isInteger(uid) || uid <= 0) return sendJson(res, 400, { error: 'invalid_user' });
+      if (!db.adminFindUser.get(uid)) return sendJson(res, 404, { error: 'not_found' });
+      db.adminSetBlocked.run(blocked, uid);
+      console.log(`[ADMIN] Conta #${uid} ${blocked ? 'BLOQUEADA' : 'DESBLOQUEADA'}`);
+      sendJson(res, 200, { userId: uid, blocked: !!blocked });
+    },
+  },
 ];
 
 function matchRoute(method, urlPath) {
@@ -540,6 +644,7 @@ function handleApi(req, res, urlPath) {
 
   const user = auth.resolveUserFromCookieHeader(req.headers.cookie);
   if (route.auth && !user) return sendJson(res, 401, { error: 'unauthenticated' });
+  if (user && user.blocked && user.email !== ADMIN_EMAIL) return sendJson(res, 403, { error: 'account_blocked' });
 
   const query = parseQuery(req);
 

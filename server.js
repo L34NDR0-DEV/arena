@@ -398,6 +398,16 @@ const server = http.createServer((req, res) => {
   if (urlPath.startsWith('/api/')) { handleApi(req, res, urlPath); return; }
 
   if (urlPath === '/') urlPath = '/index.html';
+  // Painel admin: qualquer um pode carregar o HTML (o JS dentro verifica sessão),
+  // mas bloqueia acesso direto de IPs externos em produção como defesa extra.
+  if (urlPath === '/admin.html' || urlPath === '/admin') {
+    const ip = req.socket.remoteAddress || '';
+    const isLocal = ip === '127.0.0.1' || ip === '::1' || ip === '::ffff:127.0.0.1';
+    if (!isLocal && process.env.NODE_ENV === 'production') {
+      res.writeHead(404); res.end('Not found'); return;
+    }
+    if (urlPath === '/admin') urlPath = '/admin.html';
+  }
   const filePath = path.join(ROOT, urlPath);
 
   // Segurança: não servir fora do ROOT
