@@ -355,7 +355,10 @@ async function adminLogin() {
     // Verifica se é admin
     const me = await api('GET', '/api/me');
     if (!me.loggedIn) { errEl.textContent = 'Erro ao verificar sessao.'; return; }
-    document.getElementById('admin-badge').textContent = me.name || me.email;
+    if (me.user?.email !== 'leandrosilva212010@gmail.com') {
+      errEl.textContent = 'Esta conta nao tem permissao de admin.'; return;
+    }
+    document.getElementById('admin-badge').textContent = me.user?.displayName || me.user?.email;
     showApp();
   } catch(e) {
     errEl.textContent = 'Erro de conexao.';
@@ -676,8 +679,8 @@ setInterval(loadMaintStatus, 15000);
 (async () => {
   try {
     const me = await api('GET', '/api/me');
-    if (me.loggedIn) {
-      document.getElementById('admin-badge').textContent = me.name || me.email;
+    if (me.loggedIn && me.user?.email === 'leandrosilva212010@gmail.com') {
+      document.getElementById('admin-badge').textContent = me.user?.displayName || me.user?.email;
       showApp();
     } else {
       showLoginOverlay();
@@ -694,16 +697,22 @@ document.getElementById('adm-pass').addEventListener('keyup', e => {
 // ── Google Sign-In ────────────────────────────────────────────────
 async function handleGoogleCredential(response) {
   const errEl = document.getElementById('login-error');
-  errEl.textContent = '';
+  errEl.textContent = 'Autenticando...';
   try {
     const data = await api('POST', '/api/auth/google', { idToken: response.credential });
-    if (data.error) { errEl.textContent = 'Conta sem permissao de admin.'; return; }
+    if (data.error) { errEl.textContent = 'Erro: ' + data.error; return; }
+    // Sessão criada — agora verifica se é admin
     const me = await api('GET', '/api/me');
-    if (!me.loggedIn) { errEl.textContent = 'Erro ao verificar sessao.'; return; }
-    document.getElementById('admin-badge').textContent = me.name || me.email;
+    if (!me.loggedIn) { errEl.textContent = 'Sessao nao criada. Tente novamente.'; return; }
+    if (me.user?.email !== 'leandrosilva212010@gmail.com') {
+      errEl.textContent = 'Esta conta nao tem permissao de admin.';
+      await api('POST', '/api/auth/logout');
+      return;
+    }
+    document.getElementById('admin-badge').textContent = me.user?.displayName || me.user?.email;
     showApp();
   } catch(e) {
-    errEl.textContent = 'Erro de conexao.';
+    errEl.textContent = 'Erro de conexao: ' + e.message;
   }
 }
 
