@@ -42,6 +42,26 @@ function maintenanceStatus() {
 function isLocked()   { return maintenance.phase === 'locked' || maintenance.phase === 'draining'; }
 function isWarning()  { return maintenance.phase === 'warning'; }
 function isOff()      { return maintenance.phase === 'off'; }
+
+// ── Presença online — rastrea quais userIds estão ativos ───────────────────
+// Considera online quem mandou heartbeat nos últimos 90s.
+const onlinePresence = new Map(); // userId -> timestamp
+const ONLINE_TTL_MS  = 90_000;
+
+function markOnline(userId) {
+  onlinePresence.set(userId, Date.now());
+}
+function isOnline(userId) {
+  const t = onlinePresence.get(userId);
+  return !!t && (Date.now() - t) < ONLINE_TTL_MS;
+}
+// Limpa entradas expiradas a cada 2 minutos
+setInterval(() => {
+  const now = Date.now();
+  for (const [uid, t] of onlinePresence) {
+    if (now - t >= ONLINE_TTL_MS) onlinePresence.delete(uid);
+  }
+}, 120_000);
 const MAX_BODY_BYTES = 1024 * 1024; // 1MB
 
 function clientIp(req) {
@@ -235,6 +255,7 @@ const ROUTES = [
     method: 'GET', path: '/api/me',
     handler: (req, res, { user }) => {
       if (!user) return sendJson(res, 200, { loggedIn: false });
+      markOnline(user.id);
       sendJson(res, 200, profileFor(user));
     },
   },
@@ -247,7 +268,8 @@ const ROUTES = [
       const total = db.countUsers.get().total;
       const users = db.listUsers.all().map(u => ({
         id: u.id, email: u.email, name: u.display_name,
-        credits: u.credits, createdAt: u.created_at,
+        credits: u.credits, blocked: !!u.blocked,
+        online: isOnline(u.id), createdAt: u.created_at,
       }));
       sendJson(res, 200, { total, users });
     },
@@ -562,7 +584,8 @@ const ROUTES = [
       const q = `%${(query.q || '').trim()}%`;
       const users = db.adminSearch.all(q, q).map(u => ({
         id: u.id, email: u.email, name: u.display_name,
-        credits: u.credits, blocked: !!u.blocked, createdAt: u.created_at,
+        credits: u.credits, blocked: !!u.blocked,
+        online: isOnline(u.id), createdAt: u.created_at,
       }));
       sendJson(res, 200, { users });
     },
@@ -660,6 +683,7 @@ const ROUTES = [
       } else {
         maintenance.activeSessions.delete(sessionKey);
       }
+      markOnline(user.id);
       sendJson(res, 200, maintenanceStatus());
     },
   },

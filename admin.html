@@ -134,6 +134,10 @@
   .badge-approved{background:#00ffaa12;color:var(--green);border:1px solid #00ffaa25;}
   .badge-pending{background:#ffcc4412;color:var(--gold);border:1px solid #ffcc4425;}
   .badge-refunded{background:#ff880012;color:#ff8800;border:1px solid #ff880025;}
+  .online-dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:middle;flex-shrink:0;}
+  .online-dot.is-online{background:#00ffaa;box-shadow:0 0 6px #00ffaacc;animation:dotPulse 1.8s ease-in-out infinite;}
+  .online-dot.is-offline{background:#4a5568;box-shadow:none;}
+  @keyframes dotPulse{0%,100%{box-shadow:0 0 4px #00ffaa88}50%{box-shadow:0 0 10px #00ffaadd,0 0 18px #00ffaa44}}
 
   /* ── Inputs / Buttons ── */
   input,select{
@@ -571,11 +575,14 @@ function buildUsersTable(users, actions) {
 }
 
 function buildUsersTableRows(users, actions) {
-  if (!users.length) return `<tr><td colspan="7" style="color:var(--text2);padding:16px;text-align:center;">Nenhum usuario encontrado</td></tr>`;
+  if (!users.length) return `<tr><td colspan="8" style="color:var(--text2);padding:16px;text-align:center;">Nenhum usuario encontrado</td></tr>`;
   return users.map(u => `
     <tr>
       <td style="color:var(--text2);">#${u.id}</td>
-      <td style="font-weight:600;">${esc(u.name)}</td>
+      <td style="font-weight:600;white-space:nowrap;">
+        <span class="online-dot ${u.online ? 'is-online' : 'is-offline'}" title="${u.online ? 'Online agora' : 'Offline'}"></span>
+        &nbsp;${esc(u.name)}
+      </td>
       <td style="color:var(--text2);font-size:11px;">${esc(u.email)}</td>
       <td style="color:var(--cyan);font-weight:700;">${u.credits}</td>
       ${actions ? `<td>${u.blocked ? '<span class="badge-blocked">Bloqueado</span>' : '<span class="badge-ok">Ativo</span>'}</td>` : ''}
