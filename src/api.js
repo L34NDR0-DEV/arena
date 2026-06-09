@@ -3,7 +3,11 @@ const db       = require('./db');
 const auth     = require('./auth');
 const economy  = require('./economy');
 const payments = require('./payments');
+const receipt  = require('./receipt');
+const mailer   = require('./mailer');
 const { rateLimit } = require('./ratelimit');
+
+const ADMIN_EMAIL = 'leandrosilva212010@gmail.com';
 
 const COOKIE_SECURE = process.env.COOKIE_SECURE === '1';
 const MAX_BODY_BYTES = 1024 * 1024; // 1MB
@@ -432,6 +436,88 @@ const ROUTES = [
     handler: (req, res, { user }) => {
       const rows = db.recentOrders.all(user.id, 10);
       sendJson(res, 200, { orders: rows });
+    },
+  },
+
+  // Envia comprovante por e-mail para o próprio usuário logado.
+  {
+    method: 'POST', path: '/api/payments/receipt',
+    auth: true,
+    rateLimit: rateLimited('receipt', 3, 300_000, (req, { user }) => user.id),
+    handler: async (req, res, { body, user }) => {
+      const orderId = Number(body.orderId);
+      if (!Number.isInteger(orderId) || orderId <= 0) return sendJson(res, 400, { error: 'invalid_order' });
+
+      const order = db.findOrderById.get(orderId);
+      if (!order || order.user_id !== user.id) return sendJson(res, 404, { error: 'order_not_found' });
+      if (order.status !== 'approved' && order.status !== 'refunded') return sendJson(res, 400, { error: 'order_not_approved' });
+
+      if (!mailer.isConfigured()) return sendJson(res, 503, { error: 'email_not_configured' });
+
+      const result = await receipt.sendReceiptEmail({
+        order,
+        userName: user.display_name,
+        userEmail: user.email,
+      });
+      if (!result.ok) return sendJson(res, 502, { error: 'email_send_failed' });
+      sendJson(res, 200, { sent: true });
+    },
+  },
+
+  // Admin: lista todos os pedidos (apenas leandrosilva212010@gmail.com).
+  {
+    method: 'GET', path: '/api/admin/orders',
+    auth: true,
+    handler: (req, res, { user, query }) => {
+      if (user.email !== ADMIN_EMAIL) return sendJson(res, 403, { error: 'forbidden' });
+      const limit = Math.min(Number(query.limit) || 50, 200);
+      const rows  = db.recentOrdersAdmin.all(limit);
+      sendJson(res, 200, { orders: rows });
+    },
+  },
+
+  // Admin: executa reembolso de um pedido via API do Mercado Pago.
+  {
+    method: 'POST', path: '/api/admin/refund',
+    auth: true,
+    handler: async (req, res, { body, user }) => {
+      if (user.email !== ADMIN_EMAIL) return sendJson(res, 403, { error: 'forbidden' });
+
+      const orderId = Number(body.orderId);
+      if (!Number.isInteger(orderId) || orderId <= 0) return sendJson(res, 400, { error: 'invalid_order' });
+
+      const order = db.findOrderById.get(orderId);
+      if (!order) return sendJson(res, 404, { error: 'order_not_found' });
+      if (order.status !== 'approved') return sendJson(res, 400, { error: `order_status_${order.status}` });
+
+      if (!order.mp_payment_id) return sendJson(res, 400, { error: 'no_payment_id' });
+
+      // Chama a API do Mercado Pago para estornar.
+      const refundResult = await payments.refundPayment(order.mp_payment_id);
+      if (!refundResult.ok) return sendJson(res, 502, { error: 'refund_failed', detail: refundResult.reason });
+
+      // Debita os créditos e marca o pedido como reembolsado atomicamente.
+      db.transaction(() => {
+        db.setOrderStatus.run('refunded', order.mp_payment_id, orderId);
+        // Debita apenas se o usuário ainda tiver saldo suficiente; caso contrário, zera.
+        const orderUser = db.findUserById.get(order.user_id);
+        const debit = Math.min(order.credits_amount, orderUser ? orderUser.credits : 0);
+        if (debit > 0) db.spendCredits.run(debit, order.user_id, debit);
+      });
+
+      // Envia e-mail de confirmação do reembolso ao usuário.
+      const orderUser = db.findUserById.get(order.user_id);
+      if (orderUser && mailer.isConfigured()) {
+        const updatedOrder = db.findOrderById.get(orderId);
+        receipt.sendReceiptEmail({
+          order: updatedOrder,
+          userName: orderUser.display_name,
+          userEmail: orderUser.email,
+        }).catch(() => {});
+      }
+
+      console.log(`[ADMIN] Reembolso executado: pedido #${orderId}, usuário ${order.user_id}, R$ ${(order.price_cents/100).toFixed(2)}`);
+      sendJson(res, 200, { refunded: true, orderId });
     },
   },
 ];

@@ -135,6 +135,7 @@ const stmts = {
   setOrderPreference:   db.prepare(`UPDATE credit_orders SET mp_preference_id = ?, updated_at = datetime('now') WHERE id = ?`),
   setOrderStatus:       db.prepare(`UPDATE credit_orders SET status = ?, mp_payment_id = ?, updated_at = datetime('now') WHERE id = ?`),
   recentOrders:         db.prepare(`SELECT * FROM credit_orders WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`),
+  recentOrdersAdmin:    db.prepare(`SELECT o.*, u.email, u.display_name FROM credit_orders o JOIN users u ON u.id = o.user_id ORDER BY o.created_at DESC LIMIT ?`),
 
   // Aprova o pedido e credita o saldo atomicamente, só se ainda 'pending'.
   // O filtro WHERE garante idempotência: reprocessar o mesmo webhook não soma duas vezes.

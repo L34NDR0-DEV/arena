@@ -664,6 +664,48 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .pkg-buy-btn:active{transform:translateY(0) scale(.97);}
 .pkg-buy-btn.loading{opacity:.6;cursor:wait;pointer-events:none;animation:none;}
 
+/* Caixa de politica da loja de creditos */
+.shop-policy-box{
+  background:#061220;border:1px solid #00d4ff22;border-radius:8px;
+  padding:18px 20px;display:flex;flex-direction:column;gap:8px;
+}
+.shop-policy-title{font-size:9px;color:var(--cyan);letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:2px;}
+.shop-policy-text{margin:0;font-size:9px;color:#7a9ab8;line-height:1.75;}
+.shop-policy-text strong{color:#c0d8f0;}
+.shop-policy-link{color:var(--cyan);text-decoration:underline;}
+.shop-policy-link:hover{color:#5be8ff;}
+.shop-policy-methods{display:flex;flex-wrap:wrap;gap:6px;}
+.pay-method{
+  font-size:8px;font-weight:700;letter-spacing:.5px;padding:4px 10px;border-radius:4px;
+  background:#0a2030;border:1px solid #00d4ff33;color:#00d4ff;
+}
+.shop-policy-btn{
+  align-self:flex-start;margin-top:4px;
+  background:none;border:1px solid #00d4ff44;color:#7ab8d8;
+  font-family:'Press Start 2P',monospace;font-size:8px;letter-spacing:.5px;
+  padding:8px 14px;border-radius:4px;cursor:pointer;transition:border-color .2s,color .2s;
+}
+.shop-policy-btn:hover{border-color:var(--cyan);color:var(--cyan);}
+.shop-order-row{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  padding:10px 0;border-bottom:1px solid #ffffff0d;font-size:9px;
+}
+.shop-order-row:last-child{border-bottom:none;}
+.shop-order-info{display:flex;flex-direction:column;gap:3px;}
+.shop-order-id{color:#5a8aaa;font-size:8px;}
+.shop-order-val{color:#e0f0ff;font-weight:700;}
+.shop-order-status{font-size:8px;padding:2px 8px;border-radius:3px;font-weight:700;}
+.shop-order-status.approved{color:#00d4aa;background:#00d4aa14;border:1px solid #00d4aa33;}
+.shop-order-status.pending{color:#ffcc44;background:#ffcc4414;border:1px solid #ffcc4433;}
+.shop-order-status.refunded{color:#ff8844;background:#ff884414;border:1px solid #ff884433;}
+.shop-receipt-btn{
+  font-family:'Press Start 2P',monospace;font-size:7px;padding:6px 10px;
+  background:none;border:1px solid #00d4ff44;color:#7ab8d8;border-radius:3px;
+  cursor:pointer;transition:border-color .2s,color .2s;white-space:nowrap;
+}
+.shop-receipt-btn:hover{border-color:var(--cyan);color:var(--cyan);}
+.shop-receipt-btn:disabled{opacity:.4;cursor:wait;}
+
 .about-body{padding-top:6px;}
 .about-hero{
   display:flex;align-items:center;gap:14px;padding:14px 16px;margin:0 18px 4px;

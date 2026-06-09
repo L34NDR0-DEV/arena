@@ -3,7 +3,8 @@
 // Sem MP_ACCESS_TOKEN configurado, os pacotes ficam "desabilitados" e o
 // restante do jogo continua funcionando normalmente — não é um requisito
 // para rodar o servidor.
-const db = require('./db');
+const db      = require('./db');
+const receipt = require('./receipt');
 
 const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN || '';
 const PUBLIC_URL      = (process.env.PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '');
@@ -138,7 +139,48 @@ async function handleWebhook(query, body) {
     return true;
   });
 
+  // Envia comprovante por e-mail após crédito confirmado (não bloqueia a resposta ao MP).
+  if (result) {
+    const orderUser = db.findUserById.get(order.user_id);
+    const updatedOrder = db.findOrderById.get(orderId);
+    if (orderUser && updatedOrder) {
+      receipt.sendReceiptEmail({
+        order: updatedOrder,
+        userName: orderUser.display_name,
+        userEmail: orderUser.email,
+      }).catch(err => console.error('[EMAIL] Falha ao enviar comprovante:', err.message));
+    }
+  }
+
   return { ok: true, credited: result };
 }
 
-module.exports = { CREDIT_PACKAGES, isEnabled, createCheckout, handleWebhook };
+// Solicita estorno total de um pagamento ao Mercado Pago.
+async function refundPayment(mpPaymentId) {
+  const mp = getMp();
+  if (!mp) return { ok: false, reason: 'payments_disabled' };
+  try {
+    // A API do MP para reembolso é um POST em /v1/payments/{id}/refunds.
+    // O SDK v2 expõe isso via mp.payment.refund ou via fetch direto.
+    const res = await fetch(`https://api.mercadopago.com/v1/payments/${mpPaymentId}/refunds`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${MP_ACCESS_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: '{}',
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      console.error(`[PAGAMENTOS] Reembolso rejeitado pelo MP (payment ${mpPaymentId}):`, data);
+      return { ok: false, reason: data.message || `http_${res.status}` };
+    }
+    console.log(`[PAGAMENTOS] Reembolso aprovado pelo MP: payment ${mpPaymentId}, refund ${data.id}`);
+    return { ok: true, refundId: data.id };
+  } catch (err) {
+    console.error('[PAGAMENTOS] Erro ao solicitar reembolso:', err.message);
+    return { ok: false, reason: err.message };
+  }
+}
+
+module.exports = { CREDIT_PACKAGES, isEnabled, createCheckout, handleWebhook, refundPayment };
