@@ -9,6 +9,10 @@ const { rateLimit } = require('./ratelimit');
 
 const ADMIN_EMAIL = 'leandrosilva212010@gmail.com';
 
+// Injetado pelo server.js após inicialização (evita dependência circular).
+let _notifyUser = () => {};
+function setNotifyUser(fn) { _notifyUser = fn; }
+
 const COOKIE_SECURE = process.env.COOKIE_SECURE === '1';
 
 // ── Estado de manutenção (graceful shutdown) ───────────────────────────────
@@ -630,6 +634,7 @@ const ROUTES = [
       else                     newCredits = amount;
       db.adminSetCredits.run(newCredits, uid);
       console.log(`[ADMIN] Créditos: user #${uid} ${target.credits} -> ${newCredits} (${mode} ${amount})`);
+      _notifyUser(uid, { type: 'admin_update', kind: 'credits', credits: newCredits });
       sendJson(res, 200, { userId: uid, credits: newCredits });
     },
   },
@@ -660,6 +665,7 @@ const ROUTES = [
         return sendJson(res, 400, { error: 'invalid_action' });
       }
       const skins = db.listOwnedSkins.all(uid).map(r => r.skin_id);
+      _notifyUser(uid, { type: 'admin_update', kind: 'skins', skins });
       sendJson(res, 200, { userId: uid, skins });
     },
   },
@@ -747,6 +753,7 @@ const ROUTES = [
       if (!db.adminFindUser.get(uid)) return sendJson(res, 404, { error: 'not_found' });
       db.adminSetBlocked.run(blocked, uid);
       console.log(`[ADMIN] Conta #${uid} ${blocked ? 'BLOQUEADA' : 'DESBLOQUEADA'}`);
+      _notifyUser(uid, { type: 'admin_update', kind: 'blocked', blocked: !!blocked });
       sendJson(res, 200, { userId: uid, blocked: !!blocked });
     },
   },
@@ -790,4 +797,4 @@ function handleApi(req, res, urlPath) {
   });
 }
 
-module.exports = { handleApi, sendJson, isLocked, isWarning, maintenanceStatus };
+module.exports = { handleApi, sendJson, isLocked, isWarning, maintenanceStatus, setNotifyUser };

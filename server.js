@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const fs     = require('fs');
 const path   = require('path');
 
-const { handleApi, isLocked, maintenanceStatus } = require('./src/api');
+const { handleApi, isLocked, maintenanceStatus, setNotifyUser } = require('./src/api');
 const auth          = require('./src/auth');
 const economy       = require('./src/economy');
 const db            = require('./src/db');
@@ -661,6 +661,18 @@ function parseFrame(buf) {
   }
   return { opcode: buf[0] & 0x0f, payload, consumed: total };
 }
+
+// Envia mensagem WebSocket para um usuário autenticado pelo userId do banco.
+// Usado por src/api.js para notificar mudanças feitas pelo admin em tempo real.
+function notifyUser(userId, msgObj) {
+  const text = JSON.stringify(msgObj);
+  for (const [socket, info] of socks) {
+    if (info.userId === userId) wsSend(socket, text);
+  }
+}
+// Injeta a função no módulo api (resolve dependência circular)
+setNotifyUser(notifyUser);
+module.exports = { notifyUser };
 
 server.listen(PORT, () => {
   console.log(`\n  Tower Defense on the Space`);

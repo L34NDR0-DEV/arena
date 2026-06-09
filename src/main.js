@@ -2364,6 +2364,27 @@ window._handleMaintenanceLocked = function(status) {
   }
 };
 
+// Trata mudanças aplicadas pelo admin em tempo real via WebSocket
+window._handleAdminUpdate = function(msg) {
+  if (!currentUser) return;
+  if (msg.kind === 'credits') {
+    const prev = currentUser.credits ?? 0;
+    currentUser.credits = msg.credits;
+    updateCreditsDisplay();
+    // Animação de ganho/perda de créditos igual à da loja
+    if (msg.credits !== prev) animateCreditsGain(prev, msg.credits);
+  } else if (msg.kind === 'skins') {
+    if (profile) profile.ownedSkins = msg.skins;
+  } else if (msg.kind === 'blocked' && msg.blocked) {
+    // Conta bloqueada: desconecta e volta ao login com aviso
+    showNotify('Sua conta foi suspensa pelo administrador.');
+    setTimeout(() => {
+      if (typeof net !== 'undefined') { try { net.disconnect(); } catch(e){} }
+      showScreen('login');
+    }, 2000);
+  }
+};
+
 // ── Inicialização: tenta sessão existente, senão mostra tela de login ──
 // setupGoogleSignIn() só é chamada aqui, quando não há sessão, para evitar
 // requisições desnecessárias ao Google e o One Tap automático para logados.

@@ -68,6 +68,10 @@ export class NetworkClient {
         if (typeof window._handleMaintenanceLocked === 'function')
           window._handleMaintenanceLocked(msg.status || {});
         break;
+      case 'admin_update':
+        if (typeof window._handleAdminUpdate === 'function')
+          window._handleAdminUpdate(msg);
+        break;
     }
   }
 
