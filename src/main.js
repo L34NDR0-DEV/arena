@@ -840,22 +840,21 @@ function buildShopTrack(){
     return;
   }
 
-  // Agrupa: linha clássica primeiro, depois — separadas por uma divisória —
-  // as naves da linha Arcade (novidade, com seu próprio visual de motores).
   const classics = available.filter(s=>!s.isArcade);
   const arcades  = available.filter(s=>s.isArcade);
   let i = 0;
+
   function appendCard(skin){
     const card = document.createElement('div');
     card.className = 'shop-card' + (skin.id===shopSelectedId ? ' selected' : '');
     card.dataset.id = skin.id;
     card.style.setProperty('--i', i++);
-    const cv = document.createElement('canvas'); cv.width = cv.height = 56;
+    const cv = document.createElement('canvas'); cv.width = cv.height = 64;
     const cctx = cv.getContext('2d');
     function draw(){
-      cctx.clearRect(0,0,56,56);
-      cctx.save(); cctx.translate(28,28);
-      skin.drawPreview(cctx, 56/skin._size);
+      cctx.clearRect(0,0,64,64);
+      cctx.save(); cctx.translate(32,32);
+      skin.drawPreview(cctx, 64/skin._size);
       cctx.restore();
     }
     if (skin.img){ skin.img.onload=draw; setTimeout(draw,300); }
@@ -863,9 +862,9 @@ function buildShopTrack(){
     const name = document.createElement('div');
     name.className = 'shop-card-name';
     name.textContent = skin.name;
-    const tag = document.createElement('div');
     const price = shopPriceFor(skin.id);
     const isPromo = shopIsPromo(skin.id);
+    const tag = document.createElement('div');
     tag.className = 'shop-card-tag locked' + (isPromo ? ' promo' : '');
     tag.innerHTML = isPromo
       ? `<span class="shop-card-tag-old">${SHOP_PRICE} CR</span> ${price} CR`
@@ -880,6 +879,7 @@ function buildShopTrack(){
     card.onclick = () => selectShopSkin(skin.id);
     track.appendChild(card);
   }
+
   classics.forEach(appendCard);
   if (classics.length && arcades.length) {
     const divider = document.createElement('div');
@@ -937,10 +937,6 @@ window.selectShopSkin = function(skinId){
   });
 };
 
-window.shopScroll = function(dir){
-  const track = document.getElementById('shop-track');
-  track.scrollBy({ left: dir * 130, behavior: 'smooth' });
-};
 
 window.openShop = async function(){
   if (!currentUser) return;
@@ -986,8 +982,8 @@ window.openShopAt = async function(skinId){
   document.getElementById('shop-modal').style.display='flex';
   setTimeout(()=>{
     const card = document.querySelector(`#shop-track .shop-card[data-id="${target}"]`);
-    if (card) card.scrollIntoView({ behavior:'instant', inline:'center', block:'nearest' });
-  }, 0);
+    if (card) card.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }, 50);
 };
 
 window.closeShop = function(){
