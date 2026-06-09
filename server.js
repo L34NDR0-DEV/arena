@@ -51,6 +51,7 @@ const MIME = {
   '.svg':  'image/svg+xml; charset=utf-8',
   '.mp3':  'audio/mpeg',
   '.json': 'application/json',
+  '.xml':  'application/xml; charset=utf-8',
 };
 
 // ── Estado do servidor ─────────────────────────────────────────
