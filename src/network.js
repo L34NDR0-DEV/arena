@@ -76,6 +76,10 @@ export class NetworkClient {
         if (typeof window._handlePromoUpdate === 'function')
           window._handlePromoUpdate(msg.promo);
         break;
+      case 'user_promo':
+        if (typeof window._handleUserPromo === 'function')
+          window._handleUserPromo(msg.promo);
+        break;
       case 'prices_update':
         if (typeof window._handlePricesUpdate === 'function')
           window._handlePricesUpdate(msg.prices);

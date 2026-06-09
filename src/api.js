@@ -173,6 +173,9 @@ function profileFor(user) {
       endsAt: economy.PROMO_ENDS_AT,
     } : null,
     customPrices: loadShopConfig().prices || {},
+    userPromo: (() => {
+      try { return user.user_promo ? JSON.parse(user.user_promo) : null; } catch { return null; }
+    })(),
     tournament: {
       active: economy.isTournamentActive(),
       endsAt: economy.TOURNAMENT_ENDS_AT,
@@ -737,6 +740,38 @@ const ROUTES = [
       const skins = db.listOwnedSkins.all(uid).map(r => r.skin_id);
       _notifyUser(uid, { type: 'admin_update', kind: 'skins', skins });
       sendJson(res, 200, { userId: uid, skins });
+    },
+  },
+
+  // Admin: top compradores (por total gasto em CR)
+  {
+    method: 'GET', path: '/api/admin/top-buyers',
+    auth: true,
+    handler: (req, res, { user }) => {
+      if (user.email !== ADMIN_EMAIL) return sendJson(res, 403, { error: 'forbidden' });
+      const rows = db.topBuyers.all();
+      sendJson(res, 200, { buyers: rows });
+    },
+  },
+
+  // Admin: definir promoção individual para um usuário
+  {
+    method: 'POST', path: '/api/admin/user-promo',
+    auth: true,
+    handler: (req, res, { body, user }) => {
+      if (user.email !== ADMIN_EMAIL) return sendJson(res, 403, { error: 'forbidden' });
+      const uid = Number(body.userId);
+      if (!Number.isInteger(uid) || uid <= 0) return sendJson(res, 400, { error: 'invalid_user' });
+      if (!db.adminFindUser.get(uid)) return sendJson(res, 404, { error: 'not_found' });
+      // body.promo = null (remove) ou { skinIds, trailIds, discountPct, endsAt, note }
+      const promoJson = body.promo ? JSON.stringify(body.promo) : null;
+      db.setUserPromo.run(promoJson, uid);
+      console.log(`[ADMIN] Promo individual: user #${uid}`, body.promo || 'removida');
+      // Notifica o usuário em tempo real se estiver online
+      if (body.promo) {
+        _notifyUser(uid, { type: 'user_promo', promo: body.promo });
+      }
+      sendJson(res, 200, { ok: true });
     },
   },
 

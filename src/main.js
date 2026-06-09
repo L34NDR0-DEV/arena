@@ -15,8 +15,23 @@ let currentUser = null; // {id,email,displayName,credits,equippedSkin}
 let profile     = null; // {user,ownedSkins,equippedSkin,rewardProgress,promo}
 
 // Preço efetivo de uma skin para o piloto atual.
-// Prioridade: promoção ativa > preço customizado pelo admin > padrão.
+// Prioridade: promo individual > promo global > preço customizado admin > padrão.
+function _userPromoActive(){
+  const up = profile?.userPromo;
+  if (!up) return false;
+  if (up.endsAt && Date.now() > new Date(up.endsAt).getTime()) return false;
+  return true;
+}
 function shopPriceFor(skinId){
+  // Promo individual do usuário (desconto %)
+  if (_userPromoActive()) {
+    const up = profile.userPromo;
+    if (up.skinIds && up.skinIds.includes(skinId)) {
+      const base = profile?.customPrices?.[skinId] ?? SHOP_PRICE;
+      return Math.round(base * (1 - (up.discountPct || 0) / 100));
+    }
+  }
+  // Promo global
   const promo = profile?.promo;
   if (promo && promo.skinIds.includes(skinId)) {
     const others = promo.skinIds.filter(id => id !== skinId);
@@ -29,12 +44,25 @@ function shopPriceFor(skinId){
   return SHOP_PRICE;
 }
 function shopIsPromo(skinId){
+  if (_userPromoActive() && profile.userPromo.skinIds?.includes(skinId)) return true;
   const promo = profile?.promo;
   if (!promo || !promo.skinIds.includes(skinId)) return false;
   const others = promo.skinIds.filter(id => id !== skinId);
   const owned = shopOwnedSet();
   const hasOther = others.length > 0 && others.every(id => owned.has(id));
   return !hasOther;
+}
+// Preço efetivo de rastro (considera userPromo)
+function trailPriceFor(trailId){
+  if (_userPromoActive()) {
+    const up = profile.userPromo;
+    if (up.trailIds && up.trailIds.includes(trailId)) {
+      const trail = TRAILS.find(t => t.id === trailId);
+      if (trail) return Math.round(trail.price * (1 - (up.discountPct || 0) / 100));
+    }
+  }
+  const trail = TRAILS.find(t => t.id === trailId);
+  return trail ? trail.price : 0;
 }
 function promoTimeLeftLabel(){
   const promo = profile?.promo;
@@ -987,7 +1015,7 @@ window.openShopAt = async function(skinId){
 };
 
 window.closeShop = function(){
-  _stopAllTrailPreviews();
+  _stopTrailFrameAnim();
   document.getElementById('shop-modal').style.display='none';
 };
 
@@ -1078,188 +1106,258 @@ window.switchShopTab = function(tab){
 };
 
 // ── Loja: aba de Rastros ──────────────────────────────────────
-let _trailPreviewCanvases = [];
+let _trailFrameAnimId = null;
+let _trailSelectedId  = 0;
 
-function _stopAllTrailPreviews(){
-  _trailPreviewCanvases.forEach(cv => {
-    if (cv._trailAnimId) { cancelAnimationFrame(cv._trailAnimId); cv._trailAnimId = null; }
-  });
-  _trailPreviewCanvases = [];
+function _stopTrailFrameAnim(){
+  if (_trailFrameAnimId) { cancelAnimationFrame(_trailFrameAnimId); _trailFrameAnimId = null; }
 }
 
+// Constrói a grade de cards (igual buildShopTrack, mas sem frame inline por card)
 function buildTrailsTab(){
-  _stopAllTrailPreviews();
+  _stopTrailFrameAnim();
   const grid = document.getElementById('shop-trails-grid');
   if (!grid) return;
+
   const owned    = new Set(profile?.ownedTrails || []);
   const equipped = profile?.equippedTrail ?? 0;
   grid.innerHTML = '';
 
-  TRAILS.forEach(trail => {
+  // Mostra TODOS os rastros — os possuídos/equipados ficam marcados, mas não somem
+  TRAILS.forEach((trail, i) => {
     const isOwned    = trail.free || owned.has(trail.id);
     const isEquipped = equipped === trail.id;
+    const isSelected = _trailSelectedId === trail.id;
 
     const card = document.createElement('div');
-    card.className = 'trail-card' + (isEquipped ? ' trail-equipped' : '');
+    card.className = 'shop-card'
+      + (isSelected  ? ' selected'      : '')
+      + (isEquipped  ? ' trail-active'  : '');
+    card.dataset.id = trail.id;
+    card.style.setProperty('--i', i);
 
-    // Canvas preview animado
-    const cv = document.createElement('canvas');
-    cv.width = 80; cv.height = 80;
-    _trailPreviewCanvases.push(cv);
-    startTrailPreview(cv, trail);
+    // Miniatura: bolinha colorida com glow (leve, sem animação — rápido)
+    const dot = document.createElement('div');
+    dot.className = 'trail-dot-preview';
+    dot.style.cssText = `
+      width:44px;height:44px;border-radius:50%;
+      background:radial-gradient(circle at 40% 35%, ${trail.colors[0]}, ${trail.colors[trail.colors.length-1] || trail.colors[0]}88);
+      box-shadow:0 0 16px ${trail.glow || trail.colors[0]}88,0 0 4px ${trail.glow || trail.colors[0]};
+      flex-shrink:0;
+    `;
 
-    // Nome
     const nameEl = document.createElement('div');
-    nameEl.className = 'trail-card-name';
+    nameEl.className = 'shop-card-name';
     nameEl.textContent = trail.name;
 
-    // Preço (só para rastros pagos não possuídos)
-    let priceEl = null;
-    if (!isOwned && trail.price > 0) {
-      priceEl = document.createElement('div');
-      priceEl.className = 'trail-card-price';
-      priceEl.textContent = trail.price + ' CR';
-    }
-
-    // Botão
-    const btn = document.createElement('button');
-    btn.className = 'play-btn trail-card-btn';
-    btn.setAttribute('aria-label', trail.name);
+    const tag = document.createElement('div');
     if (isEquipped) {
-      btn.textContent = 'EQUIPADO';
-      btn.disabled = true;
-      btn.style.cssText = 'background:linear-gradient(90deg,#0a4,#0f8);color:#020a14;cursor:default;';
+      tag.className = 'shop-card-tag owned';
+      tag.textContent = 'ATIVO';
     } else if (isOwned) {
-      btn.textContent = 'EQUIPAR';
-      btn.addEventListener('click', (e) => { e.stopPropagation(); equipTrail(trail.id); });
+      tag.className = 'shop-card-tag owned';
+      tag.textContent = 'POSSUIDO';
     } else {
-      btn.textContent = 'COMPRAR';
-      btn.addEventListener('click', (e) => { e.stopPropagation(); buyTrail(trail.id); });
+      const effectivePrice = trailPriceFor(trail.id);
+      const isUserPromo = _userPromoActive() && profile.userPromo?.trailIds?.includes(trail.id);
+      tag.className = 'shop-card-tag locked' + (trail.premium || isUserPromo ? ' promo' : '');
+      tag.innerHTML = isUserPromo
+        ? `<span class="shop-card-tag-old">${trail.price} CR</span> ${effectivePrice} CR`
+        : `${effectivePrice} CR`;
     }
 
-    // Clicar no card equipa/compra também (exceto se já equipado)
-    if (!isEquipped) {
-      card.style.cursor = 'pointer';
-      card.addEventListener('click', () => isOwned ? equipTrail(trail.id) : buyTrail(trail.id));
+    const isUserPromoCard = _userPromoActive() && profile.userPromo?.trailIds?.includes(trail.id);
+    if ((trail.premium || isUserPromoCard) && !isOwned) {
+      const badge = document.createElement('div');
+      badge.className = 'shop-card-promo-badge';
+      badge.textContent = isUserPromoCard ? 'OFERTA' : 'PREMIUM';
+      badge.textContent = 'PREMIUM';
+      card.appendChild(badge);
     }
 
-    const els = [cv, nameEl];
-    if (priceEl) els.push(priceEl);
-    els.push(btn);
-    card.append(...els);
+    card.append(dot, nameEl, tag);
+    card.onclick = () => selectTrail(trail.id);
     grid.appendChild(card);
   });
+
+  // Seleciona o equipado atual (ou o primeiro) ao abrir
+  const toSelect = equipped;
+  selectTrail(toSelect, true);
 }
 
-function startTrailPreview(canvas, trailDef){
+function selectTrail(trailId, silent = false){
+  _trailSelectedId = trailId;
+  const trail = TRAILS.find(t => t.id === trailId);
+  if (!trail) return;
+
+  const owned    = new Set(profile?.ownedTrails || []);
+  const equipped = profile?.equippedTrail ?? 0;
+  const isOwned  = trail.free || owned.has(trail.id);
+  const isEquipped = equipped === trail.id;
+
+  // Destaque na grade
+  document.querySelectorAll('#shop-trails-grid .shop-card').forEach(c => {
+    c.classList.toggle('selected', Number(c.dataset.id) === trailId);
+  });
+
+  // Frame lateral
+  document.getElementById('shop-trail-name').textContent = trail.name;
+
+  const statusEl = document.getElementById('shop-trail-status');
+  statusEl.className = 'shop-frame-status' + (trail.premium ? ' promo' : isEquipped ? ' owned' : '');
+  statusEl.textContent = trail.premium ? 'RASTRO PREMIUM' : isEquipped ? 'EQUIPADO' : isOwned ? 'POSSUIDO' : 'BLOQUEADO';
+
+  const priceEl = document.getElementById('shop-trail-price');
+  if (!isOwned && trail.price > 0) {
+    priceEl.style.display = 'block';
+    priceEl.textContent = trail.price + ' CR';
+    priceEl.className = 'skin-price' + (trail.premium ? ' promo' : '');
+  } else {
+    priceEl.style.display = 'none';
+  }
+
+  document.getElementById('shop-trail-success').style.display = 'none';
+  document.getElementById('shop-trail-error').style.display   = 'none';
+  document.getElementById('shop-trail-buy-btn').style.display     = (!isOwned) ? 'flex' : 'none';
+  document.getElementById('shop-trail-equip-btn').style.display   = (isOwned && !isEquipped) ? 'flex' : 'none';
+  document.getElementById('shop-trail-equipped-btn').style.display = isEquipped ? 'flex' : 'none';
+
+  // Botão comprar clicável
+  const buyBtn = document.getElementById('shop-trail-buy-btn');
+  buyBtn.onclick = () => confirmTrailPurchase(trail.id);
+
+  const equipBtn = document.getElementById('shop-trail-equip-btn');
+  equipBtn.onclick = () => equipTrail(trail.id);
+
+  // Preview animado no frame
+  _stopTrailFrameAnim();
+  const cv = document.getElementById('shop-trail-canvas');
+  startTrailFramePreview(cv, trail);
+}
+
+function startTrailFramePreview(canvas, trailDef){
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
-  let t = 0;
-  let points = [];
-  if (canvas._trailAnimId) cancelAnimationFrame(canvas._trailAnimId);
+  let t = 0, points = [];
+  if (canvas._animId) cancelAnimationFrame(canvas._animId);
 
-  // Para "Sem Rastro" só desenha a nave parada
   if (trailDef.style === 'none') {
     ctx.clearRect(0, 0, W, H);
     ctx.save();
     ctx.translate(W/2, H/2);
     ctx.beginPath();
-    ctx.moveTo(0, -9); ctx.lineTo(7, 8); ctx.lineTo(-7, 8);
+    ctx.moveTo(0, -12); ctx.lineTo(9, 11); ctx.lineTo(-9, 11);
     ctx.closePath();
     ctx.fillStyle = '#aaddff';
-    ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 10;
+    ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 14;
     ctx.fill();
     ctx.restore();
     return;
   }
 
   function tick(){
-    t += 0.04;
+    t += 0.035;
     ctx.clearRect(0, 0, W, H);
-    const r = Math.min(W, H) * 0.28;
+    const r = Math.min(W, H) * 0.3;
     const cx = W/2 + Math.cos(t) * r;
     const cy = H/2 + Math.sin(t) * r;
-    // Emite partícula a cada tick
-    points.push({ x: cx, y: cy, life: 1 });
+    points.push({ x: cx, y: cy, life: 1, maxLife: 1 });
     points = points.filter(p => p.life > 0);
-    points.forEach(p => {
-      p.life -= 0.055;
-      if (p.life > 0) drawPreviewParticle(ctx, p, p.life, trailDef, W, H);
-    });
+    points.forEach(p => { p.life -= 0.045; });
+    // Desenha rastro
+    _drawFrameTrailPoints(ctx, points, trailDef);
     // Nave
-    const ang = Math.atan2(Math.sin(t + Math.PI/2) * r, Math.cos(t + Math.PI/2) * r);
+    const ang = Math.atan2(Math.sin(t + Math.PI/2)*r, Math.cos(t + Math.PI/2)*r);
     ctx.save();
-    ctx.translate(cx, cy);
-    ctx.rotate(ang);
+    ctx.translate(cx, cy); ctx.rotate(ang);
     ctx.beginPath();
-    ctx.moveTo(0, -7); ctx.lineTo(5, 6); ctx.lineTo(-5, 6);
+    ctx.moveTo(0,-10); ctx.lineTo(7,9); ctx.lineTo(-7,9);
     ctx.closePath();
     ctx.fillStyle = '#aaddff';
-    ctx.shadowColor = '#00d4ff88'; ctx.shadowBlur = 8;
+    ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 10;
     ctx.fill();
     ctx.restore();
-    canvas._trailAnimId = requestAnimationFrame(tick);
+    _trailFrameAnimId = requestAnimationFrame(tick);
+    canvas._animId = _trailFrameAnimId;
   }
   tick();
 }
 
-function drawPreviewParticle(ctx, p, a, trailDef, W, H){
-  const color = trailDef.colors[Math.floor(Math.random() * trailDef.colors.length)];
-  ctx.save();
-  ctx.globalAlpha = a * 0.9;
-  if (trailDef.style === 'flame') {
-    const r = 5 * a;
-    const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 2.8);
-    grd.addColorStop(0, color);
-    grd.addColorStop(1, 'transparent');
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, r * 2.8, 0, Math.PI * 2);
-    ctx.fillStyle = grd;
-    ctx.fill();
-  } else if (trailDef.style === 'sparkle') {
-    const sz = 4 * a;
-    ctx.fillStyle = color;
-    ctx.shadowColor = trailDef.glow || color;
-    ctx.shadowBlur = 6;
-    // Estrela de 4 pontas
-    for (let i = 0; i < 4; i++) {
-      const ang = (i / 4) * Math.PI * 2;
+function _drawFrameTrailPoints(ctx, points, trailDef){
+  const colors = trailDef.colors;
+  const glow   = trailDef.glow || colors[0];
+  points.forEach((p, i) => {
+    const a = p.life;
+    if (a <= 0) return;
+    const sz = a * 9;
+    const color = colors[Math.floor((1-a) * (colors.length-1))];
+    ctx.save();
+    ctx.globalAlpha = a * 0.88;
+
+    if (trailDef.style === 'flame' || trailDef.style === 'comet') {
+      const grd = ctx.createRadialGradient(p.x,p.y,0, p.x,p.y,sz*2.5);
+      grd.addColorStop(0, color); grd.addColorStop(1,'transparent');
+      ctx.shadowColor=glow; ctx.shadowBlur=sz*2;
+      ctx.fillStyle=grd;
+      ctx.beginPath(); ctx.arc(p.x,p.y,sz*2.5,0,Math.PI*2); ctx.fill();
+    } else if (trailDef.style === 'sparkle' || trailDef.style === 'rainbow') {
+      const rc = trailDef.style==='rainbow' ? colors[Math.floor(Date.now()/80+i)%colors.length] : color;
+      ctx.shadowColor=glow; ctx.shadowBlur=sz*3; ctx.fillStyle=rc;
+      const r1=sz*0.9, r2=sz*0.32;
       ctx.beginPath();
-      ctx.moveTo(p.x, p.y);
-      ctx.lineTo(p.x + Math.cos(ang) * sz, p.y + Math.sin(ang) * sz);
-      ctx.lineWidth = 1.5 * a;
-      ctx.strokeStyle = color;
+      for(let k=0;k<8;k++){
+        const ang=(k*Math.PI)/4; const r=k%2===0?r1:r2;
+        k===0?ctx.moveTo(p.x+Math.cos(ang)*r,p.y+Math.sin(ang)*r)
+             :ctx.lineTo(p.x+Math.cos(ang)*r,p.y+Math.sin(ang)*r);
+      }
+      ctx.closePath(); ctx.fill();
+    } else if (trailDef.style === 'lightning' || trailDef.style === 'plasma') {
+      ctx.shadowColor=glow; ctx.shadowBlur=sz*4;
+      ctx.strokeStyle=color; ctx.lineWidth=sz*0.5;
+      ctx.beginPath();
+      ctx.arc(p.x+(Math.random()-.5)*6,p.y+(Math.random()-.5)*6,sz*.7,0,Math.PI*2);
       ctx.stroke();
+    } else if (trailDef.style === 'smoke' || trailDef.style === 'tempestade') {
+      const grd=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,sz*2);
+      grd.addColorStop(0,color+'cc'); grd.addColorStop(1,'transparent');
+      ctx.fillStyle=grd;
+      ctx.beginPath(); ctx.arc(p.x,p.y,sz*2,0,Math.PI*2); ctx.fill();
+    } else if (trailDef.style === 'cosmic') {
+      const rc=colors[Math.floor(Date.now()/60+i*2)%colors.length];
+      ctx.shadowColor=rc; ctx.shadowBlur=sz*5;
+      ctx.strokeStyle=rc; ctx.lineWidth=sz*0.4;
+      ctx.beginPath(); ctx.arc(p.x,p.y,sz*1.1,0,Math.PI*2); ctx.stroke();
+      const grd2=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,sz*.8);
+      grd2.addColorStop(0,'#ffffff'); grd2.addColorStop(.5,rc); grd2.addColorStop(1,'transparent');
+      ctx.fillStyle=grd2;
+      ctx.beginPath(); ctx.arc(p.x,p.y,sz*.8,0,Math.PI*2); ctx.fill();
+    } else {
+      ctx.shadowColor=glow; ctx.shadowBlur=sz*2; ctx.fillStyle=color;
+      ctx.beginPath(); ctx.arc(p.x,p.y,sz,0,Math.PI*2); ctx.fill();
     }
-  } else if (trailDef.style === 'lightning') {
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 1.5 * a;
-    ctx.shadowColor = trailDef.glow || color;
-    ctx.shadowBlur = 8;
-    ctx.beginPath();
-    ctx.moveTo(p.x, p.y);
-    ctx.lineTo(p.x + (Math.random()-0.5)*10, p.y + (Math.random()-0.5)*10);
-    ctx.stroke();
-  } else { // smoke
-    const r = 7 * a;
-    const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
-    grd.addColorStop(0, color + 'cc');
-    grd.addColorStop(1, 'transparent');
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-    ctx.fillStyle = grd;
-    ctx.fill();
-  }
-  ctx.restore();
+    ctx.restore();
+  });
 }
 
-async function buyTrail(trailId){
+async function confirmTrailPurchase(trailId){
+  const trail = TRAILS.find(t => t.id === trailId);
+  if (!trail) return;
+  const buyBtn = document.getElementById('shop-trail-buy-btn');
+  const errEl  = document.getElementById('shop-trail-error');
+  errEl.style.display = 'none';
+  const origText = buyBtn.textContent;
+  buyBtn.textContent = '...';
+  buyBtn.disabled = true;
+
   const { ok, data } = await apiFetch('/api/shop/trail/buy', { method:'POST', body:{ trailId } });
+
+  buyBtn.textContent = origText;
+  buyBtn.disabled = false;
   if (!ok) {
-    const msg = data?.error === 'already_owned' ? 'Rastro já possuído'
-              : data?.error === 'not_enough_credits' ? 'Créditos insuficientes'
-              : (data?.error || 'Erro ao comprar rastro');
-    showNotify(msg);
+    const msg = data?.error === 'already_owned'        ? 'Rastro já possuído'
+              : data?.error === 'insufficient_credits' ? 'Créditos insuficientes'
+              : (data?.error || 'Erro ao comprar');
+    errEl.textContent = msg; errEl.style.display = 'block';
     return;
   }
   currentUser.credits = data.credits;
@@ -1267,15 +1365,21 @@ async function buyTrail(trailId){
   updateCreditsBadge();
   if (!profile.ownedTrails) profile.ownedTrails = [];
   profile.ownedTrails.push(trailId);
+  // Sucesso
+  buyBtn.style.display = 'none';
+  const successEl = document.getElementById('shop-trail-success');
+  successEl.style.display = 'flex';
+  successEl.style.animation = 'none';
+  void successEl.offsetWidth;
+  successEl.style.animation = '';
   showNotify('Rastro desbloqueado!');
-  buildTrailsTab();
+  setTimeout(() => buildTrailsTab(), 1200);
 }
 
 async function equipTrail(trailId){
   const { ok } = await apiFetch('/api/shop/trail/equip', { method:'POST', body:{ trailId } });
   if (!ok) { showNotify('Erro ao equipar rastro'); return; }
   profile.equippedTrail = trailId;
-  // Atualiza também o jogador caso esteja numa partida
   if (game && game.player) game.player.equippedTrailId = trailId;
   buildTrailsTab();
 }
@@ -2625,6 +2729,14 @@ window._handleAdminUpdate = function(msg) {
       showScreen('login');
     }, 2000);
   }
+};
+
+// Recebe promoção individual enviada pelo admin via WebSocket
+window._handleUserPromo = function(promo) {
+  if (profile) profile.userPromo = promo || null;
+  showNotify(promo ? 'Voce recebeu uma oferta exclusiva! Abra a loja.' : 'Sua promocao expirou.');
+  const shopOpen = document.getElementById('shop-modal')?.style.display !== 'none';
+  if (shopOpen) { buildShopTrack(); buildTrailsTab(); }
 };
 
 // Atualiza promo em tempo real quando o admin altera (broadcast para todos)

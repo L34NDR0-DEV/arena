@@ -338,6 +338,10 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
         Loja
       </button>
+      <button class="nav-btn" onclick="showPage('buyers',this)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        Top Compradores
+      </button>
     </div>
     <div id="content">
 
@@ -536,6 +540,63 @@
         </div>
       </div>
 
+      <!-- TOP COMPRADORES -->
+      <div class="page" id="page-buyers">
+        <div class="card" style="margin-bottom:16px;">
+          <div class="card-title">Top Compradores</div>
+          <p style="font-size:11px;color:var(--text2);margin-bottom:16px;line-height:1.6;">
+            Usuarios que mais compraram creditos. Clique em um usuario para configurar uma promocao exclusiva para ele.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>#</th><th>Usuario</th><th>Email</th><th>Creditos</th><th>Total Gasto</th><th>Acao</th>
+              </tr></thead>
+              <tbody id="buyers-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" id="buyers-promo-card" style="display:none;">
+          <div class="card-title">Promocao Exclusiva para <span id="buyers-promo-name" style="color:var(--cyan);">—</span></div>
+          <p style="font-size:11px;color:var(--text2);margin-bottom:16px;line-height:1.6;">
+            O desconto so se aplica para as skins e/ou rastros selecionados abaixo.
+          </p>
+          <input type="hidden" id="buyers-promo-uid"/>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px;">
+            <div>
+              <div style="font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:700;">Skins com desconto</div>
+              <div id="buyers-skin-checks" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:700;">Rastros com desconto</div>
+              <div id="buyers-trail-checks" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;max-width:520px;margin-bottom:18px;">
+            <div>
+              <label style="font-size:10px;color:var(--text2);display:block;margin-bottom:4px;">Desconto (%)</label>
+              <input type="number" id="buyers-discount" min="1" max="90" placeholder="ex: 30" style="width:100%;">
+            </div>
+            <div>
+              <label style="font-size:10px;color:var(--text2);display:block;margin-bottom:4px;">Valido ate</label>
+              <input type="datetime-local" id="buyers-ends-at" style="width:100%;">
+            </div>
+            <div>
+              <label style="font-size:10px;color:var(--text2);display:block;margin-bottom:4px;">Nota interna</label>
+              <input type="text" id="buyers-note" placeholder="opcional" style="width:100%;">
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+            <button class="btn btn-gold" onclick="saveBuyerPromo()">Aplicar Promocao</button>
+            <button class="btn btn-red btn-sm" onclick="clearBuyerPromo()">Remover Promocao</button>
+            <span id="buyers-promo-status" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .3s;"></span>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -622,6 +683,107 @@ function showPage(id, btn) {
   if (id === 'orders') loadOrders();
   if (id === 'users')  loadAllUsers();
   if (id === 'shop')   loadShopPage();
+  if (id === 'buyers') loadTopBuyers();
+}
+
+// ── Top Compradores ──────────────────────────────────────────────
+let _buyersList = [];
+
+async function loadTopBuyers() {
+  const data = await api('GET', '/api/admin/top-buyers');
+  _buyersList = data.buyers || [];
+  const tbody = document.getElementById('buyers-tbody');
+  if (!_buyersList.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--text2);text-align:center;">Nenhum comprador encontrado</td></tr>';
+    return;
+  }
+  tbody.innerHTML = _buyersList.map((u, i) => `
+    <tr style="cursor:pointer;" onclick="openBuyerPromo(${u.id})" onmouseover="this.style.background='#00d4ff08'" onmouseout="this.style.background=''">
+      <td style="color:var(--gold);font-weight:700;">${i+1}</td>
+      <td style="font-weight:600;">${esc(u.display_name)}</td>
+      <td style="color:var(--text2);font-size:11px;">${esc(u.email)}</td>
+      <td style="color:var(--cyan);">${u.credits} CR</td>
+      <td style="color:var(--green);font-weight:700;">${fmtCents(u.total_spent || 0)}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();openBuyerPromo(${u.id})">Promover</button></td>
+    </tr>
+  `).join('');
+}
+
+function openBuyerPromo(userId) {
+  const u = _buyersList.find(b => b.id === userId);
+  if (!u) return;
+  document.getElementById('buyers-promo-card').style.display = '';
+  document.getElementById('buyers-promo-name').textContent = u.display_name;
+  document.getElementById('buyers-promo-uid').value = userId;
+  document.getElementById('buyers-promo-status').style.opacity = 0;
+
+  // Checkboxes de skins
+  const skinWrap = document.getElementById('buyers-skin-checks');
+  skinWrap.innerHTML = SHOP_SKINS.map(s => `
+    <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;
+      background:var(--card);border:1px solid var(--border);border-radius:6px;padding:5px 8px;">
+      <input type="checkbox" name="bskin" value="${s.id}">
+      <span>${s.name}</span>
+      <span style="color:var(--text2)">${s.price} CR</span>
+    </label>
+  `).join('');
+
+  // Checkboxes de rastros
+  const trailWrap = document.getElementById('buyers-trail-checks');
+  trailWrap.innerHTML = TRAIL_CATALOG.map(t => `
+    <label style="display:flex;align-items:center;gap:5px;font-size:11px;cursor:pointer;
+      background:var(--card);border:1px solid var(--border);border-radius:6px;padding:5px 8px;">
+      <input type="checkbox" name="btrail" value="${t.id}">
+      <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${t.color || '#aaa'};margin-right:2px;"></span>
+      <span>${t.name}</span>
+      <span style="color:var(--text2)">${t.price} CR</span>
+    </label>
+  `).join('');
+
+  document.getElementById('buyers-promo-card').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function saveBuyerPromo() {
+  const uid      = parseInt(document.getElementById('buyers-promo-uid').value);
+  const discount = parseInt(document.getElementById('buyers-discount').value);
+  const endsAt   = document.getElementById('buyers-ends-at').value;
+  const note     = document.getElementById('buyers-note').value.trim();
+
+  if (!uid || !discount || discount < 1 || discount > 90) {
+    toast('Preencha o desconto (1-90%)', 'err'); return;
+  }
+
+  const skinIds  = [...document.querySelectorAll('input[name="bskin"]:checked')].map(el => +el.value);
+  const trailIds = [...document.querySelectorAll('input[name="btrail"]:checked')].map(el => +el.value);
+  if (!skinIds.length && !trailIds.length) {
+    toast('Selecione ao menos uma skin ou rastro', 'err'); return;
+  }
+
+  const promo = { skinIds, trailIds, discountPct: discount };
+  if (endsAt) promo.endsAt = new Date(endsAt).toISOString();
+  if (note)   promo.note = note;
+
+  const data = await api('POST', '/api/admin/user-promo', { userId: uid, promo });
+  if (data.error) { toast('Erro: ' + data.error, 'err'); return; }
+  const statusEl = document.getElementById('buyers-promo-status');
+  statusEl.textContent = 'Promocao aplicada!';
+  statusEl.style.opacity = 1;
+  setTimeout(() => { statusEl.style.opacity = 0; }, 3000);
+  toast('Promocao exclusiva aplicada para ' + (document.getElementById('buyers-promo-name').textContent));
+}
+
+async function clearBuyerPromo() {
+  const uid = parseInt(document.getElementById('buyers-promo-uid').value);
+  if (!uid) return;
+  if (!confirm('Remover promocao exclusiva deste usuario?')) return;
+  const data = await api('POST', '/api/admin/user-promo', { userId: uid, promo: null });
+  if (data.error) { toast('Erro: ' + data.error, 'err'); return; }
+  document.getElementById('buyers-promo-card').style.display = 'none';
+  toast('Promocao removida');
 }
 
 // ── Dashboard ────────────────────────────────────────────────────
@@ -839,12 +1001,23 @@ async function revokeAllSkins() {
 
 // ── Rastros no painel de detalhe do usuario ────────────────────────
 const TRAIL_CATALOG = [
-  { id:1, name:'Chama Azul',     price:300 },
-  { id:2, name:'Fogo Infernal',  price:300 },
-  { id:3, name:'Nebula Roxa',    price:400 },
-  { id:4, name:'Relampago',      price:400 },
-  { id:5, name:'Ouro Galactico', price:600 },
-  { id:6, name:'Void Escuro',    price:600 },
+  { id:1,  name:'Chama Azul',      price:280, color:'#00d4ff' },
+  { id:2,  name:'Fogo Infernal',   price:280, color:'#ff5500' },
+  { id:3,  name:'Esmeralda',       price:320, color:'#00ff88' },
+  { id:4,  name:'Chama Violeta',   price:320, color:'#cc00ff' },
+  { id:5,  name:'Nebula Rosa',     price:350, color:'#ff44aa' },
+  { id:6,  name:'Ouro Galactico',  price:450, color:'#ffcc00' },
+  { id:7,  name:'Cristal Branco',  price:350, color:'#aaeeff' },
+  { id:8,  name:'Relampago Azul',  price:380, color:'#66eeff' },
+  { id:9,  name:'Relampago Roxo',  price:380, color:'#cc00ff' },
+  { id:10, name:'Tempestade',      price:460, color:'#ffeeaa' },
+  { id:11, name:'Void Escuro',     price:420, color:'#cc00ff' },
+  { id:12, name:'Nevoa Glacial',   price:380, color:'#88ccff' },
+  { id:13, name:'Fumaca Toxica',   price:400, color:'#66ff22' },
+  { id:14, name:'Arco-Iris',       price:480, color:'#ffffff' },
+  { id:15, name:'Plasma Sombrio',  price:480, color:'#ff00ff' },
+  { id:16, name:'Cometa Vermelho', price:460, color:'#ff4400' },
+  { id:17, name:'Fenda Cosmica',   price:590, color:'#ffffff', premium:true },
 ];
 
 function renderDetTrails(ownedIds) {

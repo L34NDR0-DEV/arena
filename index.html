@@ -575,8 +575,25 @@
       </div>
     </div>
 
-    <div class="shop-trails-body" id="shop-tab-trails" style="display:none;">
-      <div class="shop-trails-grid" id="shop-trails-grid"></div>
+    <div class="shop-body" id="shop-tab-trails" style="display:none;">
+      <div class="shop-grid-wrap">
+        <div class="shop-grid" id="shop-trails-grid"></div>
+      </div>
+      <div class="shop-frame" id="shop-trail-frame">
+        <div class="shop-frame-label">RASTRO</div>
+        <canvas id="shop-trail-canvas" width="120" height="120"></canvas>
+        <div class="shop-frame-name" id="shop-trail-name">—</div>
+        <div class="shop-frame-status" id="shop-trail-status"></div>
+        <div class="skin-price" id="shop-trail-price" style="display:none;"></div>
+        <div class="shop-success" id="shop-trail-success" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M7 12.5 L10.5 16 L17 8.5"/></svg>
+          <span>DESBLOQUEADO!</span>
+        </div>
+        <div class="auth-error" id="shop-trail-error" style="display:none;"></div>
+        <button class="play-btn" id="shop-trail-buy-btn" style="display:none;justify-content:center;width:100%;">► COMPRAR ◄</button>
+        <button class="play-btn" id="shop-trail-equip-btn" style="display:none;justify-content:center;width:100%;background:linear-gradient(90deg,#0a4,#0f8);">► EQUIPAR ◄</button>
+        <button class="play-btn" id="shop-trail-equipped-btn" style="display:none;justify-content:center;width:100%;background:linear-gradient(90deg,#0a4,#0f8);opacity:.6;cursor:default;" disabled>EQUIPADO</button>
+      </div>
     </div>
 
     <div class="shop-credits-body" id="shop-tab-credits" style="display:none;">

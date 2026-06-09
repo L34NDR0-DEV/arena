@@ -98,6 +98,10 @@ if (!userColumns.includes('blocked')) {
 if (!userColumns.includes('equipped_trail')) {
   db.exec(`ALTER TABLE users ADD COLUMN equipped_trail INTEGER NOT NULL DEFAULT 0`);
 }
+// JSON com promoção individual: {skinIds, trailIds, discountPct, endsAt, note}
+if (!userColumns.includes('user_promo')) {
+  db.exec(`ALTER TABLE users ADD COLUMN user_promo TEXT`);
+}
 
 // Tabela de rastros possuídos
 db.exec(`
@@ -143,6 +147,8 @@ const stmts = {
   setEquippedTrail:     db.prepare(`UPDATE users SET equipped_trail = ? WHERE id = ?`),
   adminRemoveTrail:     db.prepare(`DELETE FROM owned_trails WHERE user_id = ? AND trail_id = ?`),
   adminRemoveAllTrails: db.prepare(`DELETE FROM owned_trails WHERE user_id = ?`),
+  setUserPromo:         db.prepare(`UPDATE users SET user_promo = ? WHERE id = ?`),
+  topBuyers:            db.prepare(`SELECT u.id, u.email, u.display_name, u.credits, SUM(o.price_cents) AS total_spent FROM credit_orders o JOIN users u ON u.id = o.user_id WHERE o.status = 'approved' GROUP BY o.user_id ORDER BY total_spent DESC LIMIT 20`),
   setProfileIcon:       db.prepare(`UPDATE users SET profile_icon = ? WHERE id = ?`),
   setDisplayName:       db.prepare(`UPDATE users SET display_name = ? WHERE id = ?`),
   setTutorialSeen:      db.prepare(`UPDATE users SET tutorial_seen = 1 WHERE id = ?`),

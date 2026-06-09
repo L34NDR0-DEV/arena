@@ -73,6 +73,62 @@ function drawTrail(ctx, trail, trailDef) {
       ctx.beginPath();
       ctx.arc(p.x, p.y, size * 1.4, 0, Math.PI * 2);
       ctx.fill();
+    } else if (trailDef.style === 'rainbow') {
+      // Cicla pelas cores do arco-iris ao longo do tempo global
+      const rc = colors[Math.floor(Date.now() / 80 + i) % colors.length];
+      ctx.shadowColor = rc;
+      ctx.shadowBlur  = size * 3;
+      ctx.fillStyle   = rc;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size * 1.1, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (trailDef.style === 'plasma') {
+      // Anel duplo pulsante
+      ctx.shadowColor = glow;
+      ctx.shadowBlur  = size * 4;
+      ctx.strokeStyle = color;
+      ctx.lineWidth   = size * 0.4;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size * 0.9, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = alpha * 0.5;
+      ctx.strokeStyle = colors[(colorIdx + 1) % colors.length];
+      ctx.lineWidth   = size * 0.25;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size * 0.45, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (trailDef.style === 'comet') {
+      // Calda alongada com gradiente
+      const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, size * 2.2);
+      grd.addColorStop(0, color);
+      grd.addColorStop(0.5, colors[1] || color);
+      grd.addColorStop(1, 'transparent');
+      ctx.shadowColor = glow;
+      ctx.shadowBlur  = size * 3;
+      ctx.fillStyle   = grd;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size * 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (trailDef.style === 'cosmic') {
+      // Ultra: fenda com aneis e faiscas multicoloridas
+      const rc = colors[Math.floor(Date.now() / 60 + i * 2) % colors.length];
+      ctx.shadowColor = rc;
+      ctx.shadowBlur  = size * 5;
+      // Anel externo
+      ctx.strokeStyle = rc;
+      ctx.lineWidth   = size * 0.35;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size * 1.1, 0, Math.PI * 2);
+      ctx.stroke();
+      // Nucleo brilhante
+      const grd2 = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, size * 0.7);
+      grd2.addColorStop(0, '#ffffff');
+      grd2.addColorStop(0.4, rc);
+      grd2.addColorStop(1, 'transparent');
+      ctx.fillStyle = grd2;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size * 0.7, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 
