@@ -448,14 +448,14 @@ const MODE_TIPS={
 function modeStatusEntries(){
   const tournamentOn = !!(profile && profile.tournament && profile.tournament.active);
   return [
-    { id:'contra1',       label:'Contra 1',              maintenance:false },
-    { id:'contra2',       label:'Contra 2',              maintenance:false },
-    { id:'equipe_online', label:'Equipe Online',         maintenance:false },
-    { id:'livre',         label:'Livre',                 maintenance:false },
+    { id:'contra1',       label:'Contra 1',              maintenance:_disabledModes.includes('contra1') },
+    { id:'contra2',       label:'Contra 2',              maintenance:_disabledModes.includes('contra2') },
+    { id:'equipe_online', label:'Equipe Online',         maintenance:_disabledModes.includes('equipe_online') },
+    { id:'livre',         label:'Livre',                 maintenance:_disabledModes.includes('livre') },
     tournamentOn
-      ? { id:'tower_defense', label:'Torneio Tower Defense', maintenance:false }
-      : { id:'teste',         label:'Teste',                 maintenance:false },
-    { id:'survivor',      label:'Survivor',              maintenance:false },
+      ? { id:'tower_defense', label:'Torneio Tower Defense', maintenance:_disabledModes.includes('tower_defense') }
+      : { id:'teste',         label:'Teste',                 maintenance:_disabledModes.includes('teste') },
+    { id:'survivor',      label:'Survivor',              maintenance:_disabledModes.includes('survivor') },
   ];
 }
 function isModeInMaintenance(mode){
@@ -1538,11 +1538,10 @@ window.closeHowToPlay=function(){
 };
 
 window.selectMode=function(mode,btn){
-  if (_disabledModes.includes(mode)) {
-    showNotify('Este modo foi desativado temporariamente pelo administrador.');
+  if (_disabledModes.includes(mode) || isModeInMaintenance(mode)) {
+    showMaintenanceAlert(mode);
     return;
   }
-  if (isModeInMaintenance(mode)) { showMaintenanceAlert(mode); return; }
   selectedMode=mode;
   document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
@@ -2300,10 +2299,10 @@ function _applyDisabledModes(modes) {
   document.querySelectorAll('.mode-btn').forEach(btn => {
     const mode = btn.dataset.mode || btn.getAttribute('onclick')?.match(/selectMode\('([^']+)'/)?.[1];
     if (!mode) return;
-    const disabled = _disabledModes.includes(mode);
-    btn.classList.toggle('mode-disabled-admin', disabled);
-    btn.title = disabled ? 'Modo desativado pelo administrador' : '';
+    btn.classList.toggle('mode-disabled-admin', _disabledModes.includes(mode));
   });
+  // Atualiza o painel de status dos modos (dot + lista)
+  renderModeStatus();
 }
 
 async function _checkMaintenanceStatus() {
