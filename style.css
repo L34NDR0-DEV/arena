@@ -185,16 +185,16 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 
 .login-bottom{
   display:flex;justify-content:space-between;align-items:center;
-  margin-top:14px;
+  margin-top:14px;gap:8px;
 }
-.login-credits{font-size:8px;color:var(--text2);font-family:'Press Start 2P',monospace;line-height:1.8;}
+.login-credits{font-size:7px;color:var(--text2);font-family:'Press Start 2P',monospace;line-height:1.4;white-space:nowrap;}
 .coin-insert{
   font-family:'Press Start 2P',monospace;font-size:8px;color:var(--gold);
-  letter-spacing:1px;animation:blink 0.9s step-end infinite;
+  letter-spacing:1px;animation:blink 0.9s step-end infinite;white-space:nowrap;
 }
 .login-support{
-  margin-top:10px;text-align:center;font-size:8px;color:var(--text2);
-  font-family:'Press Start 2P',monospace;line-height:1.9;letter-spacing:.3px;
+  margin-top:8px;text-align:center;font-size:9px;color:var(--text2);
+  font-family:'Segoe UI',system-ui,sans-serif;line-height:1.5;
 }
 .login-support a{color:var(--cyan);text-decoration:none;}
 .login-support a:hover{text-decoration:underline;}
