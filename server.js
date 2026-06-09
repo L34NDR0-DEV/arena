@@ -4,7 +4,7 @@ const crypto = require('crypto');
 const fs     = require('fs');
 const path   = require('path');
 
-const { handleApi } = require('./src/api');
+const { handleApi, isLocked, maintenanceStatus } = require('./src/api');
 const auth          = require('./src/auth');
 const economy       = require('./src/economy');
 const db            = require('./src/db');
@@ -520,6 +520,10 @@ function handleMsg(socket, raw) {
 
   switch (msg.type) {
     case 'join': {
+      if (isLocked()) {
+        wsSend(socket, JSON.stringify({ type: 'maintenance_locked', status: maintenanceStatus() }));
+        return;
+      }
       // Para visitantes anônimos (userId null), aceitamos nome/skin enviados
       // pelo client. Para autenticados, esses dados já vieram do banco no
       // momento do upgrade — ignoramos o que o client manda para impedir
@@ -544,6 +548,10 @@ function handleMsg(socket, raw) {
       break;
     }
     case 'queue_join': {
+      if (isLocked()) {
+        wsSend(socket, JSON.stringify({ type: 'maintenance_locked', status: maintenanceStatus() }));
+        return;
+      }
       // Fila de matchmaking do modo "Equipe Online" (PvP 3x3) — substitui
       // o antigo fluxo cooperativo de sala fixa para esse modo de jogo.
       if (info.userId === null) {
@@ -558,6 +566,10 @@ function handleMsg(socket, raw) {
       break;
     }
     case 'td_queue_join': {
+      if (isLocked()) {
+        wsSend(socket, JSON.stringify({ type: 'maintenance_locked', status: maintenanceStatus() }));
+        return;
+      }
       // Fila do Torneio "Tower Defense" (PvP 2x2, torre central, turnos
       // revezados — só uma disputa ativa por vez, até 8 na fila).
       if (info.userId === null) {

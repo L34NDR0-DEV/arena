@@ -1343,3 +1343,43 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 }
 .setting-toggle.on{background:rgba(91,232,255,.25);box-shadow:0 0 10px rgba(91,232,255,.4);}
 .setting-toggle.off{border-color:rgba(255,255,255,.3);color:rgba(255,255,255,.4);}
+
+/* ═══ Banner de manutenção / graceful shutdown ════════════════ */
+#maint-banner{
+  position:fixed;top:0;left:0;right:0;z-index:99999;
+  background:linear-gradient(90deg,#1a0a00,#2a1000,#1a0a00);
+  border-bottom:2px solid #ffaa44;
+  animation:maintBannerIn .4s ease both;
+  transition:opacity .5s,transform .5s;
+}
+#maint-banner.maint-banner-locked{
+  background:linear-gradient(90deg,#100020,#200030,#100020);
+  border-bottom-color:#ff4455;
+}
+#maint-banner.maint-banner-hide{opacity:0;transform:translateY(-100%);}
+.maint-banner-inner{
+  display:flex;align-items:center;gap:14px;
+  max-width:900px;margin:0 auto;padding:10px 20px;
+}
+.maint-banner-icon{
+  width:36px;height:36px;flex-shrink:0;
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle,#2a1400,#0a0500);
+  border:1.5px solid #ffaa44;color:#ffaa44;
+  box-shadow:0 0 14px #ffaa4466;
+  animation:maintPulse 2s ease-in-out infinite;
+}
+#maint-banner.maint-banner-locked .maint-banner-icon{
+  border-color:#ff4455;color:#ff4455;box-shadow:0 0 14px #ff445566;
+}
+.maint-banner-text{display:flex;flex-direction:column;gap:3px;flex:1;}
+.maint-banner-title{
+  font-family:'Press Start 2P',monospace;font-size:9px;
+  color:#ffaa44;letter-spacing:2px;
+}
+#maint-banner.maint-banner-locked .maint-banner-title{color:#ff4455;}
+.maint-banner-sub{font-size:11px;color:#a07050;line-height:1.5;}
+.maint-banner-sub strong{color:#ffcc88;}
+#maint-banner.maint-banner-locked .maint-banner-sub{color:#a05060;}
+@keyframes maintBannerIn{from{opacity:0;transform:translateY(-100%)}to{opacity:1;transform:none}}
+@keyframes maintPulse{0%,100%{box-shadow:0 0 10px #ffaa4444}50%{box-shadow:0 0 22px #ffaa44aa}}

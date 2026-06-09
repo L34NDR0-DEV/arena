@@ -10,6 +10,38 @@ const { rateLimit } = require('./ratelimit');
 const ADMIN_EMAIL = 'leandrosilva212010@gmail.com';
 
 const COOKIE_SECURE = process.env.COOKIE_SECURE === '1';
+
+// ── Estado de manutenção (graceful shutdown) ───────────────────────────────
+// Fases: 'off' → 'warning' (aviso, 60min) → 'locked' (sem novas partidas)
+//        → 'draining' (aguardando partidas ativas) → 'off' (reabertura)
+const maintenance = {
+  phase: 'off',         // 'off' | 'warning' | 'locked' | 'draining'
+  activatedAt: null,    // Date quando foi ativado
+  lockedAt: null,       // Date quando trancou novas partidas
+  warningMinutes: 60,   // minutos de aviso antes de trancar
+  activeSessions: new Set(), // IDs de partidas ativas reportadas pelo client
+};
+
+function maintenanceStatus() {
+  const now = Date.now();
+  let minutesLeft = null;
+  if (maintenance.phase === 'warning' && maintenance.activatedAt) {
+    minutesLeft = Math.max(0, Math.round(
+      maintenance.warningMinutes - (now - maintenance.activatedAt) / 60000
+    ));
+  }
+  return {
+    phase: maintenance.phase,
+    minutesLeft,
+    activeSessions: maintenance.activeSessions.size,
+    activatedAt: maintenance.activatedAt,
+  };
+}
+
+// Exporta para o server.js verificar se pode bloquear novas conexões
+function isLocked()   { return maintenance.phase === 'locked' || maintenance.phase === 'draining'; }
+function isWarning()  { return maintenance.phase === 'warning'; }
+function isOff()      { return maintenance.phase === 'off'; }
 const MAX_BODY_BYTES = 1024 * 1024; // 1MB
 
 function clientIp(req) {
@@ -609,6 +641,76 @@ const ROUTES = [
     },
   },
 
+  // Público: status de manutenção (cliente verifica periodicamente)
+  {
+    method: 'GET', path: '/api/server/status',
+    handler: (req, res) => {
+      sendJson(res, 200, maintenanceStatus());
+    },
+  },
+
+  // Cliente reporta que tem partida ativa (heartbeat a cada 30s)
+  {
+    method: 'POST', path: '/api/server/heartbeat',
+    auth: true,
+    handler: (req, res, { body, user }) => {
+      const sessionKey = `${user.id}`;
+      if (body && body.inMatch) {
+        maintenance.activeSessions.add(sessionKey);
+      } else {
+        maintenance.activeSessions.delete(sessionKey);
+      }
+      sendJson(res, 200, maintenanceStatus());
+    },
+  },
+
+  // Admin: ativar fase de manutenção
+  {
+    method: 'POST', path: '/api/admin/maintenance',
+    auth: true,
+    handler: (req, res, { body, user }) => {
+      if (user.email !== ADMIN_EMAIL) return sendJson(res, 403, { error: 'forbidden' });
+      const action = body.action; // 'start' | 'lock' | 'off'
+
+      if (action === 'start') {
+        if (maintenance.phase !== 'off') return sendJson(res, 400, { error: 'already_active' });
+        maintenance.phase       = 'warning';
+        maintenance.activatedAt = Date.now();
+        maintenance.lockedAt    = null;
+        maintenance.activeSessions.clear();
+        console.log('[MANUTENÇÃO] Fase 1: aviso ativado — 60 minutos para trancar');
+
+        // Avança automaticamente para 'locked' após warningMinutes
+        setTimeout(() => {
+          if (maintenance.phase === 'warning') {
+            maintenance.phase    = 'locked';
+            maintenance.lockedAt = Date.now();
+            console.log('[MANUTENÇÃO] Fase 2: novas partidas bloqueadas — aguardando partidas ativas');
+          }
+        }, maintenance.warningMinutes * 60 * 1000);
+
+      } else if (action === 'lock') {
+        // Avança manualmente para locked antes dos 60min
+        if (maintenance.phase !== 'warning') return sendJson(res, 400, { error: 'not_in_warning' });
+        maintenance.phase    = 'locked';
+        maintenance.lockedAt = Date.now();
+        console.log('[MANUTENÇÃO] Fase 2 (manual): novas partidas bloqueadas');
+
+      } else if (action === 'off') {
+        maintenance.phase       = 'off';
+        maintenance.activatedAt = null;
+        maintenance.lockedAt    = null;
+        maintenance.activeSessions.clear();
+        console.log('[MANUTENÇÃO] Sistema reaberto — manutenção encerrada');
+
+      } else {
+        return sendJson(res, 400, { error: 'invalid_action' });
+      }
+
+      sendJson(res, 200, maintenanceStatus());
+    },
+  },
+
   // Admin: bloquear ou desbloquear conta
   {
     method: 'POST', path: '/api/admin/block',
@@ -664,4 +766,4 @@ function handleApi(req, res, urlPath) {
   });
 }
 
-module.exports = { handleApi, sendJson };
+module.exports = { handleApi, sendJson, isLocked, isWarning, maintenanceStatus };

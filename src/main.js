@@ -2010,6 +2010,142 @@ function showNotify(text){
   setTimeout(()=>div.remove(),4000);
 }
 
+// ── Sistema de Manutenção / Graceful Shutdown ─────────────────────────────
+// Verifica o status do servidor a cada 30s e exibe banner ou overlay conforme a fase.
+let _maintPhase = 'off';
+let _maintCountdownInterval = null;
+
+function _maintBanner() { return document.getElementById('maint-banner'); }
+
+function _showMaintBanner(minutesLeft) {
+  let banner = _maintBanner();
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'maint-banner';
+    document.body.appendChild(banner);
+  }
+  // Atualiza o countdown sem recriar o banner inteiro
+  const countdown = banner.querySelector('#maint-countdown');
+  if (countdown) { countdown.textContent = minutesLeft !== null ? `${minutesLeft} min` : '—'; return; }
+
+  banner.innerHTML = `
+    <div class="maint-banner-inner">
+      <div class="maint-banner-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+          <path d="M14.7 6.3a4 4 0 0 1-5.7 5.7L4 17l3 3 5-5a4 4 0 0 1 5.7-5.7l-2.5 2.5-2-2 2.5-2.5z"/>
+        </svg>
+      </div>
+      <div class="maint-banner-text">
+        <span class="maint-banner-title">MANUTENCAO PROGRAMADA</span>
+        <span class="maint-banner-sub">Termine sua partida. O servidor sera reiniciado em <strong id="maint-countdown">${minutesLeft !== null ? minutesLeft + ' min' : '—'}</strong></span>
+      </div>
+    </div>
+  `;
+}
+
+function _showMaintLocked() {
+  let banner = _maintBanner();
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'maint-banner';
+    document.body.appendChild(banner);
+  }
+  banner.className = 'maint-banner-locked';
+  banner.innerHTML = `
+    <div class="maint-banner-inner">
+      <div class="maint-banner-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <div class="maint-banner-text">
+        <span class="maint-banner-title">NOVAS PARTIDAS BLOQUEADAS</span>
+        <span class="maint-banner-sub">Manutencao em andamento. Termine sua partida atual e aguarde a reabertura.</span>
+      </div>
+    </div>
+  `;
+}
+
+function _hideMaintBanner() {
+  const b = _maintBanner();
+  if (b) { b.classList.add('maint-banner-hide'); setTimeout(() => b.remove(), 500); }
+  if (_maintCountdownInterval) { clearInterval(_maintCountdownInterval); _maintCountdownInterval = null; }
+}
+
+async function _checkMaintenanceStatus() {
+  try {
+    const res  = await fetch('/api/server/status');
+    const data = await res.json();
+    const phase = data.phase;
+
+    if (phase === _maintPhase) {
+      // Só atualiza o countdown sem redesenhar
+      if (phase === 'warning') _showMaintBanner(data.minutesLeft);
+      return;
+    }
+    _maintPhase = phase;
+
+    if (phase === 'off') {
+      _hideMaintBanner();
+      // Se estava bloqueado e agora abriu, recarrega pra pegar assets novos
+      if (_maintPhase === 'locked' || _maintPhase === 'draining') location.reload();
+    } else if (phase === 'warning') {
+      _showMaintBanner(data.minutesLeft);
+      // Heartbeat local: conta regressiva no próprio client
+      if (_maintCountdownInterval) clearInterval(_maintCountdownInterval);
+      _maintCountdownInterval = setInterval(() => {
+        const c = document.getElementById('maint-countdown');
+        if (!c) return;
+        const cur = parseInt(c.textContent) || 0;
+        if (cur > 0) c.textContent = (cur - 1) + ' min';
+      }, 60000);
+    } else if (phase === 'locked' || phase === 'draining') {
+      _showMaintLocked();
+      // Avisa quem está na tela de login
+      const loginScreen = document.getElementById('login-screen');
+      if (loginScreen && loginScreen.style.display !== 'none') {
+        const overlay = document.getElementById('maintenance-overlay');
+        if (overlay && overlay.style.display === 'none') {
+          document.getElementById('maint-title').textContent = 'Servidor em manutencao';
+          document.getElementById('maint-text').textContent  =
+            'O servidor esta temporariamente indisponivel para manutencao. Voltaremos em breve!';
+          overlay.style.display = 'flex';
+        }
+      }
+    }
+
+    // Reporta ao servidor se está em partida ativa
+    if (currentUser) {
+      const inMatch = !!document.getElementById('game-canvas') &&
+                      document.getElementById('game-canvas').style.display !== 'none';
+      fetch('/api/server/heartbeat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ inMatch }),
+      }).catch(() => {});
+    }
+  } catch(e) { /* servidor offline — ignora */ }
+}
+
+// Verifica a cada 30s
+setInterval(_checkMaintenanceStatus, 30000);
+// Primeira verificação após 3s do boot
+setTimeout(_checkMaintenanceStatus, 3000);
+
+// Trata mensagem WebSocket de partida bloqueada
+window._handleMaintenanceLocked = function(status) {
+  _maintPhase = status.phase || 'locked';
+  _showMaintLocked();
+  // Mostra overlay do estilo nm-card igual ao de manutenção de modo
+  const overlay = document.getElementById('maintenance-overlay');
+  if (overlay) {
+    document.getElementById('maint-title').textContent = 'Manutencao em andamento';
+    document.getElementById('maint-text').textContent  =
+      'Novas partidas estao bloqueadas. Aguarde a reabertura do servidor para jogar novamente.';
+    overlay.style.display = 'flex';
+  }
+};
+
 // ── Inicialização: tenta sessão existente, senão mostra tela de login ──
 // setupGoogleSignIn() só é chamada aqui, quando não há sessão, para evitar
 // requisições desnecessárias ao Google e o One Tap automático para logados.

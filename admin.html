@@ -161,6 +161,34 @@
 
       <!-- DASHBOARD -->
       <div class="page active" id="page-dashboard">
+
+        <!-- Painel de Manutenção -->
+        <div class="card" id="maint-card" style="border-color:#ffaa4444;">
+          <div class="card-title" style="color:#ffaa44;">Manutencao do Servidor</div>
+          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+            <div>
+              <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">Status atual</div>
+              <div id="maint-phase-badge" style="font-family:'Press Start 2P',monospace;font-size:10px;padding:6px 14px;border-radius:4px;display:inline-block;">—</div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">Partidas ativas</div>
+              <div id="maint-sessions" style="font-size:20px;font-weight:700;color:var(--cyan);">—</div>
+            </div>
+            <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
+              <button id="btn-maint-start" class="btn btn-gold" onclick="maintStart()" style="display:none;">
+                Ativar Aviso (60 min)
+              </button>
+              <button id="btn-maint-lock" class="btn btn-red" onclick="maintLock()" style="display:none;">
+                Trancar Agora
+              </button>
+              <button id="btn-maint-off" class="btn btn-green" onclick="maintOff()" style="display:none;">
+                Reabrir Servidor
+              </button>
+            </div>
+          </div>
+          <div id="maint-tip" style="margin-top:14px;font-size:11px;color:var(--text2);line-height:1.7;display:none;"></div>
+        </div>
+
         <div class="stats-grid" id="stats-grid">
           <div class="stat-box"><div class="stat-val" id="s-users">—</div><div class="stat-lbl">Usuarios</div></div>
           <div class="stat-box"><div class="stat-val" id="s-orders">—</div><div class="stat-lbl">Pedidos</div></div>
@@ -341,6 +369,7 @@ function showApp() {
   document.getElementById('login-overlay').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   loadDashboard();
+  loadMaintStatus();
 }
 
 // ── Navegação ────────────────────────────────────────────────────
@@ -565,6 +594,76 @@ function buildOrdersTableRows(orders) {
     </tr>`;
   }).join('');
 }
+
+// ── Manutenção ───────────────────────────────────────────────────
+const MAINT_TIPS = {
+  off:      'Servidor operacional. Clique em "Ativar Aviso" para iniciar a sequencia de manutencao.',
+  warning:  'Aviso ativo: todos os jogadores estao vendo o countdown. Apos 60 min o servidor trava automaticamente. Voce pode trancar antes clicando em "Trancar Agora".',
+  locked:   'Novas partidas bloqueadas. Aguarde as partidas ativas terminarem (veja "Partidas ativas"). Quando chegar a 0, reinicie o servidor: cd /root/arena && git pull && pm2 restart arena',
+  draining: 'Drenando partidas. Aguarde...',
+};
+const MAINT_COLORS = {
+  off:      { bg:'#00ffaa15', border:'#00ffaa33', color:'#00ffaa' },
+  warning:  { bg:'#ffcc4415', border:'#ffcc4433', color:'#ffcc44' },
+  locked:   { bg:'#ff445515', border:'#ff445533', color:'#ff4455' },
+  draining: { bg:'#ff880015', border:'#ff880033', color:'#ff8800' },
+};
+const MAINT_LABELS = { off:'OPERACIONAL', warning:'AVISO ATIVO', locked:'BLOQUEADO', draining:'DRENANDO' };
+
+async function loadMaintStatus() {
+  const data = await api('GET', '/api/server/status');
+  renderMaintStatus(data);
+}
+
+function renderMaintStatus(data) {
+  const phase = data.phase || 'off';
+  const badge = document.getElementById('maint-phase-badge');
+  const tip   = document.getElementById('maint-tip');
+  const c     = MAINT_COLORS[phase] || MAINT_COLORS.off;
+
+  badge.textContent   = MAINT_LABELS[phase] || phase.toUpperCase();
+  badge.style.cssText = `font-family:'Press Start 2P',monospace;font-size:10px;padding:6px 14px;border-radius:4px;display:inline-block;background:${c.bg};border:1px solid ${c.border};color:${c.color};`;
+  document.getElementById('maint-sessions').textContent = data.activeSessions ?? '—';
+
+  // Botões conforme fase
+  document.getElementById('btn-maint-start').style.display = phase === 'off'     ? '' : 'none';
+  document.getElementById('btn-maint-lock').style.display  = phase === 'warning' ? '' : 'none';
+  document.getElementById('btn-maint-off').style.display   = phase !== 'off'     ? '' : 'none';
+
+  tip.textContent  = MAINT_TIPS[phase] || '';
+  tip.style.display = 'block';
+
+  if (data.minutesLeft !== null && data.minutesLeft !== undefined) {
+    tip.textContent += ` (${data.minutesLeft} min restantes)`;
+  }
+}
+
+async function maintStart() {
+  if (!confirm('Ativar aviso de manutencao? Todos os jogadores serao avisados e terao 60 minutos.')) return;
+  const data = await api('POST', '/api/admin/maintenance', { action: 'start' });
+  if (data.error) { toast('Erro: ' + data.error, 'err'); return; }
+  renderMaintStatus(data);
+  toast('Aviso de manutencao ativado!');
+}
+
+async function maintLock() {
+  if (!confirm('Trancar AGORA? Ninguem mais conseguira iniciar partidas.')) return;
+  const data = await api('POST', '/api/admin/maintenance', { action: 'lock' });
+  if (data.error) { toast('Erro: ' + data.error, 'err'); return; }
+  renderMaintStatus(data);
+  toast('Servidor bloqueado para novas partidas');
+}
+
+async function maintOff() {
+  if (!confirm('Reabrir o servidor? Use isso APOS o pm2 restart ter subido.')) return;
+  const data = await api('POST', '/api/admin/maintenance', { action: 'off' });
+  if (data.error) { toast('Erro: ' + data.error, 'err'); return; }
+  renderMaintStatus(data);
+  toast('Servidor reaberto!');
+}
+
+// Atualiza o status de manutenção a cada 15s no painel
+setInterval(loadMaintStatus, 15000);
 
 // ── Init ─────────────────────────────────────────────────────────
 (async () => {
