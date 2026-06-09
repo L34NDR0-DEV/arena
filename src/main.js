@@ -343,6 +343,63 @@ async function onAuthSuccess(){
   showScreen('menu');
   maybeShowTutorial();
   if (!profile || profile.tutorialSeen) maybeShowNewModeAlert();
+  maybeShowCreditBonus();
+}
+
+function maybeShowCreditBonus(){
+  if (!currentUser) return;
+  const key = 'credit_bonus_pack3_v2';
+  if (localStorage.getItem(key)) return;
+  // Só mostra para quem tem créditos (já comprou antes)
+  if (currentUser.credits <= 0) return;
+  localStorage.setItem(key, '1');
+  showCreditBonusAnimation();
+}
+
+function showCreditBonusAnimation(){
+  const overlay = document.createElement('div');
+  overlay.style.cssText = `
+    position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.85);backdrop-filter:blur(6px);
+  `;
+  overlay.innerHTML = `
+    <div style="
+      background:linear-gradient(160deg,#0b1e33,#040c18);
+      border:2px solid #ffcc44;border-radius:12px;padding:40px 48px;text-align:center;
+      max-width:420px;box-shadow:0 0 60px #ffcc4433;animation:bonusCardIn .4s cubic-bezier(.2,.9,.3,1.3);
+    ">
+      <div style="font-size:48px;margin-bottom:16px;animation:bonusSpin 1s ease-out;">&#127881;</div>
+      <div style="font-family:'Press Start 2P',monospace;font-size:13px;color:#ffcc44;letter-spacing:2px;line-height:1.8;margin-bottom:8px;">
+        PRESENTE PARA VOCE!
+      </div>
+      <div style="font-family:'Press Start 2P',monospace;font-size:10px;color:#7aa0c0;line-height:1.8;margin-bottom:20px;">
+        Melhoramos o pacote R$ 3,00<br>
+        de 240 para <span style="color:#00d4ff;font-size:13px;">280 CR</span><br>
+        <span style="color:#00ffaa;">+40 creditos</span> foram adicionados<br>a sua conta como compensacao!
+      </div>
+      <div id="bonus-cr-display" style="font-family:'Press Start 2P',monospace;font-size:28px;color:#ffcc44;margin-bottom:24px;text-shadow:0 0 20px #ffcc4466;">
+        +40 CR
+      </div>
+      <button onclick="this.closest('div[style*=fixed]').remove()" style="
+        font-family:'Press Start 2P',monospace;font-size:9px;letter-spacing:1px;
+        background:linear-gradient(135deg,#ffcc00,#ff8800);color:#1a1100;
+        border:none;border-radius:6px;padding:14px 32px;cursor:pointer;
+        box-shadow:0 4px 20px #ffcc0044;transition:transform .15s;
+      " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+        RECEBER AGORA
+      </button>
+    </div>
+    <style>
+      @keyframes bonusCardIn{from{opacity:0;transform:scale(.7) translateY(30px)}to{opacity:1;transform:none}}
+      @keyframes bonusSpin{0%{transform:rotate(-20deg) scale(0)}60%{transform:rotate(10deg) scale(1.2)}100%{transform:rotate(0) scale(1)}}
+    </style>
+  `;
+  document.body.appendChild(overlay);
+  // Pulsa o número de créditos na tela principal junto
+  setTimeout(() => {
+    const prev = currentUser.credits - 40;
+    animateCreditsGain(prev, currentUser.credits);
+  }, 600);
 }
 
 // Carrega o botão Google Sign-In apenas quando necessário (tela de login).
@@ -1072,6 +1129,56 @@ async function pollOrderStatus(orderId, attemptsLeft){
     statusEl.textContent = 'Ainda processando seu pagamento — o saldo será atualizado assim que for confirmado.';
   }
 }
+
+window.loadMyOrders = async function() {
+  const btn  = document.getElementById('shop-orders-btn');
+  const area = document.getElementById('shop-receipt-area');
+  const list = document.getElementById('shop-orders-list');
+  if (!currentUser) return;
+  if (btn) btn.disabled = true;
+  const { ok, data } = await apiFetch('/api/payments/orders/recent');
+  if (btn) btn.disabled = false;
+  if (!ok || !data || !data.orders.length) {
+    if (list) list.innerHTML = '<p style="font-size:9px;color:#5a7a9a;margin:8px 0;">Nenhum pedido encontrado.</p>';
+    if (area) area.style.display = 'block';
+    return;
+  }
+  const statusLabel = { approved: 'Aprovado', pending: 'Aguardando', refunded: 'Reembolsado',
+                        rejected: 'Rejeitado', cancelled: 'Cancelado' };
+  list.innerHTML = data.orders.map(o => `
+    <div class="shop-order-row">
+      <div class="shop-order-info">
+        <span class="shop-order-id">Pedido #${o.id} &mdash; ${new Date(o.created_at).toLocaleDateString('pt-BR')}</span>
+        <span class="shop-order-val">${o.credits_amount} CR &mdash; R$ ${(o.price_cents/100).toFixed(2).replace('.',',')}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <span class="shop-order-status ${o.status}">${statusLabel[o.status] || o.status}</span>
+        ${o.status === 'approved' || o.status === 'refunded' ? `
+          <button class="shop-receipt-btn" onclick="sendReceipt(${o.id},this)">Comprovante</button>
+        ` : ''}
+      </div>
+    </div>
+  `).join('');
+  if (area) area.style.display = 'block';
+  if (btn) btn.style.display = 'none';
+};
+
+window.sendReceipt = async function(orderId, btn) {
+  btn.disabled = true;
+  btn.textContent = '...';
+  const { ok, data } = await apiFetch('/api/payments/receipt', { method: 'POST', body: { orderId } });
+  if (ok && data?.sent) {
+    btn.textContent = 'Enviado!';
+    showNotify('Comprovante enviado para o seu e-mail!');
+  } else if (data?.error === 'email_not_configured') {
+    btn.textContent = 'Comprovante';
+    btn.disabled = false;
+    showNotify('Envio de e-mail nao configurado. Contate o suporte.');
+  } else {
+    btn.textContent = 'Erro';
+    setTimeout(() => { btn.textContent = 'Comprovante'; btn.disabled = false; }, 3000);
+  }
+};
 
 function checkPendingCreditOrder(){
   const params = new URLSearchParams(window.location.search);

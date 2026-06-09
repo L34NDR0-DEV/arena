@@ -16,7 +16,7 @@ const PUBLIC_URL      = (process.env.PUBLIC_URL || 'http://localhost:3000').repl
 // só a conversão das antigas porcentagens (+10/+30/+40%) para valor fixo
 // (ex.: pack_50 → base 2500 × 1.30 = 3250 ⇒ bônus = 750).
 const CREDIT_PACKAGES = {
-  pack_3:  { id: 'pack_3',  credits: 240,   priceCents: 300,   label: 'R$ 3,00',  bonus: 90   },
+  pack_3:  { id: 'pack_3',  credits: 280,   priceCents: 300,   label: 'R$ 3,00',  bonus: 130  },
   pack_5:  { id: 'pack_5',  credits: 250,   priceCents: 500,   label: 'R$ 5,00',  bonus: null },
   pack_7:  { id: 'pack_7',  credits: 564,   priceCents: 700,   label: 'R$ 7,00',  bonus: 214  },
   pack_10: { id: 'pack_10', credits: 550,   priceCents: 1000,  label: 'R$ 10,00', bonus: 50   },
