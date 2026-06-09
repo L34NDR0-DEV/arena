@@ -148,11 +148,14 @@ function publicUser(user) {
 }
 
 function profileFor(user) {
-  const owned = db.listOwnedSkins.all(user.id).map(r => r.skin_id);
+  const owned       = db.listOwnedSkins.all(user.id).map(r => r.skin_id);
+  const ownedTrails = db.listOwnedTrails.all(user.id).map(r => r.trail_id);
   return {
     user: publicUser(user),
     ownedSkins: owned,
     equippedSkin: user.equipped_skin,
+    ownedTrails,
+    equippedTrail: user.equipped_trail ?? 0,
     profileIcon: user.profile_icon,
     tutorialSeen: !!user.tutorial_seen,
     rewardProgress: {
@@ -339,6 +342,52 @@ const ROUTES = [
 
       db.setEquippedSkin.run(skinId, user.id);
       sendJson(res, 200, { ok: true, equippedSkin: skinId });
+    },
+  },
+
+  // Comprar rastro
+  {
+    method: 'POST', path: '/api/shop/trail/buy',
+    auth: true,
+    rateLimit: rateLimited('shop_buy', 5, 10_000, (req, { user }) => user.id),
+    handler: (req, res, { body, user }) => {
+      const trailId = Number(body.trailId);
+      if (!Number.isInteger(trailId) || trailId < 1 || trailId > 10) {
+        return sendJson(res, 400, { error: 'invalid_trail' });
+      }
+      if (db.ownsTrail.get(user.id, trailId)) return sendJson(res, 409, { error: 'already_owned' });
+      const cfg = loadShopConfig();
+      const TRAIL_PRICES = cfg.trailPrices || {};
+      // Preços padrão dos rastros (podem ser sobrescritos pelo admin)
+      const DEFAULT_PRICES = { 1:300, 2:300, 3:400, 4:400, 5:600, 6:600 };
+      const price = TRAIL_PRICES[trailId] ?? DEFAULT_PRICES[trailId] ?? 300;
+      const ok = db.transaction(() => {
+        const result = db.spendCredits.run(price, user.id, price);
+        if (result.changes === 0) return false;
+        db.grantTrail.run(user.id, trailId);
+        return true;
+      });
+      if (!ok) return sendJson(res, 409, { error: 'insufficient_credits' });
+      const fresh = db.findUserById.get(user.id);
+      sendJson(res, 200, profileFor(fresh));
+    },
+  },
+
+  // Equipar rastro
+  {
+    method: 'POST', path: '/api/shop/trail/equip',
+    auth: true,
+    rateLimit: rateLimited('shop_equip', 5, 10_000, (req, { user }) => user.id),
+    handler: (req, res, { body, user }) => {
+      const trailId = Number(body.trailId);
+      if (!Number.isInteger(trailId) || trailId < 0 || trailId > 10) {
+        return sendJson(res, 400, { error: 'invalid_trail' });
+      }
+      if (trailId !== 0 && !db.ownsTrail.get(user.id, trailId)) {
+        return sendJson(res, 403, { error: 'not_owned' });
+      }
+      db.setEquippedTrail.run(trailId, user.id);
+      sendJson(res, 200, { ok: true, equippedTrail: trailId });
     },
   },
 

@@ -725,6 +725,20 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .about-link{color:var(--cyan);text-decoration:underline;}
 .about-link:hover{color:#5be8ff;}
 .pkg-card .play-btn{width:100%;justify-content:center;font-size:8px;padding:9px 8px;}
+/* ── Loja: aba Rastros ── */
+.shop-trails-body{padding:16px;overflow-y:auto;}
+.shop-trails-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:14px;}
+.trail-card{
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  background:linear-gradient(165deg,var(--panel2),#0a1726);
+  border:2px solid var(--border);border-radius:10px;padding:14px 10px 12px;
+  position:relative;transition:transform .18s,border-color .18s,box-shadow .18s;
+}
+.trail-card:hover{transform:translateY(-3px);border-color:var(--cyan);box-shadow:0 8px 22px #00d4ff22;}
+.trail-card.trail-equipped{border-color:#00ff88;box-shadow:0 0 16px #00ff8833;}
+.trail-card canvas{border-radius:6px;background:#050d18;}
+.trail-card-name{font-size:7px;color:var(--text);font-weight:700;text-align:center;letter-spacing:.5px;line-height:1.5;font-family:'Press Start 2P',monospace;}
+.trail-card-btn{width:100%;justify-content:center;font-size:7px;padding:8px 6px;margin-top:2px;}
 .skin-info{flex:1;min-width:0;}
 .skin-name{font-size:8px;color:var(--text);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:'Press Start 2P',monospace;line-height:1.6;}
 .skin-sub{font-size:8px;color:var(--text2);}

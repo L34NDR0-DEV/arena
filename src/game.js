@@ -18,7 +18,8 @@ const TEAM_KILL_TARGET = 200;
 const TEAM_SIZE        = 3;
 
 export class Game {
-  constructor(canvas, { skinIndex=0, playerName='Jogador', profileIcon=0, mode='contra1', difficulty='moderado', roomId='default' } = {}) {
+  constructor(canvas, { skinIndex=0, playerName='Jogador', profileIcon=0, equippedTrail=0, mode='contra1', difficulty='moderado', roomId='default' } = {}) {
+    const opts = { skinIndex, playerName, profileIcon, equippedTrail, mode, difficulty, roomId };
     this.canvas=canvas; this.ctx=canvas.getContext('2d');
     this.W=canvas.width; this.H=canvas.height;
     this.mode=mode; this.diff=difficulty;
@@ -42,6 +43,7 @@ export class Game {
     this.combat.setShakeCallback((i) => this.addShake(i));
     this.ui       = new UI();
     this.player   = new Player({ x:ARENA_W/2, y:ARENA_H/2, skinIndex, name:playerName });
+    this.player.equippedTrailId = opts.equippedTrail || 0;
     this.profileIcon = profileIcon;
     // Contra1: 1 único inimigo, partida curta — level-up não faz sentido
     if (mode==='contra1') this.player.levelUpEnabled = false;

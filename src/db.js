@@ -95,6 +95,20 @@ if (!userColumns.includes('tutorial_seen')) {
 if (!userColumns.includes('blocked')) {
   db.exec(`ALTER TABLE users ADD COLUMN blocked INTEGER NOT NULL DEFAULT 0`);
 }
+if (!userColumns.includes('equipped_trail')) {
+  db.exec(`ALTER TABLE users ADD COLUMN equipped_trail INTEGER NOT NULL DEFAULT 0`);
+}
+
+// Tabela de rastros possuídos
+db.exec(`
+CREATE TABLE IF NOT EXISTS owned_trails (
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  trail_id    INTEGER NOT NULL,
+  acquired_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, trail_id)
+);
+CREATE INDEX IF NOT EXISTS idx_owned_trails_user ON owned_trails(user_id);
+`);
 
 // `details` guarda um JSON com dados ricos da partida (itens coletados, nível,
 // nome da skin, contagem por tipo de item) que não têm coluna própria — usado
@@ -123,6 +137,12 @@ const stmts = {
   ownsSkin:             db.prepare(`SELECT 1 AS one FROM owned_skins WHERE user_id = ? AND skin_id = ?`),
   listOwnedSkins:       db.prepare(`SELECT skin_id FROM owned_skins WHERE user_id = ?`),
   setEquippedSkin:      db.prepare(`UPDATE users SET equipped_skin = ? WHERE id = ?`),
+  grantTrail:           db.prepare(`INSERT OR IGNORE INTO owned_trails (user_id, trail_id) VALUES (?, ?)`),
+  ownsTrail:            db.prepare(`SELECT 1 AS one FROM owned_trails WHERE user_id = ? AND trail_id = ?`),
+  listOwnedTrails:      db.prepare(`SELECT trail_id FROM owned_trails WHERE user_id = ?`),
+  setEquippedTrail:     db.prepare(`UPDATE users SET equipped_trail = ? WHERE id = ?`),
+  adminRemoveTrail:     db.prepare(`DELETE FROM owned_trails WHERE user_id = ? AND trail_id = ?`),
+  adminRemoveAllTrails: db.prepare(`DELETE FROM owned_trails WHERE user_id = ?`),
   setProfileIcon:       db.prepare(`UPDATE users SET profile_icon = ? WHERE id = ?`),
   setDisplayName:       db.prepare(`UPDATE users SET display_name = ? WHERE id = ?`),
   setTutorialSeen:      db.prepare(`UPDATE users SET tutorial_seen = 1 WHERE id = ?`),

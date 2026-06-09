@@ -1,4 +1,5 @@
 import { SKINS, REWARD_ONLY_SKIN_IDS } from './skins.js';
+import { TRAILS } from './trails.js';
 import { ARENA_TYPES }    from './arena.js';
 import { Game }           from './game.js';
 import { CHANGELOG }      from './changelog.js';
@@ -1063,17 +1064,155 @@ window.confirmPurchase = async function(){
 let creditPackagesLoaded = false;
 
 window.switchShopTab = function(tab){
-  const shipsBtn = document.getElementById('shop-tab-ships-btn');
+  const shipsBtn   = document.getElementById('shop-tab-ships-btn');
+  const trailsBtn  = document.getElementById('shop-tab-trails-btn');
   const creditsBtn = document.getElementById('shop-tab-credits-btn');
-  const shipsBody = document.getElementById('shop-tab-ships');
+  const shipsBody   = document.getElementById('shop-tab-ships');
+  const trailsBody  = document.getElementById('shop-tab-trails');
   const creditsBody = document.getElementById('shop-tab-credits');
-  const isCredits = tab === 'credits';
-  shipsBtn.classList.toggle('active', !isCredits);
-  creditsBtn.classList.toggle('active', isCredits);
-  shipsBody.style.display = isCredits ? 'none' : 'flex';
-  creditsBody.style.display = isCredits ? 'flex' : 'none';
-  if (isCredits && !creditPackagesLoaded) loadCreditPackages();
+  shipsBtn.classList.toggle('active',   tab === 'ships');
+  trailsBtn.classList.toggle('active',  tab === 'trails');
+  creditsBtn.classList.toggle('active', tab === 'credits');
+  shipsBody.style.display   = tab === 'ships'   ? 'flex'  : 'none';
+  trailsBody.style.display  = tab === 'trails'  ? 'block' : 'none';
+  creditsBody.style.display = tab === 'credits' ? 'flex'  : 'none';
+  if (tab === 'trails') buildTrailsTab();
+  if (tab === 'credits' && !creditPackagesLoaded) loadCreditPackages();
 };
+
+// ── Loja: aba de Rastros ──────────────────────────────────────
+function buildTrailsTab(){
+  const grid = document.getElementById('shop-trails-grid');
+  if (!grid) return;
+  const owned   = new Set(profile?.ownedTrails  || []);
+  const equipped = profile?.equippedTrail ?? 0;
+  grid.innerHTML = '';
+  TRAILS.forEach(trail => {
+    const isOwned    = trail.free || owned.has(trail.id);
+    const isEquipped = equipped === trail.id;
+    const card = document.createElement('div');
+    card.className = 'trail-card' + (isEquipped ? ' trail-equipped' : '');
+    // Canvas preview animado
+    const cv = document.createElement('canvas');
+    cv.width = 80; cv.height = 80;
+    startTrailPreview(cv, trail);
+    // Info
+    const nameEl = document.createElement('div');
+    nameEl.className = 'trail-card-name';
+    nameEl.textContent = trail.name;
+    // Botão
+    const btn = document.createElement('button');
+    btn.className = 'play-btn trail-card-btn';
+    if (isEquipped) {
+      btn.textContent = 'EQUIPADO';
+      btn.disabled = true;
+      btn.style.background = 'linear-gradient(90deg,#0a4,#0f8)';
+    } else if (isOwned) {
+      btn.textContent = 'EQUIPAR';
+      btn.onclick = () => equipTrail(trail.id);
+    } else {
+      btn.textContent = trail.price + ' CR';
+      btn.onclick = () => buyTrail(trail.id);
+    }
+    card.append(cv, nameEl, btn);
+    grid.appendChild(card);
+  });
+}
+
+function startTrailPreview(canvas, trailDef){
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  let t = 0;
+  let points = [];
+  let animId = canvas._trailAnimId;
+  if (animId) cancelAnimationFrame(animId);
+
+  function tick(){
+    t += 0.04;
+    ctx.clearRect(0, 0, W, H);
+    // Posição da nave: circulo no centro
+    const cx = W/2 + Math.cos(t) * 20;
+    const cy = H/2 + Math.sin(t) * 20;
+    // Emite partícula
+    points.push({ x: cx, y: cy, life: 1 });
+    // Atualiza e desenha
+    points = points.filter(p => p.life > 0);
+    points.forEach(p => {
+      p.life -= 0.06;
+      if (p.life <= 0) return;
+      const a = p.life;
+      drawPreviewParticle(ctx, p, a, trailDef);
+    });
+    // Desenha triângulo da nave
+    ctx.save();
+    const ang = Math.atan2(Math.sin(t + Math.PI/2)*20, Math.cos(t + Math.PI/2)*20);
+    ctx.translate(cx, cy);
+    ctx.rotate(ang);
+    ctx.beginPath();
+    ctx.moveTo(0, -7);
+    ctx.lineTo(5, 6);
+    ctx.lineTo(-5, 6);
+    ctx.closePath();
+    ctx.fillStyle = '#aaddff';
+    ctx.fill();
+    ctx.restore();
+    canvas._trailAnimId = requestAnimationFrame(tick);
+  }
+  tick();
+}
+
+function drawPreviewParticle(ctx, p, a, trailDef){
+  if (trailDef.style === 'none') return;
+  const color = trailDef.colors[Math.floor(Math.random() * trailDef.colors.length)];
+  ctx.save();
+  ctx.globalAlpha = a * 0.85;
+  if (trailDef.style === 'flame' || trailDef.style === 'sparkle') {
+    const r = 4 * a;
+    const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 2.5);
+    grd.addColorStop(0, color);
+    grd.addColorStop(1, 'transparent');
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r * 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = grd;
+    ctx.fill();
+  } else if (trailDef.style === 'lightning') {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.2 * a;
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+    ctx.lineTo(p.x + (Math.random()-0.5)*8, p.y + (Math.random()-0.5)*8);
+    ctx.stroke();
+  } else { // smoke
+    const r = 6 * a;
+    const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r);
+    grd.addColorStop(0, color + 'aa');
+    grd.addColorStop(1, 'transparent');
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+    ctx.fillStyle = grd;
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+async function buyTrail(trailId){
+  const { ok, data } = await apiFetch('/api/shop/trail/buy', 'POST', { trailId });
+  if (!ok) { showNotify(data?.error || 'Erro ao comprar rastro'); return; }
+  currentUser.credits = data.credits;
+  document.getElementById('shop-balance').textContent = data.credits;
+  updateCreditsDisplay();
+  if (!profile.ownedTrails) profile.ownedTrails = [];
+  profile.ownedTrails.push(trailId);
+  showNotify('Rastro desbloqueado!');
+  buildTrailsTab();
+}
+
+async function equipTrail(trailId){
+  const { ok, data } = await apiFetch('/api/shop/trail/equip', 'POST', { trailId });
+  if (!ok) { showNotify(data?.error || 'Erro ao equipar rastro'); return; }
+  profile.equippedTrail = trailId;
+  buildTrailsTab();
+}
 
 async function loadCreditPackages(){
   const disabledEl = document.getElementById('shop-credits-disabled');
@@ -1799,7 +1938,7 @@ window.startGame=function(){
   showScreen('game');
   paused=false;
   if(game)game.destroy();
-  game=new Game(canvas,{skinIndex:selectedSkin,playerName:pilotName,profileIcon:(profile?(profile.profileIcon||0):0),mode:selectedMode,difficulty:diff,roomId:'default'});
+  game=new Game(canvas,{skinIndex:selectedSkin,playerName:pilotName,profileIcon:(profile?(profile.profileIcon||0):0),equippedTrail:(profile?.equippedTrail||0),mode:selectedMode,difficulty:diff,roomId:'default'});
   game.start();
   window._game=game;
   updateOrientationUI();

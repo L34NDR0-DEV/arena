@@ -1,7 +1,85 @@
 // Jogador: Espaço atira, segurar direito move, mana para locomoção, barra de vida na nave.
 import { SKINS }            from './skins.js';
+import { TRAILS }           from './trails.js';
 import { ARENA_W, ARENA_H } from './arena.js';
 import { Inventory }         from './items.js';
+
+// ── Rastro visual da nave ──────────────────────────────────────────
+function spawnTrailPoint(trail, x, y) {
+  trail.push({ x, y, life: 1, maxLife: 1 });
+}
+function updateTrail(trail, dt) {
+  const decay = 3.2; // duração ~0.31s
+  for (const p of trail) p.life -= decay * dt;
+  return trail.filter(p => p.life > 0);
+}
+function drawTrail(ctx, trail, trailDef) {
+  if (!trailDef || trailDef.style === 'none' || !trail.length) return;
+  const colors = trailDef.colors;
+  const glow   = trailDef.glow || colors[0];
+
+  ctx.save();
+  ctx.shadowBlur = 0;
+
+  for (let i = 0; i < trail.length; i++) {
+    const p    = trail[i];
+    const t    = p.life / p.maxLife; // 1 → 0 (novo → velho)
+    const size = t * 7;
+    const alpha = t * 0.75;
+    if (alpha <= 0 || size <= 0) continue;
+
+    // Cor interpolada pelo índice ao longo do rastro
+    const colorIdx = Math.floor((1 - t) * (colors.length - 1));
+    const color = colors[Math.min(colorIdx, colors.length - 1)];
+
+    ctx.globalAlpha = alpha;
+
+    if (trailDef.style === 'flame') {
+      ctx.shadowColor = glow;
+      ctx.shadowBlur  = size * 2;
+      ctx.fillStyle   = color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (trailDef.style === 'sparkle') {
+      ctx.shadowColor = glow;
+      ctx.shadowBlur  = size * 3;
+      ctx.fillStyle   = color;
+      // Estrela de 4 pontas
+      const r1 = size, r2 = size * 0.35;
+      ctx.beginPath();
+      for (let k = 0; k < 8; k++) {
+        const a = (k * Math.PI) / 4;
+        const r = k % 2 === 0 ? r1 : r2;
+        k === 0 ? ctx.moveTo(p.x + Math.cos(a)*r, p.y + Math.sin(a)*r)
+                : ctx.lineTo(p.x + Math.cos(a)*r, p.y + Math.sin(a)*r);
+      }
+      ctx.closePath();
+      ctx.fill();
+    } else if (trailDef.style === 'lightning') {
+      ctx.strokeStyle = color;
+      ctx.lineWidth   = size * 0.6;
+      ctx.shadowColor = glow;
+      ctx.shadowBlur  = size * 4;
+      const jitter = (1 - t) * 4;
+      ctx.beginPath();
+      ctx.arc(p.x + (Math.random()-0.5)*jitter, p.y + (Math.random()-0.5)*jitter,
+              size * 0.5, 0, Math.PI * 2);
+      ctx.stroke();
+    } else if (trailDef.style === 'smoke') {
+      ctx.fillStyle = color;
+      ctx.shadowColor = glow;
+      ctx.shadowBlur  = size;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, size * 1.4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  ctx.globalAlpha = 1;
+  ctx.shadowBlur  = 0;
+  ctx.restore();
+}
 
 const SPEED       = 220;
 const DASH_SPEED  = 650;
@@ -252,6 +330,7 @@ export class Player {
     this._targetX=x; this._targetY=y;
 
     this.flames=[]; this._alienAngle=0; this._age=0; this._aimAngle=-Math.PI/2;
+    this.trail=[]; this._trailTimer=0; this.equippedTrailId=0;
 
     // Sistema de descarte por inatividade de inventário
     // 90s sem usar item → descarta 1; 60s de intervalo entre descartes
@@ -599,6 +678,22 @@ export class Player {
     }
     this.flames=updateFlames(this.flames,dt);
 
+    // ── Rastro visual cosmético ──────────────────────────────
+    const trailDef = TRAILS[this.equippedTrailId];
+    if (trailDef && trailDef.style !== 'none') {
+      const spd = Math.hypot(this.vx, this.vy);
+      if (spd > 20) {
+        this._trailTimer -= dt;
+        if (this._trailTimer <= 0) {
+          // Emite atrás do centro da nave
+          const spacing = trailDef.style === 'smoke' ? 0.045 : 0.03;
+          this._trailTimer = spacing;
+          spawnTrailPoint(this.trail, this.x, this.y);
+        }
+      }
+    }
+    this.trail = updateTrail(this.trail, dt);
+
     const spd=Math.hypot(this.vx,this.vy);
     this._audio?.setEngineIntensity(0.3+(spd/SPEED)*0.7);
 
@@ -771,6 +866,9 @@ export class Player {
     }
 
     if (this.dead) return;
+
+    // Rastro cosmético — desenhado antes das chamas e da nave
+    drawTrail(ctx, this.trail, TRAILS[this.equippedTrailId]);
 
     // Chamas — discos "UFO" totalmente blindados (noThruster) não emitem
     // nenhum rastro de propulsão, nem o clássico nem o thruster alienígena.
