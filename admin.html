@@ -135,6 +135,12 @@
   <div class="login-box">
     <h2>PAINEL ADMIN</h2>
     <p>Tower Defense on the Space</p>
+    <div id="g_id_signin_container" style="display:flex;justify-content:center;margin-bottom:16px;"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+      <span style="font-size:10px;color:var(--text2);">ou com e-mail</span>
+      <div style="flex:1;height:1px;background:var(--border);"></div>
+    </div>
     <input type="email" id="adm-email" placeholder="E-mail admin" autocomplete="username"/>
     <input type="password" id="adm-pass" placeholder="Senha" autocomplete="current-password"/>
     <button class="btn btn-cyan" style="width:100%;margin-top:4px;" onclick="adminLogin()">Entrar</button>
@@ -683,6 +689,44 @@ setInterval(loadMaintStatus, 15000);
 document.getElementById('adm-pass').addEventListener('keyup', e => {
   if (e.key === 'Enter') adminLogin();
 });
+
+// ── Google Sign-In ────────────────────────────────────────────────
+async function handleGoogleCredential(response) {
+  const errEl = document.getElementById('login-error');
+  errEl.textContent = '';
+  try {
+    const data = await api('POST', '/api/auth/google', { idToken: response.credential });
+    if (data.error) { errEl.textContent = 'Conta sem permissao de admin.'; return; }
+    const me = await api('GET', '/api/me');
+    if (!me.loggedIn) { errEl.textContent = 'Erro ao verificar sessao.'; return; }
+    document.getElementById('admin-badge').textContent = me.name || me.email;
+    showApp();
+  } catch(e) {
+    errEl.textContent = 'Erro de conexao.';
+  }
+}
+
+async function setupGoogleSignIn() {
+  const res  = await fetch('/api/config');
+  const data = await res.json();
+  const clientId = data.googleClientId;
+  if (!clientId) return;
+
+  const script = document.createElement('script');
+  script.src = 'https://accounts.google.com/gsi/client';
+  script.onload = () => {
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: handleGoogleCredential,
+    });
+    google.accounts.id.renderButton(
+      document.getElementById('g_id_signin_container'),
+      { theme: 'filled_black', size: 'large', text: 'signin_with', shape: 'rectangular', width: 280 }
+    );
+  };
+  document.head.appendChild(script);
+}
+setupGoogleSignIn();
 </script>
 </body>
 </html>
