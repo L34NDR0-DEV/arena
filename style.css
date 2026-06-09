@@ -29,23 +29,28 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .login-content{
   position:relative;z-index:2;
   display:flex;flex-direction:column;align-items:center;gap:0;
+  padding-top:clamp(12px,3vh,40px);
+  padding-bottom:clamp(12px,2vh,24px);
+  max-height:100vh;
+  overflow-y:auto;
+  width:100%;
 }
 
 /* ── Título arcade ── */
 .arcade-title{
-  display:flex;flex-direction:column;align-items:center;gap:4px;
-  margin-bottom:18px;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  margin-bottom:12px;
 }
 .arcade-title-top{
   font-family:'Press Start 2P',monospace;
-  font-size:clamp(11px,2.2vw,20px);
+  font-size:clamp(9px,1.4vw,14px);
   color:#00d4ff;
   text-shadow:0 0 10px #00d4ff,0 0 20px #00d4ff44,0 0 40px #00d4ff22;
   letter-spacing:4px;
 }
 .arcade-title-main{
   font-family:'Press Start 2P',monospace;
-  font-size:clamp(18px,3.8vw,36px);
+  font-size:clamp(16px,2.8vw,30px);
   line-height:1.3;
   text-align:center;
   background:linear-gradient(180deg,#ffffff 0%,#00d4ff 40%,#0088cc 100%);
@@ -68,7 +73,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 }
 .arcade-title-sub{
   font-family:'Press Start 2P',monospace;
-  font-size:clamp(7px,1.2vw,11px);
+  font-size:clamp(7px,0.9vw,10px);
   color:#00ff88;
   letter-spacing:6px;
   text-shadow:0 0 8px #00ff88;
