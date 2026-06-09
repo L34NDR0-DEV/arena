@@ -2083,12 +2083,12 @@ async function _checkMaintenanceStatus() {
       if (phase === 'warning') _showMaintBanner(data.minutesLeft);
       return;
     }
+    const prevPhase = _maintPhase;
     _maintPhase = phase;
 
     if (phase === 'off') {
       _hideMaintBanner();
-      // Se estava bloqueado e agora abriu, recarrega pra pegar assets novos
-      if (_maintPhase === 'locked' || _maintPhase === 'draining') location.reload();
+      if (prevPhase === 'locked' || prevPhase === 'draining') location.reload();
     } else if (phase === 'warning') {
       _showMaintBanner(data.minutesLeft);
       // Heartbeat local: conta regressiva no próprio client
@@ -2126,6 +2126,8 @@ async function _checkMaintenanceStatus() {
     }
   } catch(e) { /* servidor offline — ignora */ }
 }
+
+window.checkMaintenanceNow = _checkMaintenanceStatus;
 
 // Verifica a cada 30s
 setInterval(_checkMaintenanceStatus, 30000);
