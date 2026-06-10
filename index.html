@@ -433,19 +433,39 @@
 
 <!-- ═══ TUTORIAL DE BOAS-VINDAS — guia do piloto para novos usuários ═══ -->
 <div id="tutorial-overlay" style="display:none;">
-  <canvas id="tutorial-ship-canvas" width="180" height="180"></canvas>
-  <div class="tut-card">
-    <div class="tut-guide">
-      <img src="./src/icons/guia-piloto.png" alt="Piloto guia">
+  <div class="tut-layout">
+    <!-- Painel esquerdo: canvas de demonstração animada -->
+    <div class="tut-demo-panel">
+      <canvas id="tut-demo-canvas" width="280" height="280"></canvas>
+      <!-- Dedo virtual sobreposto ao canvas -->
+      <div id="tut-finger" class="tut-finger">
+        <svg viewBox="0 0 32 48" fill="none">
+          <path d="M10 48 C10 48 4 36 4 24 C4 14 8 8 16 8 C24 8 28 14 28 24 C28 36 22 48 22 48 Z" fill="#ffffffcc" stroke="#00d4ff" stroke-width="1.5"/>
+          <ellipse cx="16" cy="10" rx="5" ry="6" fill="#ffffffee"/>
+        </svg>
+        <div class="tut-finger-pulse"></div>
+      </div>
+      <!-- Highlight de tecla sobreposto -->
+      <div id="tut-key-hint" class="tut-key-hint" style="display:none;"></div>
     </div>
-    <div class="tut-bubble">
-      <div class="tut-step-label" id="tut-step-label">PASSO 1 / 5</div>
-      <div class="tut-title" id="tut-title">Bem-vindo, piloto!</div>
-      <div class="tut-text" id="tut-text">Eu sou seu instrutor de voo. Vou te mostrar rapidamente como funciona o jogo antes da sua primeira missão.</div>
-      <div class="tut-actions">
-        <button class="btn btn-ghost" id="tut-skip-btn" onclick="skipTutorial()">PULAR</button>
-        <div class="tut-dots" id="tut-dots"></div>
-        <button class="btn btn-primary" id="tut-next-btn" onclick="nextTutorialStep()">PRÓXIMO</button>
+
+    <!-- Painel direito: texto e navegação -->
+    <div class="tut-card">
+      <div class="tut-guide">
+        <img src="./src/icons/guia-piloto.png" alt="Piloto guia" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+        <svg style="display:none;width:44px;height:44px;color:#00d4ff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      </div>
+      <div class="tut-bubble">
+        <div class="tut-step-label" id="tut-step-label">PASSO 1 / 10</div>
+        <div class="tut-title" id="tut-title">Bem-vindo, piloto!</div>
+        <div class="tut-text" id="tut-text"></div>
+        <!-- Hint de tecla/ação do step atual -->
+        <div id="tut-action-hint" class="tut-action-hint" style="display:none;"></div>
+        <div class="tut-actions">
+          <button class="btn btn-ghost" id="tut-skip-btn" onclick="skipTutorial()">PULAR</button>
+          <div class="tut-dots" id="tut-dots"></div>
+          <button class="btn btn-primary" id="tut-next-btn" onclick="nextTutorialStep()">PROXIMO</button>
+        </div>
       </div>
     </div>
   </div>

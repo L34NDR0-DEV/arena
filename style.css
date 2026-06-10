@@ -1021,52 +1021,106 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 /* ═══ Tutorial de boas-vindas (novos usuários) ═══════════════ */
 #tutorial-overlay{
   position:fixed;inset:0;z-index:9997;display:none;align-items:center;justify-content:center;
-  flex-direction:column;gap:18px;padding:24px;
-  /* Fundo 100% opaco — não deixa o cenário do menu/login transparecer atrás,
-     mantendo o foco só no piloto-guia e na nave de exemplo. */
+  padding:20px;
   background:radial-gradient(ellipse at 50% 38%,#0a2332 0%,#050b14 55%,#02050a 100%);
   animation:srFadeIn .35s ease both;
 }
-#tutorial-ship-canvas{filter:drop-shadow(0 0 22px var(--cyan));animation:tutShipFloat 3.2s ease-in-out infinite;}
-@keyframes tutShipFloat{0%,100%{transform:translateY(0) rotate(0deg);}50%{transform:translateY(-10px) rotate(4deg);}}
 
-.tut-card{display:flex;align-items:center;gap:18px;max-width:620px;width:100%;}
+/* Layout principal: canvas de demo à esquerda + card de texto à direita */
+.tut-layout{
+  display:flex;align-items:center;gap:20px;max-width:700px;width:100%;
+}
+
+/* Painel do canvas de demo */
+.tut-demo-panel{
+  position:relative;flex:none;width:280px;height:280px;border-radius:12px;
+  background:#07111e;border:1px solid rgba(0,212,255,.2);
+  box-shadow:0 0 28px rgba(0,212,255,.12),inset 0 0 30px rgba(0,0,0,.5);
+  overflow:hidden;
+}
+#tut-demo-canvas{display:block;width:100%;height:100%;}
+
+/* Dedo virtual — posicionado em cima do canvas */
+.tut-finger{
+  position:absolute;pointer-events:none;width:30px;height:46px;z-index:2;
+  transform:translate(0,0);transition:left .35s ease,top .35s ease;
+  display:none;
+}
+.tut-finger svg{width:30px;height:46px;filter:drop-shadow(0 0 6px rgba(0,212,255,.7));}
+.tut-finger--tap .tut-finger-pulse{animation:tutFingerTap .35s ease both;}
+.tut-finger-pulse{
+  position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);
+  width:20px;height:20px;border-radius:50%;
+  border:2px solid rgba(0,212,255,.7);
+  opacity:0;
+}
+@keyframes tutFingerTap{
+  0%{opacity:0;transform:translateX(-50%) scale(.3);}
+  40%{opacity:.9;transform:translateX(-50%) scale(1);}
+  100%{opacity:0;transform:translateX(-50%) scale(1.8);}
+}
+
+/* Hint de tecla sobreposto ao canvas */
+.tut-key-hint{
+  position:absolute;bottom:10px;left:50%;transform:translateX(-50%);
+  background:#0d1e32ee;border:1px solid var(--cyan);border-radius:6px;
+  padding:4px 10px;font-size:10px;color:var(--cyan);white-space:nowrap;z-index:3;
+}
+
+/* Card de texto */
+.tut-card{display:flex;align-items:center;gap:16px;flex:1;}
 .tut-guide{
-  flex:none;width:96px;height:96px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  flex:none;width:88px;height:88px;border-radius:50%;display:flex;align-items:center;justify-content:center;
   background:radial-gradient(circle,#04222e,#020a10);border:2px solid var(--cyan);color:var(--cyan);
-  box-shadow:0 0 26px rgba(91,232,255,.5);overflow:hidden;
+  box-shadow:0 0 26px rgba(91,232,255,.5);overflow:hidden;align-self:flex-start;
 }
 .tut-guide img{width:100%;height:100%;object-fit:cover;}
 .tut-guide svg{width:36px;height:36px;}
 .tut-bubble{
   flex:1;background:var(--panel2);border:1px solid var(--border);border-radius:10px;
-  padding:18px 20px;position:relative;box-shadow:0 12px 32px rgba(0,0,0,.5);
+  padding:16px 18px;position:relative;box-shadow:0 12px 32px rgba(0,0,0,.5);
 }
 .tut-bubble::before{
-  content:'';position:absolute;left:-9px;bottom:22px;width:16px;height:16px;
+  content:'';position:absolute;left:-9px;top:26px;width:16px;height:16px;
   background:var(--panel2);border-left:1px solid var(--border);border-bottom:1px solid var(--border);
   transform:rotate(45deg);
 }
 .tut-step-label{font-family:'Press Start 2P',monospace;font-size:7px;letter-spacing:2px;color:var(--cyan);margin-bottom:8px;}
-.tut-title{font-family:'Press Start 2P',monospace;font-size:12px;color:#fff;margin-bottom:12px;letter-spacing:.5px;}
-.tut-text{font-size:13px;color:var(--text);line-height:1.75;margin-bottom:16px;}
+.tut-title{font-family:'Press Start 2P',monospace;font-size:11px;color:#fff;margin-bottom:10px;letter-spacing:.5px;}
+.tut-text{font-size:12px;color:var(--text);line-height:1.7;margin-bottom:10px;}
+
+/* Hint de acao (teclas/gestos) */
+.tut-action-hint{
+  font-size:10px;color:var(--cyan);background:#00d4ff11;border:1px solid #00d4ff33;
+  border-radius:5px;padding:5px 10px;margin-bottom:12px;letter-spacing:.5px;
+  font-family:'Press Start 2P',monospace;
+}
+
 .tut-actions{display:flex;align-items:center;justify-content:space-between;gap:10px;}
-.tut-dots{display:flex;gap:6px;}
-.tut-dot{width:7px;height:7px;border-radius:50%;background:#1a3a5a;transition:background .2s;}
+.tut-dots{display:flex;gap:5px;flex-wrap:wrap;}
+.tut-dot{width:6px;height:6px;border-radius:50%;background:#1a3a5a;transition:background .2s;}
 .tut-dot.active{background:var(--cyan);box-shadow:0 0 8px var(--cyan);}
 
-@media (max-width:680px){
-  .tut-card{flex-direction:column;align-items:stretch;}
-  .tut-guide{align-self:center;}
+@media (max-width:720px){
+  .tut-layout{flex-direction:column;align-items:center;gap:14px;}
+  .tut-demo-panel{width:240px;height:240px;}
+  .tut-card{flex-direction:row;width:100%;max-width:500px;}
   .tut-bubble::before{display:none;}
 }
-@media (orientation:landscape) and (max-height:520px){
-  #tutorial-ship-canvas{width:110px;height:110px;}
-  .tut-card{max-width:680px;gap:10px;}
+@media (max-width:480px){
+  .tut-demo-panel{width:200px;height:200px;}
   .tut-guide{width:60px;height:60px;}
-  .tut-bubble{padding:12px 16px;}
-  .tut-title{font-size:10px;margin-bottom:6px;}
-  .tut-text{font-size:10px;margin-bottom:10px;}
+  .tut-bubble{padding:10px 12px;}
+  .tut-title{font-size:9px;}
+  .tut-text{font-size:11px;}
+}
+@media (orientation:landscape) and (max-height:520px){
+  .tut-layout{flex-direction:row;gap:12px;}
+  .tut-demo-panel{width:200px;height:200px;}
+  .tut-guide{width:60px;height:60px;}
+  .tut-bubble{padding:10px 14px;}
+  .tut-title{font-size:9px;margin-bottom:6px;}
+  .tut-text{font-size:10px;margin-bottom:8px;}
 }
 
 /* ═══ Aviso de novo modo de jogo ═════════════════════════════ */

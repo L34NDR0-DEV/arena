@@ -135,64 +135,652 @@ function applyModeSlotToggle(){
 }
 
 // ── Tutorial de boas-vindas — guia do piloto para novos usuários ──
-// Mostrado uma única vez por conta (flag `tutorialSeen` persistida no
-// servidor), explicando o objetivo do jogo passo a passo com uma nave de
-// exemplo girando no centro da tela e um instrutor (avatar) narrando.
+// Mostrado uma única vez por conta. Cada step tem uma função `demo` que
+// anima o canvas lateral com cenas interativas (nave, tiro, itens, cartas,
+// torres, armadilhas) e move o "dedo virtual" para indicar ações.
 const TUTORIAL_STEPS = [
   {
     title: 'Bem-vindo, piloto!',
-    text: 'Eu sou seu instrutor de voo. Essa na sua frente é a Shadow Roxa, uma das naves do hangar — repare nos motores na popa: é por ali que sai a propulsão enquanto você voa pela arena.',
+    text: 'Sou seu instrutor de voo. Essa e sua nave — repare nos motores pulsando na popa. Vou te mostrar tudo que precisa saber antes de entrar na arena.',
+    actionHint: null,
+    demo: _tutDemoShip,
   },
   {
-    title: 'Como mover e atirar',
-    text: 'Segure o BOTÃO DIREITO do mouse: sua nave voa até onde o cursor estiver — solte para parar. Pressione ESPAÇO para atirar; a mira segue automaticamente a posição do cursor, então é só apontar e disparar.',
+    title: 'Mover e atirar',
+    text: 'Segure o BOTAO DIREITO do mouse: sua nave voa ate o cursor. ESPACO dispara automaticamente. A mira segue o cursor — so apontar.',
+    actionHint: 'BOTAO DIREITO — mover | ESPACO — atirar',
+    demo: _tutDemoMove,
   },
   {
-    title: 'Dash — fuga rápida',
-    text: 'Enquanto estiver se movendo, segure SHIFT para disparar um dash: um impulso curto e veloz na direção do movimento, ótimo para escapar de tiros inimigos ou se reposicionar no meio do combate.',
+    title: 'Dash — fuga rapida',
+    text: 'Enquanto se move, segure SHIFT para um dash explosivo na direcao do movimento. Essencial para escapar de tiros inimigos.',
+    actionHint: 'SHIFT — dash',
+    demo: _tutDemoDash,
   },
   {
     title: 'Vida, escudo e mana',
-    text: 'A barra VERMELHA é sua vida — não deixe zerar. A AZUL é o escudo, que absorve parte do dano antes de chegar à vida. Já a mana (combustível dos motores) é gasta ao mover e dar dash, e recarrega sozinha quando você fica parado.',
+    text: 'Barra VERMELHA = vida. AZUL = escudo (absorve dano primeiro). ROXO = mana — gasta ao mover, recarrega parado.',
+    actionHint: null,
+    demo: _tutDemoBars,
   },
   {
-    title: 'Itens e evolução',
-    text: 'Durante a partida aparecem itens flutuando pela arena — use as teclas 1 a 5 (e X pro slot bônus) para ativá-los: curas, escudos, tiros especiais e muito mais. Cada inimigo abatido também rende XP — suba de nível e seus tiros ficam mais fortes.',
+    title: 'Itens — slots 1 a 5',
+    text: 'Itens flutuam pela arena. Apanhe-os e pressione 1-5 para usar: curas, escudos, tiros especiais. O slot X e bonus — guarda um item extra.',
+    actionHint: 'Teclas 1 2 3 4 5 — usar item | X — slot bonus',
+    demo: _tutDemoItems,
   },
   {
-    title: 'Modos de jogo',
-    text: 'No menu você escolhe o modo: enfrente a IA em Contra 1/2, sobreviva a ondas infinitas no Survivor, ou entre em batalhas online — Equipe Online (PvP em times de 3) e o Torneio Tower Defense, onde duplas disputam o controle de uma torre.',
+    title: 'Cards of Defense — cartas',
+    text: 'No modo Cards, ao completar cada level o jogo PAUSA e 3 cartas aparecem. Clique em uma para escolher — ela vai para seu deck permanente e potencializa sua nave.',
+    actionHint: 'Clique na carta para escolher',
+    demo: _tutDemoCards,
+  },
+  {
+    title: 'Torres de combate',
+    text: 'Carta Torre: coloca uma torre aliada na arena. Clique na carta para ativar o modo de deploy, depois clique no mapa onde quer posicionar. A torre atira automaticamente nos inimigos.',
+    actionHint: 'Clique no item > Clique na arena',
+    demo: _tutDemoTower,
+  },
+  {
+    title: 'Armadilhas',
+    text: 'Carta Armadilha: coloca uma armadilha no chao. Inimigos nao conseguem ver — mas quando pisam, explode em area. Posicione nos caminhos mais movimentados.',
+    actionHint: 'Clique no item > Clique na arena',
+    demo: _tutDemoTrap,
+  },
+  {
+    title: '9 Vidas',
+    text: 'No modo Cards voce tem 9 vidas. Ao morrer ressuscita na arena — mas cada vida perdida reduz seu score final. Sobreviva o maximo que puder!',
+    actionHint: null,
+    demo: _tutDemoLives,
   },
   {
     title: 'Pronto para decolar!',
-    text: 'Jogue para ganhar créditos e desbloquear naves novas na loja — inclusive a nova linha Arcade! Agora é só escolher um modo e iniciar sua primeira missão. Boa sorte, piloto!',
+    text: 'Ganhe creditos, desbloqueie naves e entre para o ranking global. Agora escolha um modo e inicie sua primeira missao. Boa sorte, piloto!',
+    actionHint: null,
+    demo: _tutDemoReady,
   },
 ];
-let _tutStep = 0;
-const TUTORIAL_SHIP_ID = 6; // Shadow Roxa — nave de exemplo do guia
 
-function _drawTutorialShip(){
-  const cv = document.getElementById('tutorial-ship-canvas');
-  if (!cv) return;
-  const cctx = cv.getContext('2d');
-  const skin = SKINS.find(s=>s.id===TUTORIAL_SHIP_ID) || SKINS[0];
-  function draw(){
-    cctx.clearRect(0,0,cv.width,cv.height);
-    cctx.save();
-    cctx.translate(cv.width/2, cv.height/2);
-    skin.drawPreview(cctx, cv.width/skin._size);
-    cctx.restore();
-  }
-  if (skin.img){ skin.img.onload = draw; setTimeout(draw, 300); }
-  draw();
+let _tutStep = 0;
+let _tutAnim = null; // requestAnimationFrame handle da demo atual
+let _tutAnimTime = 0;
+let _tutAnimStart = 0;
+
+// ── Helpers do canvas de demo ──────────────────────────────────────────────
+
+function _tutGetCtx(){
+  const cv = document.getElementById('tut-demo-canvas');
+  return cv ? { cv, ctx: cv.getContext('2d') } : null;
 }
+
+function _tutRoundRect(ctx, x, y, w, h, r){
+  if(ctx.roundRect){ ctx.roundRect(x,y,w,h,r); return; }
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r);
+}
+
+function _tutClear(ctx, cv){
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  // Fundo escuro da arena
+  ctx.fillStyle = '#07111e';
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  // Grid sutil
+  ctx.strokeStyle = 'rgba(0,200,255,0.05)';
+  ctx.lineWidth = 0.5;
+  for(let x=0;x<cv.width;x+=28){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,cv.height); ctx.stroke(); }
+  for(let y=0;y<cv.height;y+=28){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(cv.width,y); ctx.stroke(); }
+}
+
+function _tutDrawShipAt(ctx, x, y, angle, scale=1, color='#9966ff'){
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.scale(scale, scale);
+  // Corpo da nave
+  ctx.fillStyle = color;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 12;
+  ctx.beginPath();
+  ctx.moveTo(0, -22);
+  ctx.lineTo(14, 14);
+  ctx.lineTo(0, 8);
+  ctx.lineTo(-14, 14);
+  ctx.closePath();
+  ctx.fill();
+  // Cockpit
+  ctx.fillStyle = '#ffffff44';
+  ctx.beginPath();
+  ctx.ellipse(0, -6, 5, 8, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+function _tutDrawBullet(ctx, x, y){
+  ctx.fillStyle = '#ffee44';
+  ctx.shadowColor = '#ffee44';
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  ctx.arc(x, y, 3, 0, Math.PI*2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+}
+
+function _tutDrawEnemy(ctx, x, y, r=16, color='#44ff88'){
+  ctx.fillStyle = color;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI*2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = '#ffffff33';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+function _tutMoveFinger(x, y, tap=false){
+  const el = document.getElementById('tut-finger');
+  if(!el) return;
+  el.style.left = (x-10)+'px';
+  el.style.top  = (y-8)+'px';
+  el.style.display = 'block';
+  if(tap){
+    el.classList.add('tut-finger--tap');
+    setTimeout(()=>el.classList.remove('tut-finger--tap'), 350);
+  }
+}
+
+function _tutHideFinger(){
+  const el = document.getElementById('tut-finger');
+  if(el) el.style.display = 'none';
+}
+
+function _tutStopAnim(){
+  if(_tutAnim){ cancelAnimationFrame(_tutAnim); _tutAnim = null; }
+}
+
+function _tutLoop(fn){
+  _tutStopAnim();
+  _tutAnimStart = performance.now();
+  function tick(ts){
+    _tutAnimTime = (ts - _tutAnimStart) / 1000;
+    fn(_tutAnimTime);
+    _tutAnim = requestAnimationFrame(tick);
+  }
+  _tutAnim = requestAnimationFrame(tick);
+}
+
+// ── Funções de demo por step ───────────────────────────────────────────────
+
+function _tutDemoShip(){
+  const r = _tutGetCtx(); if(!r) return;
+  const {cv, ctx} = r;
+  _tutHideFinger();
+  const cx=cv.width/2, cy=cv.height/2;
+  _tutLoop(t=>{
+    _tutClear(ctx, cv);
+    // Nave girando suavemente
+    _tutDrawShipAt(ctx, cx, cy, Math.sin(t*0.4)*0.3, 1.3, '#9966ff');
+    // Partículas de propulsão
+    for(let i=0;i<6;i++){
+      const ag = (Math.PI/2) + (i-2.5)*0.18 + Math.sin(t*3+i)*0.05;
+      const d  = 24 + Math.random()*18;
+      const px = cx + Math.cos(ag)*d, py = cy + Math.sin(ag)*d + 20;
+      const alf = (0.7 - i*0.08) * Math.abs(Math.sin(t*6+i));
+      ctx.globalAlpha = Math.max(0, alf);
+      ctx.fillStyle = i%2===0 ? '#9966ff' : '#66aaff';
+      ctx.beginPath(); ctx.arc(px, py, 3-i*0.3, 0, Math.PI*2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    // Label
+    ctx.fillStyle = '#aaaacc';
+    ctx.font = '11px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('Sua nave', cx, cy+55);
+  });
+}
+
+function _tutDemoMove(){
+  const r = _tutGetCtx(); if(!r) return;
+  const {cv, ctx} = r;
+  const W=cv.width, H=cv.height;
+  // Trajeto circular do cursor
+  _tutLoop(t=>{
+    _tutClear(ctx, cv);
+    const ang  = t * 0.8;
+    const curX = W/2 + Math.cos(ang)*80;
+    const curY = H/2 + Math.sin(ang)*60;
+    // Linha pontilhada do cursor ate nave
+    const shipAng = Math.atan2(curY - H/2, curX - W/2);
+    _tutDrawShipAt(ctx, W/2, H/2, shipAng, 1.1, '#9966ff');
+    // Cursor (cursor padrão simulado)
+    ctx.strokeStyle = '#00d4ff88';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(W/2, H/2); ctx.lineTo(curX, curY); ctx.stroke();
+    ctx.setLineDash([]);
+    // Tiro saindo
+    const phase = (t*2) % 1;
+    const bx = W/2 + Math.cos(shipAng) * (22 + phase*80);
+    const by = H/2 + Math.sin(shipAng) * (22 + phase*80);
+    if(phase < 0.85) _tutDrawBullet(ctx, bx, by);
+    // Mover dedo virtual
+    const fx = curX * (cv.getBoundingClientRect().width / W);
+    const fy = curY * (cv.getBoundingClientRect().height / H);
+    _tutMoveFinger(fx, fy);
+  });
+}
+
+function _tutDemoDash(){
+  const r = _tutGetCtx(); if(!r) return;
+  const {cv, ctx} = r;
+  const W=cv.width, H=cv.height;
+  _tutLoop(t=>{
+    _tutClear(ctx, cv);
+    const cycle = t % 2.5;
+    let sx, sy, trail;
+    if(cycle < 1.5){
+      // movendo normal
+      sx = 60 + cycle * 40; sy = H/2;
+      trail = 0;
+    } else {
+      // dash — aceleração
+      const dt = cycle - 1.5;
+      sx = 100 + dt * 220; sy = H/2;
+      trail = dt;
+    }
+    // Rastro de dash
+    if(trail > 0){
+      for(let i=0;i<8;i++){
+        const tx = sx - i*22*trail; const ty = sy;
+        ctx.globalAlpha = (0.5 - i*0.06) * trail;
+        ctx.fillStyle = '#44aaff';
+        ctx.beginPath(); ctx.arc(tx, ty, 12-i, 0, Math.PI*2); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+    _tutDrawShipAt(ctx, sx, sy, 0, 1.1, '#66aaff');
+    // Label SHIFT
+    if(cycle >= 1.5){
+      ctx.fillStyle = '#00d4ff';
+      ctx.font = 'bold 13px system-ui';
+      ctx.textAlign = 'center';
+      ctx.fillText('SHIFT', W/2, H-20);
+    }
+    _tutHideFinger();
+  });
+}
+
+function _tutDemoBars(){
+  const r = _tutGetCtx(); if(!r) return;
+  const {cv, ctx} = r;
+  const W=cv.width, H=cv.height;
+  _tutHideFinger();
+  _tutLoop(t=>{
+    _tutClear(ctx, cv);
+    const hp  = 0.5 + Math.sin(t*0.7)*0.35;
+    const sh  = 0.7 + Math.sin(t*0.5+1)*0.2;
+    const mn  = 0.4 + Math.abs(Math.sin(t*0.4))*0.5;
+    const bw=180, bh=14, bx=(W-bw)/2;
+    // Vida
+    ctx.fillStyle='#1a0808'; ctx.fillRect(bx,60,bw,bh);
+    ctx.fillStyle='#ff4455'; ctx.fillRect(bx,60,bw*hp,bh);
+    ctx.strokeStyle='#ff4455aa'; ctx.lineWidth=1; ctx.strokeRect(bx,60,bw,bh);
+    ctx.fillStyle='#fff'; ctx.font='10px system-ui'; ctx.textAlign='left';
+    ctx.fillText('VIDA',bx+4,72);
+    // Escudo
+    ctx.fillStyle='#08081a'; ctx.fillRect(bx,84,bw,bh);
+    ctx.fillStyle='#4488ff'; ctx.fillRect(bx,84,bw*sh,bh);
+    ctx.strokeStyle='#4488ffaa'; ctx.lineWidth=1; ctx.strokeRect(bx,84,bw,bh);
+    ctx.fillStyle='#fff'; ctx.fillText('ESCUDO',bx+4,96);
+    // Mana
+    ctx.fillStyle='#0a0818'; ctx.fillRect(bx,108,bw,bh);
+    ctx.fillStyle='#aa44ff'; ctx.fillRect(bx,108,bw*mn,bh);
+    ctx.strokeStyle='#aa44ffaa'; ctx.lineWidth=1; ctx.strokeRect(bx,108,bw,bh);
+    ctx.fillStyle='#fff'; ctx.fillText('MANA',bx+4,120);
+    // Nave pequena com seta apontando pro HUD
+    _tutDrawShipAt(ctx, W/2, H-60, -Math.PI/2, 0.9, '#9966ff');
+    ctx.strokeStyle='#ffffff33'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(W/2,H-75); ctx.lineTo(W/2,130); ctx.stroke();
+    ctx.setLineDash([]);
+  });
+}
+
+function _tutDemoItems(){
+  const r = _tutGetCtx(); if(!r) return;
+  const {cv, ctx} = r;
+  const W=cv.width, H=cv.height;
+  const slots = [
+    { label:'1', color:'#ff6688', x:30 },
+    { label:'2', color:'#44aaff', x:75 },
+    { label:'3', color:'#ffcc44', x:120 },
+    { label:'4', color:'#44ff88', x:165 },
+    { label:'5', color:'#aa44ff', x:210 },
+  ];
+  _tutLoop(t=>{
+    _tutClear(ctx, cv);
+    // Item flutuando na arena
+    const ix = W/2+Math.cos(t*0.6)*50, iy = 70+Math.sin(t*1.2)*12;
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = '#ffcc44'; ctx.shadowColor='#ffcc44'; ctx.shadowBlur=14;
+    ctx.beginPath(); ctx.arc(ix, iy, 10, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0; ctx.globalAlpha=1;
+    ctx.fillStyle='#fff'; ctx.font='bold 10px system-ui'; ctx.textAlign='center';
+    ctx.fillText('★', ix, iy+4);
+    // Slots de itens na parte de baixo
+    const activeSlot = Math.floor(t/1.8) % slots.length;
+    slots.forEach((s,i)=>{
+      const active = i===activeSlot;
+      ctx.fillStyle = active ? s.color+'cc' : '#11223344';
+      ctx.strokeStyle = active ? s.color : s.color+'55';
+      ctx.lineWidth = active ? 2 : 1;
+      ctx.shadowColor = active ? s.color : 'transparent';
+      ctx.shadowBlur = active ? 16 : 0;
+      ctx.beginPath();
+      _tutRoundRect(ctx, s.x, H-54, 40, 40, 6);
+      ctx.fill(); ctx.stroke();
+      ctx.shadowBlur=0;
+      ctx.fillStyle = active ? '#fff' : s.color+'99';
+      ctx.font = (active ? 'bold ' : '') + '11px system-ui';
+      ctx.textAlign='center';
+      ctx.fillText(s.label, s.x+20, H-28);
+    });
+    // Dedo apontando para o slot ativo
+    const activeS = slots[activeSlot];
+    const rect = document.getElementById('tut-demo-canvas')?.getBoundingClientRect();
+    if(rect){
+      const scaleX = rect.width/W, scaleY = rect.height/H;
+      _tutMoveFinger((activeS.x+20)*scaleX, (H-30)*scaleY, true);
+    }
+    _tutDrawShipAt(ctx, W/2, H/2-10, -Math.PI/2, 0.9, '#9966ff');
+  });
+}
+
+function _tutDemoCards(){
+  const r = _tutGetCtx(); if(!r) return;
+  const {cv, ctx} = r;
+  const W=cv.width, H=cv.height;
+  const cards = [
+    { label:'CASCO DE\nFERRO', color:'#00ff88', icon:'shield' },
+    { label:'NUCLEO\nVELOZ', color:'#44aaff', icon:'rapid' },
+    { label:'TIRO\nVAMPIRO', color:'#ff66aa', icon:'vamp' },
+  ];
+  _tutLoop(t=>{
+    _tutClear(ctx, cv);
+    // Overlay escuro como no jogo
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0,0,W,H);
+    // Titulo "ESCOLHA UMA CARTA"
+    ctx.fillStyle = '#00d4ff';
+    ctx.font = 'bold 11px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText('ESCOLHA UMA CARTA', W/2, 22);
+    // 3 cartas
+    const cardW=72, cardH=100, gap=8;
+    const totalW = 3*cardW + 2*gap;
+    const startX = (W-totalW)/2;
+    const hoveredIdx = Math.floor((t*0.5) % 3);
+    cards.forEach((c,i)=>{
+      const cx = startX + i*(cardW+gap);
+      const cy = 30;
+      const hovered = i===hoveredIdx;
+      const cy2 = cy + (hovered ? -6 : 0);
+      ctx.fillStyle = hovered ? c.color+'33' : '#0d1e3299';
+      ctx.strokeStyle = hovered ? c.color : c.color+'55';
+      ctx.lineWidth = hovered ? 2 : 1;
+      ctx.shadowColor = hovered ? c.color : 'transparent';
+      ctx.shadowBlur = hovered ? 20 : 0;
+      ctx.beginPath(); _tutRoundRect(ctx, cx, cy2, cardW, cardH, 8); ctx.fill(); ctx.stroke();
+      ctx.shadowBlur=0;
+      // Icone simples por tipo
+      ctx.strokeStyle = c.color; ctx.lineWidth=2; ctx.fillStyle=c.color+'44';
+      if(c.icon==='shield'){
+        ctx.beginPath(); ctx.moveTo(cx+36,cy2+18); ctx.lineTo(cx+56,cy2+26); ctx.lineTo(cx+56,cy2+46); ctx.lineTo(cx+36,cy2+56); ctx.lineTo(cx+16,cy2+46); ctx.lineTo(cx+16,cy2+26); ctx.closePath(); ctx.fill(); ctx.stroke();
+      } else if(c.icon==='rapid'){
+        for(let j=0;j<3;j++){ ctx.beginPath(); ctx.moveTo(cx+22+j*8,cy2+20); ctx.lineTo(cx+22+j*8,cy2+50); ctx.stroke(); }
+        ctx.beginPath(); ctx.moveTo(cx+16,cy2+30); ctx.lineTo(cx+56,cy2+30); ctx.stroke();
+      } else {
+        ctx.beginPath(); ctx.arc(cx+36,cy2+35,14,0,Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle=c.color; ctx.fillText('♥', cx+33, cy2+39);
+      }
+      // Label
+      ctx.fillStyle = hovered ? '#fff' : c.color+'cc';
+      ctx.font = (hovered?'bold ':'')+'9px system-ui';
+      ctx.textAlign='center';
+      const lines=c.label.split('\n');
+      lines.forEach((l,li)=> ctx.fillText(l, cx+36, cy2+68+li*13));
+    });
+    // Dedo apontando para a carta em hover
+    const hi = hoveredIdx;
+    const hcx = startX + hi*(cardW+gap) + cardW/2;
+    const hcy = 90;
+    const rect = document.getElementById('tut-demo-canvas')?.getBoundingClientRect();
+    if(rect){
+      const scaleX = rect.width/W, scaleY = rect.height/H;
+      _tutMoveFinger(hcx*scaleX, hcy*scaleY, Math.sin(t*3)>0.8);
+    }
+  });
+}
+
+function _tutDemoTower(){
+  const r = _tutGetCtx(); if(!r) return;
+  const {cv, ctx} = r;
+  const W=cv.width, H=cv.height;
+  _tutLoop(t=>{
+    _tutClear(ctx, cv);
+    const phase = t % 4;
+    // Fase 0-1: click no item do slot
+    // Fase 1-3: arrastar e posicionar
+    // Fase 3-4: torre atira
+    if(phase < 1){
+      // Slot de item brilhando
+      const px=W/2-30, py=H-54;
+      ctx.fillStyle='#00ddff44';
+      ctx.strokeStyle='#00ddff';
+      ctx.lineWidth=2;
+      ctx.shadowColor='#00ddff'; ctx.shadowBlur=16;
+      ctx.beginPath(); _tutRoundRect(ctx,px,py,44,44,6); ctx.fill(); ctx.stroke();
+      ctx.shadowBlur=0;
+      // Icone torre
+      ctx.strokeStyle='#00ddff'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(W/2,py+8); ctx.lineTo(W/2,py+36); ctx.stroke();
+      ctx.beginPath(); ctx.arc(W/2,py+14,8,0,Math.PI*2); ctx.stroke();
+      ctx.fillStyle='#fff'; ctx.font='9px system-ui'; ctx.textAlign='center';
+      ctx.fillText('TORRE', W/2, py+48);
+      const rect = document.getElementById('tut-demo-canvas')?.getBoundingClientRect();
+      if(rect) _tutMoveFinger((W/2)*(rect.width/W), (py+22)*(rect.height/H), phase>0.5);
+    } else if(phase < 3){
+      // Cursor movendo para posicionar
+      const progr = (phase-1)/2;
+      const tx = 80 + progr*100, ty = 100;
+      ctx.strokeStyle='#00ddff66'; ctx.lineWidth=1; ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.arc(tx,ty,30,0,Math.PI*2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='#00ddff22'; ctx.beginPath(); ctx.arc(tx,ty,30,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#00ddff'; ctx.font='10px system-ui'; ctx.textAlign='center';
+      ctx.fillText('posicionar aqui', tx, ty+45);
+      const rect = document.getElementById('tut-demo-canvas')?.getBoundingClientRect();
+      if(rect) _tutMoveFinger(tx*(rect.width/W), ty*(rect.height/H), phase>2.5);
+      _tutHideFinger();
+      const rect2 = document.getElementById('tut-demo-canvas')?.getBoundingClientRect();
+      if(rect2) _tutMoveFinger(tx*(rect2.width/W), ty*(rect2.height/H), phase>2.5);
+    } else {
+      // Torre disparando
+      const tx=80+50, ty=100;
+      // Base octagonal da torre
+      ctx.fillStyle='#0d1e32'; ctx.strokeStyle='#00ddff'; ctx.lineWidth=2;
+      ctx.beginPath();
+      for(let i=0;i<8;i++){ const a=i*Math.PI/4; ctx[i?'lineTo':'moveTo'](tx+18*Math.cos(a),ty+18*Math.sin(a)); }
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      // Canhao giratório
+      const canAng = t*2;
+      ctx.strokeStyle='#00ddff'; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(tx+Math.cos(canAng)*24,ty+Math.sin(canAng)*24); ctx.stroke();
+      // Projetil
+      const projPhase=(t*2.5)%1;
+      ctx.fillStyle='#00ddff'; ctx.shadowColor='#00ddff'; ctx.shadowBlur=8;
+      ctx.beginPath(); ctx.arc(tx+Math.cos(canAng)*(24+projPhase*80),ty+Math.sin(canAng)*(24+projPhase*80),3,0,Math.PI*2); ctx.fill();
+      ctx.shadowBlur=0;
+      // Inimigo
+      _tutDrawEnemy(ctx, 230, 180, 14, '#44ff88');
+      _tutHideFinger();
+    }
+    _tutDrawShipAt(ctx, W-50, H-50, -Math.PI/2, 0.8, '#9966ff');
+  });
+}
+
+function _tutDemoTrap(){
+  const r = _tutGetCtx(); if(!r) return;
+  const {cv, ctx} = r;
+  const W=cv.width, H=cv.height;
+  _tutLoop(t=>{
+    _tutClear(ctx, cv);
+    const phase = t % 4;
+    if(phase < 1.8){
+      // Posicionando armadilha
+      const progr = Math.min(1, phase/1.5);
+      const tx=W/2+20, ty=H/2-10;
+      ctx.strokeStyle='#aa44ff66'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.arc(tx,ty,22,0,Math.PI*2); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle='#aa44ff22'; ctx.beginPath(); ctx.arc(tx,ty,22,0,Math.PI*2); ctx.fill();
+      if(progr>0.9){
+        // Hexagono colocado
+        ctx.strokeStyle='#aa44ff'; ctx.lineWidth=2;
+        ctx.shadowColor='#aa44ff'; ctx.shadowBlur=10;
+        ctx.beginPath();
+        for(let i=0;i<6;i++){ const a=i*Math.PI/3-Math.PI/6; ctx[i?'lineTo':'moveTo'](tx+10*Math.cos(a),ty+10*Math.sin(a)); }
+        ctx.closePath(); ctx.stroke();
+        ctx.shadowBlur=0;
+      }
+      const rect = document.getElementById('tut-demo-canvas')?.getBoundingClientRect();
+      if(rect) _tutMoveFinger(tx*(rect.width/W), ty*(rect.height/H), phase>1.5);
+    } else {
+      // Inimigo pisando -> explosão
+      const ep = (phase-1.8)/2.2;
+      const ex = 180-ep*80, ey=H/2-10;
+      const tx=W/2+20, ty=H/2-10;
+      // Hexagono pulsando
+      ctx.strokeStyle='#aa44ff'; ctx.lineWidth=2*(1-ep);
+      ctx.beginPath();
+      for(let i=0;i<6;i++){ const a=i*Math.PI/3-Math.PI/6; ctx[i?'lineTo':'moveTo'](tx+10*Math.cos(a),ty+10*Math.sin(a)); }
+      ctx.closePath(); ctx.stroke();
+      if(ep > 0.6){
+        // Explosao
+        const burst = (ep-0.6)/0.4;
+        ctx.strokeStyle=`rgba(170,68,255,${1-burst})`;
+        ctx.lineWidth=3;
+        ctx.shadowColor='#aa44ff'; ctx.shadowBlur=20*burst;
+        for(let i=0;i<8;i++){
+          const a=i*Math.PI/4; const d=burst*60;
+          ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(tx+Math.cos(a)*d,ty+Math.sin(a)*d); ctx.stroke();
+        }
+        ctx.beginPath(); ctx.arc(tx,ty,burst*50,0,Math.PI*2); ctx.stroke();
+        ctx.shadowBlur=0;
+      } else {
+        _tutDrawEnemy(ctx, ex, ey, 14, '#44ff88');
+      }
+      _tutHideFinger();
+    }
+    _tutDrawShipAt(ctx, 40, H-50, -Math.PI/2, 0.8, '#9966ff');
+  });
+}
+
+function _tutDemoLives(){
+  const r = _tutGetCtx(); if(!r) return;
+  const {cv, ctx} = r;
+  const W=cv.width, H=cv.height;
+  _tutHideFinger();
+  _tutLoop(t=>{
+    _tutClear(ctx, cv);
+    const livesLeft = Math.max(0, 9 - Math.floor(t/1.5));
+    // HUD de vidas
+    ctx.fillStyle='#fff';
+    ctx.font='bold 13px system-ui';
+    ctx.textAlign='center';
+    ctx.fillText('VIDAS', W/2, 30);
+    // Corações / circulos
+    for(let i=0;i<9;i++){
+      const alive = i < livesLeft;
+      const lx = (W/2 - 4*22) + i*22, ly=50;
+      ctx.fillStyle = alive ? '#ff4466' : '#33333388';
+      ctx.strokeStyle = alive ? '#ff4466' : '#55555566';
+      ctx.lineWidth=1;
+      ctx.shadowColor = alive ? '#ff4466' : 'transparent';
+      ctx.shadowBlur = alive ? 10 : 0;
+      ctx.beginPath(); ctx.arc(lx,ly,8,0,Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.shadowBlur=0;
+    }
+    // Nave respawnando
+    if(livesLeft > 0){
+      const ry = H/2 + Math.sin(t*0.5)*20;
+      _tutDrawShipAt(ctx, W/2, ry, 0, 1.1, '#9966ff');
+      ctx.fillStyle='#9966ff66'; ctx.font='10px system-ui'; ctx.textAlign='center';
+      ctx.fillText('RESPAWN', W/2, H-20);
+    } else {
+      ctx.fillStyle='#ff4444'; ctx.font='bold 14px system-ui'; ctx.textAlign='center';
+      ctx.fillText('GAME OVER', W/2, H/2+40);
+      ctx.fillStyle='#aaaacc'; ctx.font='10px system-ui';
+      ctx.fillText('Score salvo no ranking', W/2, H/2+58);
+    }
+  });
+}
+
+function _tutDemoReady(){
+  const r = _tutGetCtx(); if(!r) return;
+  const {cv, ctx} = r;
+  const W=cv.width, H=cv.height;
+  _tutHideFinger();
+  _tutLoop(t=>{
+    _tutClear(ctx, cv);
+    // Multiplas naves orbitando
+    const naves = ['#9966ff','#66aaff','#44ff88','#ffcc44','#ff6688'];
+    naves.forEach((c,i)=>{
+      const a = t*0.5 + i*(Math.PI*2/naves.length);
+      const r = 80;
+      const nx = W/2+Math.cos(a)*r, ny=H/2+Math.sin(a)*r;
+      _tutDrawShipAt(ctx, nx, ny, a+Math.PI/2, 0.7, c);
+    });
+    // Texto central
+    ctx.fillStyle='#00d4ff';
+    ctx.font='bold 14px system-ui';
+    ctx.textAlign='center';
+    ctx.fillText('BOA SORTE', W/2, H/2-8);
+    ctx.fillStyle='#aaaacc'; ctx.font='10px system-ui';
+    ctx.fillText('PILOTO!', W/2, H/2+10);
+    // Estrelas ao redor
+    for(let i=0;i<20;i++){
+      const sa=i*Math.PI*2/20+t*0.1;
+      const sd=110+Math.sin(t+i)*8;
+      const sx=W/2+Math.cos(sa)*sd, sy=H/2+Math.sin(sa)*sd;
+      ctx.globalAlpha=0.4+Math.sin(t*2+i)*0.3;
+      ctx.fillStyle='#ffffff';
+      ctx.fillRect(sx-1,sy-1,2,2);
+    }
+    ctx.globalAlpha=1;
+  });
+}
+
+// ── Renderização e controle do tutorial ───────────────────────────────────
 
 function _renderTutorialStep(){
   const step = TUTORIAL_STEPS[_tutStep];
   document.getElementById('tut-step-label').textContent = `PASSO ${_tutStep+1} / ${TUTORIAL_STEPS.length}`;
   document.getElementById('tut-title').textContent = step.title;
   document.getElementById('tut-text').textContent = step.text;
-  document.getElementById('tut-next-btn').textContent = (_tutStep === TUTORIAL_STEPS.length-1) ? 'COMEÇAR' : 'PRÓXIMO';
+  document.getElementById('tut-next-btn').textContent = (_tutStep === TUTORIAL_STEPS.length-1) ? 'COMECAR' : 'PROXIMO';
+  // Hint de acao
+  const hintEl = document.getElementById('tut-action-hint');
+  if(step.actionHint){
+    hintEl.textContent = step.actionHint;
+    hintEl.style.display = 'block';
+  } else {
+    hintEl.style.display = 'none';
+  }
+  // Dots de progresso
   const dotsEl = document.getElementById('tut-dots');
   dotsEl.innerHTML = '';
   for (let i=0;i<TUTORIAL_STEPS.length;i++){
@@ -200,6 +788,10 @@ function _renderTutorialStep(){
     d.className = 'tut-dot' + (i===_tutStep ? ' active' : '');
     dotsEl.appendChild(d);
   }
+  // Demo animada
+  _tutStopAnim();
+  _tutHideFinger();
+  if(step.demo) step.demo();
 }
 
 window.nextTutorialStep = function(){
@@ -213,19 +805,19 @@ window.nextTutorialStep = function(){
 window.skipTutorial = function(){ finishTutorial(); };
 
 function finishTutorial(){
+  _tutStopAnim();
+  _tutHideFinger();
   document.getElementById('tutorial-overlay').style.display = 'none';
 }
 
 function maybeShowTutorial(){
   if (!profile || profile.tutorialSeen) return;
-  // Marca como visto já ao EXIBIR (não só ao concluir/pular): se o usuário
-  // der F5 no meio do guia, ele não deve reaparecer do zero.
+  // Marca como visto ao EXIBIR: se der F5 no meio, nao reaparece do zero
   profile.tutorialSeen = true;
   if (currentUser) apiFetch('/api/profile/tutorial-seen', { method:'POST' }).catch(()=>{});
   _tutStep = 0;
   _renderTutorialStep();
   document.getElementById('tutorial-overlay').style.display = 'flex';
-  _drawTutorialShip();
 }
 
 // ── Aviso de novo modo de jogo — exibido quando há um modo recém-lançado
