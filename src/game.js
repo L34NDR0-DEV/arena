@@ -654,10 +654,11 @@ export class Game {
         const ev = this._cardsMgr.update(dt, this.player, this.combat.bullets, this.arena, this.itemMgr);
         if (ev) {
           this._cardsLevel = this._cardsMgr.currentLevel;
-          if (ev.cardLevel) {
+          if (ev.cardLevel != null) {
             // Evento de carta — gera opções, pausa o jogo e mostra overlay
+            // cardLevel=0 = carta de build inicial (antes da onda 1)
             const ownedIds = this.player._cardsOwned.map(c => c.id);
-            const options  = this._cardsMgr.generateCardOptions(ev.cardLevel, ownedIds);
+            const options  = this._cardsMgr.generateCardOptions(this._cardsMgr.currentLevel, ownedIds);
             const cardEv   = { ...ev, options };
             this._cardsPaused = true;
             this._cardEvent   = cardEv;
@@ -1356,6 +1357,10 @@ export class Game {
     this.ui.notify(`Carta escolhida: ${label} Lv${lv}!`, '#00ff88');
     this._cardsPaused = false;
     this._cardEvent   = null;
+    // Se era a carta inicial (waveTimer ainda alto), inicia a onda agora
+    if (this._cardsMgr && this._cardsMgr.waveTimer > 10) {
+      this._cardsMgr.waveTimer = 3; // 3s de countdown antes da 1ª onda
+    }
 
     // Fortify: reforça torres e armadilhas já colocadas
     if (cardId === 'fortify') {

@@ -1405,12 +1405,13 @@ export class CardDefenseManager {
     this.currentLevel=1;     // 1-25
     this.waveInLevel=0;      // 0-2 (3 ondas por level)
     this.waveActive=false;
-    this.waveTimer=5;        // pausa antes da primeira onda
+    this.waveTimer=99;       // espera carta inicial antes da 1ª onda
     this.toSpawn=[];
     this.spawnTimer=0;
     this.enemyScore=0;
     this._audio=null;
     this._pendingCardLevel=null; // level que disparou evento de carta
+    this._initialCardPending=true; // mostra carta de build antes da onda 1
     this._prepareWave();
 
     // Levels que disparam escolha de carta (ao completar)
@@ -1501,6 +1502,12 @@ export class CardDefenseManager {
   }
 
   update(dt, player, bullets, arena, itemMgr) {
+    // Carta de build inicial — dispara antes da primeira onda começar
+    if (this._initialCardPending) {
+      this._initialCardPending = false;
+      return { waveComplete:false, levelComplete:false, cardLevel:0 };
+    }
+
     // Contagem de timer entre ondas
     if (!this.waveActive) {
       this.waveTimer-=dt;

@@ -2966,7 +2966,8 @@ window.showCardsOverlay = function(ev) {
 
   // Atualiza o level badge
   const badge = overlay.querySelector('.cards-level-badge');
-  if (badge) badge.textContent = `Level ${ev.cardLevel || ev.level || '?'}`;
+  const lvNum = ev.cardLevel ?? ev.level;
+  if (badge) badge.textContent = lvNum === 0 ? 'BUILD INICIAL' : `LEVEL ${lvNum || 1}`;
 
   // Renderiza as 3 cartas
   grid.innerHTML = '';
@@ -2993,17 +2994,34 @@ window.showCardsOverlay = function(ev) {
 
   overlay.classList.add('show');
 
-  // Timer de 40s para forçar uma escolha aleatória
+  // Anima a barra de timer de 40s
+  const fill = overlay.querySelector('.cards-timer-fill');
+  const timerText = overlay.querySelector('.cards-timer-text');
+  if (fill) { fill.style.transition='none'; fill.style.width='100%'; }
+  const CARD_TIMEOUT = 40000;
+  const timerStart = Date.now();
+  if (window._cardsTimerRaf) cancelAnimationFrame(window._cardsTimerRaf);
+  function tickTimer() {
+    const elapsed = Date.now() - timerStart;
+    const pct = Math.max(0, 1 - elapsed / CARD_TIMEOUT);
+    if (fill) fill.style.width = (pct * 100) + '%';
+    if (timerText) timerText.textContent = Math.ceil(pct * 40) + 's';
+    if (pct > 0) window._cardsTimerRaf = requestAnimationFrame(tickTimer);
+  }
+  requestAnimationFrame(tickTimer);
+
+  // Força escolha aleatória ao expirar
   if (window._cardsOverlayTimer) clearTimeout(window._cardsOverlayTimer);
   window._cardsOverlayTimer = setTimeout(() => {
     if (options.length) window._cardChoose(options[0].id);
-  }, 40000);
+  }, CARD_TIMEOUT);
 };
 
 window.hideCardsOverlay = function() {
   const overlay = document.getElementById('cards-overlay');
   if (overlay) overlay.classList.remove('show');
   if (window._cardsOverlayTimer) { clearTimeout(window._cardsOverlayTimer); window._cardsOverlayTimer=null; }
+  if (window._cardsTimerRaf) { cancelAnimationFrame(window._cardsTimerRaf); window._cardsTimerRaf=null; }
 };
 
 window._cardChoose = function(cardId) {
