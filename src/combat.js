@@ -133,7 +133,13 @@ export class CombatSystem {
 
   spawnExplosion(x,y,r,color) {
     this.explosions.push({x,y,r,maxR:r,color,life:1});
-    this.arena.spawnParticles(x,y,color,10,150);
+    const effects = this.arena.effects;
+    if (effects) {
+      effects.ring(x, y, { color, maxRadius:r, duration:0.36, width:3 });
+      effects.burst(x, y, { color, count:10, speed:150 });
+    } else {
+      this.arena.spawnParticles(x,y,color,10,150);
+    }
   }
 
   update(dt, player, enemies) {
