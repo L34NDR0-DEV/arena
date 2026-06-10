@@ -635,6 +635,8 @@ export class Game {
 
     // ── Modo Cards of Defense ─────────────────────────────────
     if (this._isCardsMode) {
+      if (this._cardsMgr) this._cardsLevel = this._cardsMgr.currentLevel;
+
       // Se overlay de carta está aberto, congela tudo exceto câmera/UI
       if (this._cardsPaused) return;
 
@@ -660,6 +662,7 @@ export class Game {
       // Atualiza CardDefenseManager
       if (this._cardsMgr) {
         const ev = this._cardsMgr.update(dt, this.player, this.combat.bullets, this.arena, this.itemMgr);
+        this._cardsLevel = this._cardsMgr.currentLevel;
         if (ev) {
           this._cardsLevel = this._cardsMgr.currentLevel;
           if (ev.cardLevel != null) {
@@ -1348,18 +1351,24 @@ export class Game {
   // HUD de vidas no modo cards (canto superior direito)
   _drawCardsLivesHUD(ctx, W, H) {
     const lv = this._cardsLives;
+    const mgr = this._cardsMgr;
+    const phase = mgr?.currentLevel ?? this._cardsLevel;
+    const wave = mgr ? Math.max(1, Math.min(3, (mgr.waveInLevel ?? 0) + 1)) : 1;
+    const waiting = mgr && !mgr.isWaveActive && mgr.waveCountdown > 0 && mgr.waveTimer < 20;
     ctx.save();
     ctx.font         = 'bold 11px monospace';
     ctx.textAlign    = 'right';
     ctx.textBaseline = 'top';
-    // Level
+    // Fase/onda do modo cards
     ctx.fillStyle  = '#00ff88';
     ctx.shadowColor= '#00ff88'; ctx.shadowBlur=6;
-    ctx.fillText(`Lv ${this._cardsLevel}`, W - 12, 40);
+    ctx.fillText(`Fase ${phase}/25`, W - 12, 40);
     ctx.shadowBlur = 0;
+    ctx.fillStyle  = waiting ? '#ffcc44' : '#9fefff';
+    ctx.fillText(waiting ? `Onda ${wave}/3 em ${mgr.waveCountdown}s` : `Onda ${wave}/3`, W - 12, 56);
     // Vidas
     ctx.fillStyle  = lv <= 3 ? '#ff4466' : '#ffffff';
-    ctx.fillText(`Vidas: ${lv}`, W - 12, 56);
+    ctx.fillText(`Vidas: ${lv}`, W - 12, 72);
     ctx.restore();
   }
 
