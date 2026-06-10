@@ -2550,13 +2550,16 @@ showScreen = function(name){
     btnPause.classList.remove('pressed');
   }, { passive:false });
 
-  const STICK_RADIUS = 65;
   let stickTouchId = null;
   const stickVec = { x:0, y:0, active:false };
 
   function stickCenter(){
     const r = stickZone.getBoundingClientRect();
     return { cx: r.left + r.width/2, cy: r.top + r.height/2 };
+  }
+  function stickRadius(){
+    const r = stickZone.getBoundingClientRect();
+    return Math.max(36, Math.min(r.width, r.height) * 0.47);
   }
   function stickStart(touch){
     if (stickTouchId !== null) return;
@@ -2565,12 +2568,13 @@ showScreen = function(name){
   }
   function stickMove(touch){
     const { cx, cy } = stickCenter();
+    const radius = stickRadius();
     let dx = touch.clientX - cx, dy = touch.clientY - cy;
     const dist = Math.hypot(dx, dy);
-    if (dist > STICK_RADIUS) { dx = dx/dist*STICK_RADIUS; dy = dy/dist*STICK_RADIUS; }
+    if (dist > radius) { dx = dx/dist*radius; dy = dy/dist*radius; }
     stickKnob.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-    stickVec.x = dx / STICK_RADIUS;
-    stickVec.y = dy / STICK_RADIUS;
+    stickVec.x = dx / radius;
+    stickVec.y = dy / radius;
     stickVec.active = Math.hypot(stickVec.x, stickVec.y) > 0.12;
   }
   function stickEnd(){

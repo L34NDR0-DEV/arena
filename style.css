@@ -1241,56 +1241,159 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .rotate-text span{color:var(--cyan);}
 
 /* ═══ Controles touch (mobile) ═══════════════════════════════ */
-#touch-controls{position:absolute;inset:0;display:none;pointer-events:none;z-index:50;}
+#touch-controls{
+  --touch-cyan:#5be8ff;
+  --touch-violet:#b86cff;
+  --touch-gold:#ffcc44;
+  --touch-shell:#111821;
+  --touch-shell2:#263141;
+  position:absolute;inset:0;display:none;pointer-events:none;z-index:50;
+}
 #touch-controls.active{display:block;}
 .touch-stick-zone{
-  position:absolute;left:18px;bottom:18px;width:130px;height:130px;
-  border-radius:50%;background:rgba(91,232,255,.06);border:2px solid rgba(91,232,255,.28);
-  pointer-events:auto;touch-action:none;
+  position:absolute;
+  left:calc(16px + env(safe-area-inset-left));
+  bottom:calc(16px + env(safe-area-inset-bottom));
+  width:138px;height:138px;border-radius:50%;
+  pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;
 }
+.touch-stick-zone::before{
+  content:"";position:absolute;inset:0;border-radius:50%;
+  background:
+    conic-gradient(from 8deg,#0a0f16 0 14deg,#3e4858 14deg 34deg,#101821 34deg 54deg,#5b6574 54deg 66deg,#0a0f16 66deg 90deg,#253142 90deg 126deg,#0a0f16 126deg 180deg,#3e4858 180deg 214deg,#0a0f16 214deg 270deg,#253142 270deg 306deg,#0a0f16 306deg 360deg);
+  border:1px solid rgba(188,230,255,.28);
+  box-shadow:0 0 24px rgba(91,232,255,.24), inset 0 0 16px rgba(0,0,0,.75);
+}
+.touch-stick-zone::after{
+  content:"";position:absolute;inset:18px;border-radius:50%;
+  background:
+    radial-gradient(circle at 35% 28%,rgba(255,255,255,.16),rgba(255,255,255,0) 24%),
+    radial-gradient(circle,rgba(91,232,255,.16),rgba(6,18,28,.82) 58%,rgba(2,6,12,.92));
+  border:2px solid rgba(91,232,255,.72);
+  box-shadow:0 0 18px rgba(91,232,255,.46), inset 0 0 24px rgba(3,10,18,.9);
+}
+.touch-stick-core{
+  position:absolute;inset:42px;border-radius:50%;z-index:2;pointer-events:none;
+  background:
+    linear-gradient(30deg,rgba(255,255,255,.05) 0 1px,transparent 1px 9px),
+    radial-gradient(circle,#131d2a,#070b12 68%);
+  border:1px solid rgba(91,232,255,.28);
+}
+.touch-stick-arrow{
+  position:absolute;z-index:3;width:0;height:0;opacity:.82;pointer-events:none;
+  filter:drop-shadow(0 0 6px var(--touch-cyan));
+}
+.touch-stick-arrow-up{left:50%;top:15px;transform:translateX(-50%);border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:12px solid var(--touch-cyan);}
+.touch-stick-arrow-right{right:15px;top:50%;transform:translateY(-50%);border-top:7px solid transparent;border-bottom:7px solid transparent;border-left:12px solid var(--touch-cyan);}
+.touch-stick-arrow-down{left:50%;bottom:15px;transform:translateX(-50%);border-left:7px solid transparent;border-right:7px solid transparent;border-top:12px solid var(--touch-cyan);}
+.touch-stick-arrow-left{left:15px;top:50%;transform:translateY(-50%);border-top:7px solid transparent;border-bottom:7px solid transparent;border-right:12px solid var(--touch-cyan);}
 .touch-stick-knob{
-  position:absolute;width:56px;height:56px;border-radius:50%;
+  position:absolute;width:56px;height:56px;border-radius:50%;z-index:6;
   left:50%;top:50%;transform:translate(-50%,-50%);
-  background:radial-gradient(circle at 35% 35%,#7df3ff,#0090b8);
-  border:2px solid #bdf6ff;box-shadow:0 0 14px var(--cyan);
+  background:
+    radial-gradient(circle at 34% 26%,#f2fdff 0 9%,#94f4ff 10% 24%,#067a9c 58%,#061018 100%);
+  border:2px solid #c8f8ff;
+  box-shadow:0 0 18px rgba(91,232,255,.75), inset 0 -10px 16px rgba(0,0,0,.46);
   pointer-events:none;
 }
-.touch-actions{position:absolute;right:16px;bottom:130px;display:flex;flex-direction:column;align-items:flex-end;gap:10px;pointer-events:none;}
+.touch-actions{
+  position:absolute;
+  right:calc(16px + env(safe-area-inset-right));
+  bottom:calc(126px + env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;align-items:flex-end;gap:12px;pointer-events:none;
+}
 .touch-btn{
+  --accent:var(--touch-cyan);
+  --accent-soft:rgba(91,232,255,.42);
+  --accent-border:rgba(91,232,255,.72);
+  --accent-core:#12303d;
   pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;
-  display:flex;align-items:center;justify-content:center;
-  border-radius:50%;border:2px solid var(--cyan);color:var(--cyan);
-  background:rgba(0,30,46,.55);font-family:'Press Start 2P',monospace;
-  box-shadow:0 0 10px rgba(91,232,255,.35);
+  position:relative;display:flex;align-items:center;justify-content:center;
+  border:none;border-radius:50%;color:var(--accent);
+  isolation:isolate;
+  background:radial-gradient(circle at 42% 35%,#344052,#111822 54%,#04070d 100%);
+  box-shadow:0 0 18px var(--accent-soft), inset 0 0 18px rgba(0,0,0,.68);
 }
-.touch-btn:active,.touch-btn.pressed{background:rgba(91,232,255,.35);box-shadow:0 0 18px var(--cyan);transform:scale(.92);}
-.touch-btn-fire{width:78px;height:78px;font-size:9px;}
-.touch-btn-dash{width:60px;height:60px;font-size:7px;border-color:var(--gold);color:var(--gold);box-shadow:0 0 10px rgba(255,204,68,.35);}
-.touch-btn-dash:active,.touch-btn-dash.pressed{background:rgba(255,204,68,.32);box-shadow:0 0 18px var(--gold);}
+.touch-btn::before{
+  content:"";position:absolute;inset:-4px;border-radius:50%;
+  background:conic-gradient(from 18deg,#060a10 0 18deg,#4a5362 18deg 42deg,#0b1119 42deg 82deg,var(--accent) 82deg 92deg,#111923 92deg 160deg,#5b6471 160deg 190deg,#0b1119 190deg 262deg,var(--accent) 262deg 272deg,#202a38 272deg 340deg,#060a10 340deg 360deg);
+  box-shadow:0 0 14px var(--accent-soft);
+  z-index:-1;
+}
+.touch-btn::after{
+  content:"";position:absolute;inset:8px;border-radius:50%;
+  border:2px solid var(--accent-border);
+  box-shadow:0 0 12px var(--accent-soft), inset 0 0 14px rgba(0,0,0,.72);
+}
+.touch-btn-core{
+  width:58%;height:58%;border-radius:50%;display:flex;align-items:center;justify-content:center;z-index:2;
+  background:
+    radial-gradient(circle at 40% 28%,rgba(255,255,255,.2),rgba(255,255,255,0) 28%),
+    radial-gradient(circle,var(--accent-core),#071019 72%);
+  box-shadow:inset 0 0 14px rgba(0,0,0,.65);
+}
+.touch-btn:active,.touch-btn.pressed{transform:scale(.93);filter:brightness(1.18);}
+.touch-btn:active::after,.touch-btn.pressed::after{border-color:var(--accent);box-shadow:0 0 18px var(--accent), inset 0 0 18px var(--accent-soft);}
+.touch-btn-fire{width:80px;height:80px;--accent:var(--touch-cyan);}
+.touch-btn-dash{width:64px;height:64px;--accent:var(--touch-violet);--accent-soft:rgba(184,108,255,.44);--accent-border:rgba(184,108,255,.74);--accent-core:#271740;}
+.touch-icon-fire{
+  width:0;height:0;margin-left:5px;
+  border-top:13px solid transparent;border-bottom:13px solid transparent;border-left:24px solid var(--accent);
+  filter:drop-shadow(0 0 8px var(--accent));
+}
+.touch-icon-dash{
+  width:30px;height:24px;background:var(--accent);
+  clip-path:polygon(0 40%,52% 40%,42% 6%,100% 50%,42% 94%,52% 60%,0 60%);
+  filter:drop-shadow(0 0 8px var(--accent));
+}
 .touch-btn-pause{
-  position:absolute;top:10px;left:50%;transform:translateX(-50%);
-  width:44px;height:44px;font-size:15px;border-radius:8px;
-  border-color:rgba(91,232,255,.6);color:var(--text);
-  background:rgba(0,20,32,.5);z-index:60;pointer-events:auto;
+  --accent:var(--touch-cyan);
+  position:absolute;top:calc(10px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);
+  width:46px;height:46px;z-index:60;pointer-events:auto;
 }
-.touch-btn-pause svg{width:14px;height:14px;}
-.touch-btn-pause:active,.touch-btn-pause.pressed{background:rgba(91,232,255,.3);box-shadow:0 0 16px var(--cyan);transform:translateX(-50%) scale(.92);}
-.touch-slots{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);display:flex;gap:8px;pointer-events:none;}
+.touch-btn-pause svg{width:15px;height:15px;z-index:2;filter:drop-shadow(0 0 6px var(--touch-cyan));}
+.touch-btn-pause:active,.touch-btn-pause.pressed{transform:translateX(-50%) scale(.93);filter:brightness(1.18);}
+.touch-slots{
+  position:absolute;left:50%;bottom:calc(12px + env(safe-area-inset-bottom));
+  transform:translateX(-50%);display:flex;gap:8px;pointer-events:none;
+}
 .touch-slot{
   pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;
-  width:44px;height:44px;border-radius:6px;border:1.5px solid rgba(91,232,255,.5);
-  background:rgba(0,20,32,.55);color:var(--text);font-family:'Press Start 2P',monospace;
-  font-size:9px;display:flex;align-items:center;justify-content:center;
+  position:relative;width:46px;height:46px;border-radius:50%;border:none;
+  color:var(--text);font-family:'Press Start 2P',monospace;font-size:9px;
+  display:flex;align-items:center;justify-content:center;
+  isolation:isolate;
+  background:radial-gradient(circle at 36% 28%,#2b3546,#0d141e 60%,#03060b);
+  box-shadow:0 0 10px rgba(91,232,255,.22), inset 0 0 14px rgba(0,0,0,.72);
 }
-.touch-slot:active,.touch-slot.pressed{border-color:var(--cyan);color:var(--cyan);background:rgba(91,232,255,.22);}
+.touch-slot::before{
+  content:"";position:absolute;inset:-3px;border-radius:50%;
+  background:conic-gradient(from 24deg,#05080d 0 26deg,#4d5666 26deg 56deg,#0c121a 56deg 142deg,var(--touch-cyan) 142deg 152deg,#1d2734 152deg 236deg,#576171 236deg 266deg,#05080d 266deg 360deg);
+  z-index:-1;opacity:.86;
+}
+.touch-slot::after{
+  content:"";position:absolute;inset:8px;border-radius:50%;
+  border:1.5px solid rgba(91,232,255,.48);
+  box-shadow:0 0 10px rgba(91,232,255,.34), inset 0 0 10px rgba(0,0,0,.78);
+}
+.touch-slot span{position:relative;z-index:2;color:#e8fbff;text-shadow:0 0 8px rgba(91,232,255,.9);}
+.touch-slot:active,.touch-slot.pressed{transform:scale(.93);filter:brightness(1.18);}
+.touch-slot:active::after,.touch-slot.pressed::after{border-color:var(--touch-cyan);box-shadow:0 0 16px var(--touch-cyan), inset 0 0 12px rgba(91,232,255,.22);}
 @media (orientation:landscape) and (max-height:520px){
-  .touch-btn-fire{width:64px;height:64px;}
-  .touch-btn-dash{width:50px;height:50px;}
-  .touch-stick-zone{width:110px;height:110px;}
-  .touch-slot{width:38px;height:38px;font-size:8px;}
+  .touch-btn-fire{width:66px;height:66px;}
+  .touch-btn-dash{width:54px;height:54px;}
+  .touch-stick-zone{width:114px;height:114px;}
+  .touch-stick-zone::after{inset:15px;}
+  .touch-stick-core{inset:35px;}
+  .touch-stick-knob{width:48px;height:48px;}
+  .touch-stick-arrow-up{top:12px;}
+  .touch-stick-arrow-right{right:12px;}
+  .touch-stick-arrow-down{bottom:12px;}
+  .touch-stick-arrow-left{left:12px;}
+  .touch-slot{width:40px;height:40px;font-size:8px;}
   .touch-slots{gap:6px;}
-  .touch-btn-pause{width:38px;height:38px;}
-  .touch-actions{bottom:170px;}
+  .touch-btn-pause{width:40px;height:40px;}
+  .touch-actions{bottom:calc(164px + env(safe-area-inset-bottom));}
 }
 
 /* ═══ Adaptação para telas pequenas (celulares) ══════════════ */
