@@ -545,6 +545,7 @@ export class Inventory {
     this.slots[idx] = null;
     return item;
   }
+}
 
 // ── Efeito visual de borda ao usar item ───────────────────────
 export class BorderEffect {
