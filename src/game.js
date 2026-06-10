@@ -44,10 +44,12 @@ export class Game {
     this.combat   = new CombatSystem(this.arena);
     this.combat.setEnemyManager(this.enemyMgr);
     this.combat.setShakeCallback((i) => this.addShake(i));
+    this.combat.setHitStopCallback((duration) => this.hitStop(duration));
     this.ui       = new UI();
     this.player   = new Player({ x:ARENA_W/2, y:ARENA_H/2, skinIndex, name:playerName });
     this.player.equippedTrailId = opts.equippedTrail || 0;
     this.profileIcon = profileIcon;
+    this._hitStopTimer = 0;
     // Contra1: 1 único inimigo, partida curta — level-up não faz sentido
     if (mode==='contra1') this.player.levelUpEnabled = false;
 
@@ -606,6 +608,12 @@ export class Game {
   }
 
   _update(dt) {
+    const frameDt = dt;
+    if (this._hitStopTimer > 0) {
+      this._hitStopTimer = Math.max(0, this._hitStopTimer - frameDt);
+      dt = 0;
+    }
+
     // Tela de carregamento de partida online — atualiza o ping local exibido
     // e some sozinha após alguns segundos (ou quando o ping chega).
     if (this._loadingHideAt) {
@@ -749,6 +757,7 @@ export class Game {
           this.combat._triggerPlayerRebuild(this.player, this.mode==='contra1');
         } else if (bh.dmg > 0) {
           const died = this.player.takeDamage(bh.dmg);
+          this._flash(this.player);
           if (died) this.combat._triggerPlayerRebuild(this.player, this.mode==='contra1');
         }
       }
@@ -760,8 +769,10 @@ export class Game {
           e.hp = 0;
           this.arena.spawnParticles(e.x,e.y,'#8844ff',20,220);
           this.player.kills++; this.player.score+=e.score; this.player.addXP(e.score);
+          this.hitStop(0.04);
         } else if (bhe.dmg > 0) {
           e.hp -= bhe.dmg;
+          this._flash(e);
           if (e.hp < 0) e.hp = 0;
         }
       }
@@ -909,6 +920,8 @@ export class Game {
       if (b.team==='enemy') {
         if (!player.dead&&!player.rebuilding&&player.invincible<=0&&Math.hypot(b.x-player.x,b.y-player.y)<player.r+r) {
           const died=player.takeDamage(b.damage);
+          this._flash(player);
+          this._impactSpark(b,b.owner_color||'#ffffff');
           if (died) this._triggerTowerKillPlayer();
           this.combat.spawnExplosion(b.x,b.y,12,b.owner_color);
           return false;
@@ -918,6 +931,9 @@ export class Game {
           if (e.dead||e.isRespawning) continue;
           if (Math.hypot(b.x-e.x,b.y-e.y)<e.r+r) {
             e.hp-=b.damage;
+            this._flash(e);
+            this._impactSpark(b,b.owner_color||'#ffffff');
+            if (e.hp<=0) this.hitStop(0.04);
             this.combat.spawnExplosion(b.x,b.y,12,b.owner_color);
             return false;
           }
@@ -1031,6 +1047,21 @@ export class Game {
       this._shake.intensity = intensity;
       this._shake.decay = intensity * 2.5;
     }
+  }
+
+  hitStop(duration=0.04) {
+    this._hitStopTimer = Math.max(this._hitStopTimer || 0, duration);
+  }
+
+  _flash(entity) {
+    this.arena.effects?.flash(entity, { color:'#ffffff', duration:0.08 });
+  }
+
+  _impactSpark(b, color=b.owner_color||'#ffffff') {
+    const dirX = b.dirX ?? (b.vx || 0);
+    const dirY = b.dirY ?? (b.vy || 0);
+    const d = Math.hypot(dirX, dirY) || 1;
+    this.arena.effects?.spark(b.x, b.y, Math.atan2(-dirY/d, -dirX/d), { color, count:6, speed:210 });
   }
 
   _draw() {
@@ -1449,6 +1480,8 @@ export class Game {
           for (const target of enemies) {
             if (Math.hypot(target.x - trap.x, target.y - trap.y) < trap.radius) {
               target.hp -= trap.dmg;
+              this._flash(target);
+              if (target.hp<=0) this.hitStop(0.04);
             }
           }
           this.arena.spawnParticles(trap.x, trap.y, '#ff8800', 28, 260);

@@ -552,6 +552,10 @@ export class Player {
   // collision=true: batida física — escudo absorve só 50%, resto passa pro HP
   takeDamage(amount, collision=false) {
     if (this.dashing||this.invincible>0||this.dead||this.rebuilding) return false;
+    this._hitFlash = Math.max(this._hitFlash || 0, 0.08);
+    this._hitFlashMax = Math.max(this._hitFlashMax || 0, this._hitFlash);
+    this._hitFlashColor = '#ffffff';
+    this._hitFlashManaged = false;
     if (this.shield>0) {
       const absEff = collision ? 0.5 : 1.0; // colisão penetra 50% do escudo
       const abs = Math.min(this.shield, amount * absEff);
@@ -739,6 +743,10 @@ export class Player {
     if (this.invincible>0)      this.invincible-=dt;
     if (this.shootCd>0)         this.shootCd-=dt;
     if (this._recoil>0)         this._recoil=Math.max(0,this._recoil-dt*12);
+    if (this._hitFlash>0 && !this._hitFlashManaged) {
+      this._hitFlash=Math.max(0,this._hitFlash-dt);
+      if (this._hitFlash<=0) this._hitFlashMax=0;
+    }
     if (this.dashCd>0)          this.dashCd-=dt;
     if (this.magnetTimer>0)     this.magnetTimer-=dt;
     if (this.rapidTimer>0)      this.rapidTimer-=dt;
@@ -1102,6 +1110,14 @@ export class Player {
       ctx.rotate(this.angle);
     }
     this.skin.draw(ctx, 1.76);
+    if (this._hitFlash>0) {
+      const flashT = this._hitFlash / (this._hitFlashMax || 0.08);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(0.85, flashT * 0.85);
+      drawTintedSkin(ctx, this.skin, 1.76, this._hitFlashColor || '#ffffff');
+      ctx.restore();
+    }
     ctx.restore();
 
     // ── Barra de vida grudada na nave ────────────────────────

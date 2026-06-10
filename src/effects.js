@@ -65,6 +65,7 @@ export class EffectsManager {
     entity._hitFlash = Math.max(entity._hitFlash || 0, opts.duration ?? 0.08);
     entity._hitFlashMax = Math.max(entity._hitFlashMax || 0, entity._hitFlash);
     entity._hitFlashColor = opts.color || '#ffffff';
+    entity._hitFlashManaged = true;
     this.flashes.add(entity);
   }
 
@@ -114,6 +115,7 @@ export class EffectsManager {
       if (entity._hitFlash <= 0) {
         entity._hitFlash = 0;
         entity._hitFlashMax = 0;
+        entity._hitFlashManaged = false;
         this.flashes.delete(entity);
       }
     }

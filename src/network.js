@@ -2,6 +2,21 @@
 // Uso: new NetworkClient(url, handlers)
 import { tickStatus, isFrozen, drawStatusIcons } from './statusEffects.js';
 
+function drawHitFlash(ctx, entity, radius=30) {
+  if (!entity._hitFlash) return;
+  const t = entity._hitFlash / (entity._hitFlashMax || 0.08);
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = Math.min(0.65, t * 0.65);
+  ctx.fillStyle = entity._hitFlashColor || '#ffffff';
+  ctx.shadowColor = '#ffffff';
+  ctx.shadowBlur = 16 * t;
+  ctx.beginPath();
+  ctx.arc(entity.x, entity.y, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 export class NetworkClient {
   constructor(url, handlers = {}) {
     this.handlers   = handlers;
@@ -201,6 +216,7 @@ export class RemotePlayer {
     ctx.rotate(this.angle);
     this.skin.draw(ctx, 1.35);
     ctx.restore();
+    drawHitFlash(ctx, this, 32);
     // Anel de identificação: verde pulsante para aliados sem time, cor do time para PvP
     ctx.save();
     ctx.strokeStyle = teamColor;
