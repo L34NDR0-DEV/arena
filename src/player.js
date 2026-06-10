@@ -313,27 +313,35 @@ function _shardStyle(style, lx, ly, sz) {
 // skinId → estilo de estilhaço (0-6)
 const SKIN_SHARD_STYLE = [0, 3, 1, 2, 5, 4, 6];
 
-function createShards(skin, originX, originY) {
+function createShards(skin, originX, originY, angle=0) {
   const shards = [];
-  const COLS = 5, ROWS = 5;
+  const COLS = 7, ROWS = 7;
   const sz = skin._size ?? 72;
   const style = SKIN_SHARD_STYLE[skin.id] ?? 0;
+  const ca = Math.cos(angle);
+  const sa = Math.sin(angle);
+  const rotateVec = (x, y) => ({ x:x*ca - y*sa, y:x*sa + y*ca });
 
   for (let row = 0; row < ROWS; row++) {
     for (let col = 0; col < COLS; col++) {
       const lx = (col / COLS - 0.5 + 0.5/COLS) * sz;
       const ly = (row / ROWS - 0.5 + 0.5/ROWS) * sz;
-      if (Math.hypot(lx, ly) > sz * 0.58) continue;
+      const dist = Math.hypot(lx, ly);
+      if (dist > sz * 0.64) continue;
 
       const { vx, vy, vr } = _shardStyle(style, lx, ly, sz);
+      const pos = rotateVec(lx, ly);
+      const vel = rotateVec(vx, vy);
       shards.push({
-        wx: originX + lx * 0.05,
-        wy: originY + ly * 0.05,
-        vx, vy, rot: 0, vr,
+        wx: originX + pos.x,
+        wy: originY + pos.y,
+        vx:vel.x, vy:vel.y, rot: angle + (Math.random()-0.5)*0.25, targetRot:angle, vr,
         lx, ly,
         sx: col*(sz/COLS), sy: row*(sz/ROWS),
         sw: sz/COLS, sh: sz/ROWS,
         hw: sz/COLS/2, hh: sz/ROWS/2,
+        scale:1,
+        delay:Math.min(0.55, dist/(sz*1.55) + Math.random()*0.18),
         img: skin.img,
       });
     }
@@ -540,7 +548,7 @@ export class Player {
     this.rebuilding=true;
     this.rebuildTimer=REBUILD_DUR;
     this._explodeAge=0;
-    this.shards=createShards(this.skin, ox, oy);
+    this.shards=createShards(this.skin, ox, oy, this._currentDrawAngle());
     this.dashGhosts=[];
     this.vx=0; this.vy=0;
     this.invincible=REBUILD_DUR+1;
@@ -712,22 +720,35 @@ export class Player {
     if (this.rebuilding) {
       this.rebuildTimer-=dt;
       this._explodeAge+=dt;
-      const phase2 = this._explodeAge > 5;
+      const explodeDur = Math.min(3.4, REBUILD_DUR * 0.38);
+      const phase2 = this._explodeAge > explodeDur;
+      const rebuildAngle = this._currentDrawAngle();
+      const ca = Math.cos(rebuildAngle);
+      const sa = Math.sin(rebuildAngle);
       for (const s of this.shards) {
         if (!phase2) {
           // Fase 1: coordenadas mundo absolutas voam para fora
-          const drag = Math.min(1, this._explodeAge * 0.3);
-          s.wx += s.vx * dt * (1 - drag * 0.85);
-          s.wy += s.vy * dt * (1 - drag * 0.85);
-          s.rot += s.vr * dt * (1 - drag * 0.7);
+          const drag = Math.min(1, this._explodeAge * 0.22);
+          s.wx += s.vx * dt * (1 - drag * 0.72);
+          s.wy += s.vy * dt * (1 - drag * 0.72);
+          s.rot += s.vr * dt * (1 - drag * 0.55);
+          s.scale = 1 + Math.sin(Math.min(1, this._explodeAge/explodeDur) * Math.PI) * 0.22;
         } else {
           // Fase 2: voltar para posição local relativa à nave reposicionada
-          const pull = Math.min(0.96, (this._explodeAge - 5) / (REBUILD_DUR - 5));
-          const targetWx = this.x + s.lx;
-          const targetWy = this.y + s.ly;
-          s.wx += (targetWx - s.wx) * pull * 0.07;
-          s.wy += (targetWy - s.wy) * pull * 0.07;
-          s.rot *= (1 - 0.06 * pull);
+          const rawPull = Math.max(0, (this._explodeAge - explodeDur) / Math.max(0.1, REBUILD_DUR - explodeDur));
+          const localPull = Math.max(0, Math.min(1, (rawPull - s.delay) / Math.max(0.08, 1 - s.delay)));
+          const pull = 1 - Math.pow(1 - localPull, 3);
+          const targetWx = this.x + s.lx*ca - s.ly*sa;
+          const targetWy = this.y + s.lx*sa + s.ly*ca;
+          const snap = Math.min(1, 0.08 + pull * 0.22);
+          s.wx += (targetWx - s.wx) * snap;
+          s.wy += (targetWy - s.wy) * snap;
+          let da = rebuildAngle - s.rot;
+          while (da > Math.PI) da -= Math.PI*2;
+          while (da < -Math.PI) da += Math.PI*2;
+          s.rot += da * snap;
+          s.targetRot = rebuildAngle;
+          s.scale += (1 - s.scale) * Math.min(1, 0.12 + pull * 0.2);
         }
       }
       if (this.rebuildTimer<=0) {
@@ -1388,27 +1409,30 @@ export class Player {
   }
 
   _drawRebuild(ctx) {
-    const progress  = 1 - (this.rebuildTimer / REBUILD_DUR);
-    const exploding = this._explodeAge < 5;
+    const explodeDur = Math.min(3.4, REBUILD_DUR * 0.38);
+    const exploding = this._explodeAge < explodeDur;
     const img = this.skin.img;
     if (!img.complete || !img.naturalWidth) return;
 
-    const sz  = this.skin._size ?? 72;
     const rebuildColor = this.skin.deathColor || this.skin.color || '#00c8f0';
 
     const assemblyPct = !exploding
-      ? Math.max(0, (progress - 5/REBUILD_DUR) / (1 - 5/REBUILD_DUR))
+      ? Math.max(0, (this._explodeAge - explodeDur) / Math.max(0.1, REBUILD_DUR - explodeDur))
       : 0;
 
     for (const s of this.shards) {
+      const localAssembly = !exploding
+        ? Math.max(0, Math.min(1, (assemblyPct - s.delay) / Math.max(0.08, 1 - s.delay)))
+        : 0;
       const alpha = exploding
         ? Math.min(1, this._explodeAge * 0.8)
-        : 0.9 - assemblyPct * 0.1;
+        : 0.52 + localAssembly * 0.38;
 
       ctx.save();
       ctx.globalAlpha = alpha;
       ctx.translate(s.wx, s.wy);
       ctx.rotate(s.rot);
+      ctx.scale(s.scale || 1, s.scale || 1);
 
       const hw = s.hw + 1, hh = s.hh + 1;
       ctx.beginPath();
@@ -1418,11 +1442,18 @@ export class Player {
       ctx.drawImage(img, s.sx, s.sy, s.sw, s.sh, -hw, -hh, hw*2, hh*2);
 
       // Brilho da paleta da skin na fase de reconstrução
-      if (!exploding && assemblyPct > 0.05) {
-        ctx.strokeStyle = colorWithAlpha(rebuildColor, assemblyPct * 0.7);
+      if (exploding) {
+        ctx.strokeStyle = colorWithAlpha(rebuildColor, 0.32);
+        ctx.lineWidth = 1;
+        ctx.shadowColor = rebuildColor;
+        ctx.shadowBlur = 5;
+        ctx.strokeRect(-hw, -hh, hw*2, hh*2);
+        ctx.shadowBlur = 0;
+      } else if (localAssembly > 0.02) {
+        ctx.strokeStyle = colorWithAlpha(rebuildColor, localAssembly * 0.78);
         ctx.lineWidth = 1.5;
         ctx.shadowColor = rebuildColor;
-        ctx.shadowBlur = 6 * assemblyPct;
+        ctx.shadowBlur = 4 + 8 * localAssembly;
         ctx.strokeRect(-hw, -hh, hw*2, hh*2);
         ctx.shadowBlur = 0;
       }
