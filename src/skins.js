@@ -34,6 +34,49 @@ function localToWorld(x, y, angle, scale, cx, cy, size) {
   };
 }
 
+function hexToRgb(hex) {
+  if (typeof hex !== 'string') return null;
+  const raw = hex.trim().replace('#', '');
+  if (raw.length === 3) {
+    return {
+      r:parseInt(raw[0]+raw[0], 16),
+      g:parseInt(raw[1]+raw[1], 16),
+      b:parseInt(raw[2]+raw[2], 16),
+    };
+  }
+  if (raw.length !== 6) return null;
+  return {
+    r:parseInt(raw.slice(0, 2), 16),
+    g:parseInt(raw.slice(2, 4), 16),
+    b:parseInt(raw.slice(4, 6), 16),
+  };
+}
+
+function toHex(n) {
+  return Math.round(Math.max(0, Math.min(255, n))).toString(16).padStart(2, '0');
+}
+
+function mixColor(a, b, t) {
+  const ca = hexToRgb(a);
+  const cb = hexToRgb(b);
+  if (!ca || !cb) return a;
+  return '#' + toHex(ca.r + (cb.r - ca.r) * t)
+             + toHex(ca.g + (cb.g - ca.g) * t)
+             + toHex(ca.b + (cb.b - ca.b) * t);
+}
+
+function makeEffectPalette(color, override = {}) {
+  const light = mixColor(color, '#ffffff', 0.62);
+  const dark  = mixColor(color, '#000000', 0.48);
+  const base = {
+    flameColors:[light, color, dark],
+    shieldColor:mixColor(color, '#ffffff', 0.35),
+    dashColor:mixColor(color, '#ffffff', 0.55),
+    deathColor:mixColor(color, '#ffffff', 0.18),
+  };
+  return { ...base, ...override };
+}
+
 function makeSprite(id, name, color, file, opts = {}) {
   const path = `./src/sprites/${file}`;
   const img  = loadImg(path);
@@ -44,6 +87,7 @@ function makeSprite(id, name, color, file, opts = {}) {
   const previewAngle = opts.previewAngle ?? 0;
   const isAlien = opts.isAlien ?? false;
   const isArcade = opts.isArcade ?? false;
+  const effectPalette = makeEffectPalette(color, opts.effectPalette);
 
   const spinsOnAxis = opts.spinsOnAxis ?? false;
   // Discos "UFO" totalmente blindados — sem chama de propulsão visível
@@ -52,6 +96,11 @@ function makeSprite(id, name, color, file, opts = {}) {
 
   return {
     id, name, color, isAlien, isArcade, spinsOnAxis, noThruster, hasSprite:true, img,
+    effectPalette,
+    flameColors:effectPalette.flameColors,
+    shieldColor:effectPalette.shieldColor,
+    dashColor:effectPalette.dashColor,
+    deathColor:effectPalette.deathColor,
     _nozzle:nozzle, _engines:engines, _size:size,
 
     getNozzle(cx, cy, angle, scale=1) {
@@ -142,6 +191,12 @@ const skinAlien = makeSprite(5, 'Alien Disc', '#aa44ff', 'Alien.png', {
   engines: [{ x:0, y:0.2 }],
   isAlien: true,
   noThruster: true,
+  effectPalette: {
+    flameColors:['#f2dcff', '#aa44ff', '#351066'],
+    shieldColor:'#c77dff',
+    dashColor:'#e0aaff',
+    deathColor:'#b45cff',
+  },
 });
 
 // Roxa — caça pesado, motor central + 2 laterais na base das asas
