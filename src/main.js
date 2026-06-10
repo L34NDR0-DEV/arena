@@ -1204,103 +1204,106 @@ resizeLoginBg(); window.addEventListener('resize',resizeLoginBg);
 })();
 
 (function animateLoginBg(){
-  const ctx=loginBg.getContext('2d');
-  const W=loginBg.width, H=loginBg.height;
-  const t=Date.now()/1000;
+  try {
+    const ctx=loginBg.getContext('2d');
+    const W=loginBg.width||window.innerWidth, H=loginBg.height||window.innerHeight;
+    if(W<2||H<2){ requestAnimationFrame(animateLoginBg); return; }
+    const t=Date.now()/1000;
 
-  // Fundo
-  ctx.fillStyle='#020508'; ctx.fillRect(0,0,W,H);
+    // Fundo
+    ctx.fillStyle='#020508'; ctx.fillRect(0,0,W,H);
 
-  // Nebulosa central
-  const cx=W/2, cy=H*0.42;
-  const gn=ctx.createRadialGradient(cx,cy,0,cx,cy,Math.min(W,H)*0.55);
-  gn.addColorStop(0,'rgba(0,80,120,0.18)');
-  gn.addColorStop(0.4,'rgba(0,40,80,0.08)');
-  gn.addColorStop(1,'transparent');
-  ctx.fillStyle=gn; ctx.fillRect(0,0,W,H);
+    // Nebulosa central
+    const cx=W/2, cy=H*0.42;
+    const gn=ctx.createRadialGradient(cx,cy,0,cx,cy,Math.min(W,H)*0.55);
+    gn.addColorStop(0,'rgba(0,80,120,0.18)');
+    gn.addColorStop(0.4,'rgba(0,40,80,0.08)');
+    gn.addColorStop(1,'transparent');
+    ctx.fillStyle=gn; ctx.fillRect(0,0,W,H);
 
-  // Grade neon pulsante
-  const gs=60, gridPulse=0.3+0.2*Math.sin(t*0.7);
-  ctx.strokeStyle='#001428'; ctx.lineWidth=0.6; ctx.globalAlpha=gridPulse;
-  for (let x=0;x<W;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
-  for (let y=0;y<H;y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
-  ctx.globalAlpha=1;
+    // Grade neon pulsante
+    const gs=60, gridPulse=0.3+0.2*Math.sin(t*0.7);
+    ctx.strokeStyle='#001428'; ctx.lineWidth=0.6; ctx.globalAlpha=gridPulse;
+    for (let x=0;x<W;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for (let y=0;y<H;y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    ctx.globalAlpha=1;
 
-  // Estrelas pixel animadas
-  if (!animateLoginBg._stars){
-    animateLoginBg._stars=Array.from({length:180},()=>({
-      x:Math.random()*W,y:Math.random()*H,
-      r:Math.random()*1.6+0.2,
-      a:Math.random()*0.7+0.1,
-      sp:0.4+Math.random()*1.4,
-      bk:Math.random()*Math.PI*2,
-      px:Math.random()<0.15,
-    }));
-  }
-  for (const s of animateLoginBg._stars){
-    const a=s.a*(0.4+0.6*Math.sin(t*s.sp+s.bk));
-    ctx.fillStyle=`rgba(140,200,255,${a})`;
-    if(s.px){ctx.fillRect(s.x-s.r,s.y-s.r,s.r*2,s.r*2);}
-    else{ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();}
-  }
-
-  // Naves do próprio jogo cruzando o fundo, deixando um rastro luminoso
-  if (!animateLoginBg._ships) animateLoginBg._ships = [];
-  const ships = animateLoginBg._ships;
-  if (Math.random() < 0.012 && ships.length < 4 && SKINS.length) {
-    const dir = Math.random()<0.5 ? 1 : -1;
-    const depth = 0.5 + Math.random()*0.9; // tamanho/brilho relativo (perspectiva)
-    ships.push({
-      x: dir>0 ? -70 : W+70,
-      y: H*(0.12+Math.random()*0.6),
-      dir, depth,
-      speed: (40+Math.random()*70)*dir,
-      skin: SKINS[Math.floor(Math.random()*SKINS.length)],
-      bob: Math.random()*Math.PI*2,
-      trail: [],
-    });
-  }
-  for (let i=ships.length-1;i>=0;i--){
-    const s = ships[i];
-    s.x += s.speed * (1/60);
-    const yy = s.y + Math.sin(t*1.6+s.bob)*6;
-    const sz = 15*s.depth;
-
-    // Memoriza posições recentes para desenhar o rastro
-    s.trail.push({x:s.x,y:yy});
-    if (s.trail.length>16) s.trail.shift();
-
-    const hue = s.skin.color || '#5be8ff';
-    ctx.save();
-    ctx.globalAlpha = 0.3*s.depth + 0.12;
-    for (let k=0;k<s.trail.length;k++){
-      const p=s.trail[k];
-      const a=(k/s.trail.length);
-      ctx.beginPath();
-      ctx.fillStyle=hue;
-      ctx.globalAlpha=(0.3*s.depth+0.12)*a*0.5;
-      ctx.arc(p.x - s.dir*sz*0.9, p.y, sz*0.32*a, 0, Math.PI*2);
-      ctx.fill();
+    // Estrelas pixel animadas
+    if (!animateLoginBg._stars){
+      animateLoginBg._stars=Array.from({length:180},()=>({
+        x:Math.random()*W,y:Math.random()*H,
+        r:Math.random()*1.6+0.2,
+        a:Math.random()*0.7+0.1,
+        sp:0.4+Math.random()*1.4,
+        bk:Math.random()*Math.PI*2,
+        px:Math.random()<0.15,
+      }));
     }
-    ctx.restore();
+    for (const s of animateLoginBg._stars){
+      const a=s.a*(0.4+0.6*Math.sin(t*s.sp+s.bk));
+      ctx.fillStyle=`rgba(140,200,255,${a})`;
+      if(s.px){ctx.fillRect(s.x-s.r,s.y-s.r,s.r*2,s.r*2);}
+      else{ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();}
+    }
 
-    ctx.save();
-    ctx.translate(s.x, yy);
-    ctx.rotate(s.dir>0 ? Math.PI/2 : -Math.PI/2);
-    ctx.globalAlpha = 0.32*s.depth + 0.16;
-    ctx.shadowColor = hue; ctx.shadowBlur = 9*s.depth;
-    s.skin.drawPreview(ctx, (sz*2)/s.skin._size);
-    ctx.restore();
-    ctx.globalAlpha = 1;
+    // Naves do próprio jogo cruzando o fundo, deixando um rastro luminoso
+    if (!animateLoginBg._ships) animateLoginBg._ships = [];
+    const ships = animateLoginBg._ships;
+    if (Math.random() < 0.012 && ships.length < 4 && SKINS.length) {
+      const dir = Math.random()<0.5 ? 1 : -1;
+      const depth = 0.5 + Math.random()*0.9;
+      ships.push({
+        x: dir>0 ? -70 : W+70,
+        y: H*(0.12+Math.random()*0.6),
+        dir, depth,
+        speed: (40+Math.random()*70)*dir,
+        skin: SKINS[Math.floor(Math.random()*SKINS.length)],
+        bob: Math.random()*Math.PI*2,
+        trail: [],
+      });
+    }
+    for (let i=ships.length-1;i>=0;i--){
+      const s = ships[i];
+      s.x += s.speed * (1/60);
+      const yy = s.y + Math.sin(t*1.6+s.bob)*6;
+      const sz = 15*s.depth;
 
-    if ((s.dir>0 && s.x > W+90) || (s.dir<0 && s.x < -90)) ships.splice(i,1);
+      s.trail.push({x:s.x,y:yy});
+      if (s.trail.length>16) s.trail.shift();
+
+      const hue = s.skin.color || '#5be8ff';
+      ctx.save();
+      ctx.globalAlpha = 0.3*s.depth + 0.12;
+      for (let k=0;k<s.trail.length;k++){
+        const p=s.trail[k];
+        const a=(k/s.trail.length);
+        ctx.beginPath();
+        ctx.fillStyle=hue;
+        ctx.globalAlpha=(0.3*s.depth+0.12)*a*0.5;
+        ctx.arc(p.x - s.dir*sz*0.9, p.y, sz*0.32*a, 0, Math.PI*2);
+        ctx.fill();
+      }
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(s.x, yy);
+      ctx.rotate(s.dir>0 ? Math.PI/2 : -Math.PI/2);
+      ctx.globalAlpha = 0.32*s.depth + 0.16;
+      ctx.shadowColor = hue; ctx.shadowBlur = 9*s.depth;
+      s.skin.drawPreview(ctx, (sz*2)/s.skin._size);
+      ctx.restore();
+      ctx.globalAlpha = 1;
+
+      if ((s.dir>0 && s.x > W+90) || (s.dir<0 && s.x < -90)) ships.splice(i,1);
+    }
+
+    // Scanlines
+    ctx.globalAlpha=0.03; ctx.fillStyle='#000';
+    for (let y=0;y<H;y+=3) ctx.fillRect(0,y,W,1);
+    ctx.globalAlpha=1;
+  } catch(e) {
+    console.warn('[Login BG]', e);
   }
-
-  // Scanlines
-  ctx.globalAlpha=0.03; ctx.fillStyle='#000';
-  for (let y=0;y<H;y+=3) ctx.fillRect(0,y,W,1);
-  ctx.globalAlpha=1;
-
   requestAnimationFrame(animateLoginBg);
 })();
 
