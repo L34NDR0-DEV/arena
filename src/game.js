@@ -8,8 +8,9 @@ import { UI }                                    from './ui.js';
 import { AudioEngine }                           from './audio.js';
 import { NetworkClient, RemotePlayer }           from './network.js';
 import { applyStun, applyFreeze, applyConfuse } from './statusEffects.js';
-import { PortalManager }                         from './portals.js';
+import { PortalManager, setPortalCooldown }       from './portals.js';
 import { RechargeManager }                       from './recharge.js';
+import { CardDefenseManager }                    from './enemies.js';
 import * as SkinsModule                          from './skins.js';
 
 const MATCH_DURATION = 300;
@@ -33,7 +34,9 @@ export class Game {
     else setArenaSize(ARENA_W_DEFAULT, ARENA_H_DEFAULT);
 
     const arenaEl=document.getElementById('arena-select');
-    const arenaType=arenaEl?(arenaEl.value||'nebulosa'):'nebulosa';
+    // Modo Cards: sempre usa a arena exclusiva Fragmento Cristalino
+    const arenaType = mode === 'cards' ? 'cristal_cards'
+                    : (arenaEl ? (arenaEl.value||'nebulosa') : 'nebulosa');
 
     this.arena    = new Arena(this.W, this.H, arenaType);
     this.itemMgr  = new ItemManager();
@@ -69,6 +72,26 @@ export class Game {
     // Torre central do Torneio "Tower Defense" — nasce neutra no meio da
     // arena; o time que a destruir a conquista e vence a partida na hora.
     this.towerDefenseMgr = mode==='tower_defense' ? new TowerDefenseManager(ARENA_W, ARENA_H) : null;
+
+    // ── Modo Cards of Defense ─────────────────────────────────
+    this._isCardsMode = mode === 'cards';
+    this._cardsMgr    = null;
+    this._cardsLives  = 9;
+    this._cardsPaused = false;   // true quando overlay de carta está aberto
+    this._cardEvent   = null;    // { level, options } esperando escolha do player
+    this._cardsKills  = 0;
+    this._cardsLevel  = 1;
+    this._cardsTowers = [];      // AllyTower[] colocadas pelo player
+    this._cardsTraps  = [];      // AllyTrap[] colocadas pelo player
+    this._cardsFortifyCount = 0;
+    if (this._isCardsMode) {
+      this._cardsMgr = new CardDefenseManager(difficulty);
+      setPortalCooldown(8);
+      // Lê skins compradas para calcular bônus
+      const purchasedSkins = window._playerPurchasedSkins || [];
+      this.player.enableCardsMode(purchasedSkins.length > 0);
+      this.player.levelUpEnabled = false; // progressão é por cards, não XP
+    }
 
     // Sistema de vidas Contra1
     this._playerLives = mode==='contra1' ? CONTRA1_LIVES : Infinity;
@@ -125,6 +148,7 @@ export class Game {
     this._refreshMatchLoading();
     if (!this._lobby) this._loadingHideAt = performance.now() + 3000;
 
+    this._pendingDeploy = null; // 'tower' | 'trap' | null
     this._keys={}; this._mouse={wx:ARENA_W/2,wy:ARENA_H/2,left:false,right:false};
     this._bindInput();
     this._connectNet(playerName,skinIndex,roomId);
@@ -195,17 +219,25 @@ export class Game {
               const n=this._applyOffensiveDebuff(applyConfuse, result.duration, px, py);
               this.ui.notify(n?`CONFUNDIU ${n}!`+bonus:'Ninguém perto...'+bonus,'#cc66ff');
             } else {
-              const nl={
-                HEALTH:'+Vida',HEALTH_BIG:'+Vida Grande!',
-                SHIELD:'+Escudo',SHIELD_BIG:'+Escudo Grande!',
-                MANA:'+Mana',MANA_FULL:'Mana Cheia!',
-                RAPID:'Turbo Tiro!',MULTISHOT:'Tiro Triplo!',PIERCING:'Perfurante!',
-                MAGNET:'Ímã!',BOOST:'Velocidade!',DASH_BOOST:'Super Dash!',
-                FREEZE:'Freeze!',REGEN:'Regeneração!',SHIELD_AURA:'Aura de Escudo!',
-                OVERCLOCK:'Sobrecarga de Dano!',INVISIBLE:'Invisível!',
-                GODMODE:'MODO DEUS!',VAMPIRO:'Vampiro!',MISSILE:'Tiro Míssil 8s!',
-              };
-              this.ui.notify((nl[result.itemType]||'Item usado')+bonus, result.color||'#00ff88');
+              if (result.itemType === 'TOWER_DEPLOY') {
+                this._pendingDeploy = 'tower';
+                this.ui.notify('Clique na arena para colocar a torre!', '#00ddff');
+              } else if (result.itemType === 'TRAP_DEPLOY') {
+                this._pendingDeploy = 'trap';
+                this.ui.notify('Clique na arena para armar a armadilha!', '#aa44ff');
+              } else {
+                const nl={
+                  HEALTH:'+Vida',HEALTH_BIG:'+Vida Grande!',
+                  SHIELD:'+Escudo',SHIELD_BIG:'+Escudo Grande!',
+                  MANA:'+Mana',MANA_FULL:'Mana Cheia!',
+                  RAPID:'Turbo Tiro!',MULTISHOT:'Tiro Triplo!',PIERCING:'Perfurante!',
+                  MAGNET:'Ímã!',BOOST:'Velocidade!',DASH_BOOST:'Super Dash!',
+                  FREEZE:'Freeze!',REGEN:'Regeneração!',SHIELD_AURA:'Aura de Escudo!',
+                  OVERCLOCK:'Sobrecarga de Dano!',INVISIBLE:'Invisível!',
+                  GODMODE:'MODO DEUS!',VAMPIRO:'Vampiro!',MISSILE:'Tiro Míssil 8s!',
+                };
+                this.ui.notify((nl[result.itemType]||'Item usado')+bonus, result.color||'#00ff88');
+              }
             }
           }
         }
@@ -219,8 +251,18 @@ export class Game {
     };
     this._onMouseDown=e=>{
       this._audio.resume();
-      if (e.button===0) { this._mouse.left=true; }
-      else if (e.button===2) {
+      if (e.button===0) {
+        this._mouse.left=true;
+        // Deploy de torre/armadilha com clique esquerdo
+        if (this._pendingDeploy) {
+          const {wx,wy}=this._screenToWorld(e.clientX,e.clientY);
+          if (this._pendingDeploy === 'tower') this.placeTower(wx, wy);
+          else if (this._pendingDeploy === 'trap') this.placeTrap(wx, wy);
+          this._pendingDeploy = null;
+        }
+      } else if (e.button===2) {
+        // Cancelar deploy pendente com clique direito
+        if (this._pendingDeploy) { this._pendingDeploy = null; return; }
         this._mouse.right=true;
         const {wx,wy}=this._screenToWorld(e.clientX,e.clientY);
         this._mouse.wx=wx; this._mouse.wy=wy;
@@ -583,16 +625,70 @@ export class Game {
       return;
     }
 
+    // ── Modo Cards of Defense ─────────────────────────────────
+    if (this._isCardsMode) {
+      // Se overlay de carta está aberto, congela tudo exceto câmera/UI
+      if (this._cardsPaused) return;
+
+      // Morte do player no modo cards: perde 1 vida e respawna
+      if (this.player.dead && !this.player.rebuilding) {
+        this._cardsLives--;
+        this.ui.notify(`Vida perdida! Restam ${this._cardsLives}`, '#ff4466');
+        if (this._cardsLives <= 0) {
+          this._endCardsGame();
+          return;
+        }
+        // Respawna sem rebuild no modo cards
+        this.player.hp = this.player.maxHp;
+        this.player.mana = this.player.maxMana;
+        this.player.dead = false;
+        this.player.invincible = 3;
+        this.player.x = ARENA_W / 2 + (Math.random() - 0.5) * 200;
+        this.player.y = ARENA_H / 2 + (Math.random() - 0.5) * 200;
+        this.player.vx = 0; this.player.vy = 0;
+        this.arena.spawnParticles(this.player.x, this.player.y, '#00ff88', 20, 200);
+      }
+
+      // Atualiza CardDefenseManager
+      if (this._cardsMgr) {
+        const ev = this._cardsMgr.update(dt, this.player, this.combat.bullets, this.arena, this.itemMgr);
+        if (ev) {
+          this._cardsLevel = this._cardsMgr.currentLevel;
+          if (ev.cardLevel) {
+            // Evento de carta — gera opções, pausa o jogo e mostra overlay
+            const ownedIds = this.player._cardsOwned.map(c => c.id);
+            const options  = this._cardsMgr.generateCardOptions(ev.cardLevel, ownedIds);
+            const cardEv   = { ...ev, options };
+            this._cardsPaused = true;
+            this._cardEvent   = cardEv;
+            window.showCardsOverlay?.(cardEv);
+          }
+          if (ev.waveComplete) {
+            this._cardsKills = this.player.kills;
+          }
+        }
+      }
+
+      // Torres aliadas
+      this._updateCardsTowers(dt);
+      // Armadilhas aliadas
+      this._updateCardsTraps(dt);
+
+      // Sincroniza inimigos do CardDefenseManager com o EnemyManager
+      // para que o combat, portais, itens e UI usem a lista correta
+      if (this._cardsMgr) this.enemyMgr.enemies = this._cardsMgr.enemies;
+    }
+
     // Contra1: verificar fim por vidas
     if (this.mode==='contra1') {
       const res=this.enemyMgr.livesResult;
       if (res==='player_win') { this._endGame(true); return; }
       if (res==='enemy_win'||this.enemyMgr.playerLives<=0) { this._endGame(false); return; }
-    } else if (this.mode!=='equipe_online' && this.mode!=='tower_defense') {
+    } else if (this.mode!=='equipe_online' && this.mode!=='tower_defense' && this.mode!=='cards') {
       this.timeLeft-=dt;
       if (this.timeLeft<=0) { this._endGame(true); return; }
     }
-    if (this.player.dead&&this.player.deathTimer<=0&&this.mode!=='contra1'&&this.mode!=='equipe_online'&&this.mode!=='tower_defense') { this._endGame(false); return; }
+    if (this.player.dead&&this.player.deathTimer<=0&&this.mode!=='contra1'&&this.mode!=='equipe_online'&&this.mode!=='tower_defense'&&this.mode!=='cards') { this._endGame(false); return; }
 
     // Torneio Tower Defense: vitória imediata para o time que destruir/conquistar a torre central
     if (this.towerDefenseMgr?.winnerTeam && !this.over) {
@@ -682,7 +778,9 @@ export class Game {
       this.ui.notify('Descartou: '+ejected.def?.label, ejected.def?.color||'#aaaaaa');
     }
 
-    this.enemyMgr.update(dt,this.player,this.combat.bullets,this.arena,this.itemMgr,this.towerMgr?.towers);
+    if (!this._isCardsMode) {
+      this.enemyMgr.update(dt,this.player,this.combat.bullets,this.arena,this.itemMgr,this.towerMgr?.towers);
+    }
 
     if (this.towerMgr) {
       this.towerMgr.update(dt,this.player,this.enemyMgr.enemies,this.combat.bullets);
@@ -957,8 +1055,10 @@ export class Game {
     this.rechargeMgr?.draw(ctx);
     this.towerMgr?.draw(ctx);
     this.towerDefenseMgr?.draw(ctx);
+    if (this._isCardsMode) this._drawCardsTowersAndTraps(ctx);
     this.itemMgr.draw(ctx);
-    this.enemyMgr.draw(ctx);
+    if (this._isCardsMode && this._cardsMgr) this._cardsMgr.draw(ctx);
+    else this.enemyMgr.draw(ctx);
     for (const id in this.peers) this.peers[id].draw(ctx);
     if (this.isHost) for (const bot of this.bots) bot.draw(ctx);
     this.combat.draw(ctx);
@@ -981,6 +1081,8 @@ export class Game {
 
     // Contra1: HUD de vidas em tela
     if (this.mode==='contra1') this._drawLivesHUD(ctx,W,H);
+    // Cards: HUD de vidas do modo cards
+    if (this._isCardsMode) this._drawCardsLivesHUD(ctx,W,H);
 
     if (this._audio._muted) {
       ctx.save(); ctx.fillStyle='rgba(255,255,255,0.18)'; ctx.font='10px system-ui'; ctx.textAlign='right';
@@ -1135,6 +1237,258 @@ export class Game {
       ctx.beginPath(); ctx.moveTo(px+sz/2,y); ctx.lineTo(px+sz,y+sz/2); ctx.lineTo(px+sz/2,y+sz); ctx.lineTo(px,y+sz/2); ctx.closePath(); ctx.fill();
     }
     ctx.shadowBlur=0; ctx.restore();
+  }
+
+  // ── Cards: draw de torres e armadilhas aliadas ─────────────────
+  _drawCardsTowersAndTraps(ctx) {
+    // Torres
+    for (const t of this._cardsTowers) {
+      if (t.hp <= 0) continue;
+      ctx.save();
+      ctx.translate(t.x, t.y);
+
+      // Base da torre — cilindro estilo LoL
+      ctx.strokeStyle = '#00ddff';
+      ctx.lineWidth   = 2;
+      ctx.shadowColor = '#00ddff';
+      ctx.shadowBlur  = 10;
+      // Octágono base
+      ctx.beginPath();
+      for (let i=0;i<8;i++) {
+        const a = (i/8)*Math.PI*2 - Math.PI/8;
+        const r = 22;
+        i===0 ? ctx.moveTo(Math.cos(a)*r, Math.sin(a)*r)
+              : ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r);
+      }
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(0,30,50,0.85)';
+      ctx.fill();
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      // Canhão giratório
+      ctx.rotate(t.angle);
+      ctx.strokeStyle = '#00aaff';
+      ctx.lineWidth   = 5;
+      ctx.lineCap     = 'round';
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(26, 0); ctx.stroke();
+
+      // Barra de HP da torre
+      ctx.rotate(-t.angle);
+      const hpRatio = t.hp / t.maxHp;
+      const bw = 36, bh = 4;
+      ctx.fillStyle = '#0d2233';
+      ctx.fillRect(-bw/2, -32, bw, bh);
+      ctx.fillStyle = hpRatio > 0.5 ? '#00dd88' : hpRatio > 0.25 ? '#ffcc00' : '#ff3333';
+      ctx.fillRect(-bw/2, -32, bw * hpRatio, bh);
+
+      ctx.restore();
+    }
+
+    // Armadilhas (visíveis ao jogador, invisíveis aos inimigos via cor)
+    for (const trap of this._cardsTraps) {
+      if (trap.triggered) continue;
+      ctx.save();
+      ctx.translate(trap.x, trap.y);
+      ctx.globalAlpha = 0.6 + Math.sin(Date.now()*0.004)*0.2;
+      ctx.strokeStyle = '#aa44ff';
+      ctx.lineWidth   = 1.5;
+      ctx.shadowColor = '#aa44ff';
+      ctx.shadowBlur  = 8;
+      // Hexágono
+      ctx.beginPath();
+      for (let i=0;i<6;i++) {
+        const a = (i/6)*Math.PI*2;
+        const r = trap.r;
+        i===0 ? ctx.moveTo(Math.cos(a)*r, Math.sin(a)*r)
+              : ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r);
+      }
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(80,0,130,0.35)';
+      ctx.fill();
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+  }
+
+  // HUD de vidas no modo cards (canto superior direito)
+  _drawCardsLivesHUD(ctx, W, H) {
+    const lv = this._cardsLives;
+    ctx.save();
+    ctx.font         = 'bold 11px monospace';
+    ctx.textAlign    = 'right';
+    ctx.textBaseline = 'top';
+    // Level
+    ctx.fillStyle  = '#00ff88';
+    ctx.shadowColor= '#00ff88'; ctx.shadowBlur=6;
+    ctx.fillText(`Lv ${this._cardsLevel}`, W - 12, 40);
+    ctx.shadowBlur = 0;
+    // Vidas
+    ctx.fillStyle  = lv <= 3 ? '#ff4466' : '#ffffff';
+    ctx.fillText(`Vidas: ${lv}`, W - 12, 56);
+    ctx.restore();
+  }
+
+  // ── Cards of Defense: escolha de carta ────────────────────────
+  cardChoose(cardId) {
+    if (!this._cardsPaused || !this._cardEvent) return;
+    const ev = this._cardEvent;
+    const chosen = ev.options?.find(o => o.id === cardId);
+    if (!chosen) return;
+
+    // Aplica carta ao player
+    const lv = chosen.level || 1;
+    this.player.applyCard(cardId, lv);
+
+    // Registra rejeições das cartas não escolhidas
+    if (this._cardsMgr) {
+      for (const opt of ev.options) {
+        if (opt.id !== cardId) {
+          this._cardsMgr.recordRejection(opt.id);
+        }
+      }
+    }
+
+    // Notificação e retoma o jogo
+    const label = chosen.name || cardId;
+    this.ui.notify(`Carta escolhida: ${label} Lv${lv}!`, '#00ff88');
+    this._cardsPaused = false;
+    this._cardEvent   = null;
+
+    // Fortify: reforça torres e armadilhas já colocadas
+    if (cardId === 'fortify') {
+      this._cardsFortifyCount++;
+      for (const t of this._cardsTowers) t.fortified = this._cardsFortifyCount;
+      for (const t of this._cardsTraps)  t.fortified = this._cardsFortifyCount;
+    }
+    window.hideCardsOverlay?.();
+  }
+
+  // Coloca uma torre aliada na arena
+  placeTower(wx, wy) {
+    const fortify = this._cardsFortifyCount;
+    this._cardsTowers.push({
+      x: wx, y: wy, r: 28,
+      hp: fortify > 0 ? 300 : 200,
+      maxHp: fortify > 0 ? 300 : 200,
+      dmg: fortify > 0 ? 45 : 30,
+      range: 400, shootCd: 0, shootRate: 0.8,
+      angle: 0, age: 0, fortified: fortify,
+    });
+    this.arena.spawnParticles(wx, wy, '#00ddff', 18, 180);
+    this.ui.notify('Torre colocada!', '#00ddff');
+  }
+
+  // Coloca uma armadilha na arena
+  placeTrap(wx, wy) {
+    const fortify = this._cardsFortifyCount;
+    this._cardsTraps.push({
+      x: wx, y: wy, r: 20,
+      dmg:    fortify > 0 ? 400 : 200,
+      radius: fortify > 0 ? 280 : 160,
+      triggered: false, age: 0,
+    });
+    this.ui.notify('Armadilha armada!', '#aa44ff');
+  }
+
+  _updateCardsTowers(dt) {
+    const enemies = this.enemyMgr.enemies.filter(e => !e.dead);
+    for (const tower of this._cardsTowers) {
+      if (tower.hp <= 0) continue;
+      tower.age += dt;
+      tower.shootCd -= dt;
+
+      // Girar canhão para o inimigo mais próximo no range
+      let nearest = null, nearDist = Infinity;
+      for (const e of enemies) {
+        const d = Math.hypot(e.x - tower.x, e.y - tower.y);
+        if (d < tower.range && d < nearDist) { nearest = e; nearDist = d; }
+      }
+      if (nearest) {
+        tower.angle = Math.atan2(nearest.y - tower.y, nearest.x - tower.x);
+        if (tower.shootCd <= 0) {
+          tower.shootCd = tower.shootRate;
+          const sp = 580;
+          const dx = nearest.x - tower.x, dy = nearest.y - tower.y, d = Math.hypot(dx,dy)||1;
+          this.combat.bullets.push({
+            x: tower.x, y: tower.y,
+            vx:(dx/d)*sp, vy:(dy/d)*sp,
+            damage: tower.dmg, owner:'player', life:1.2,
+            owner_color:'#00ddff', piercing:false, vampire:false,
+            dirX:dx/d, dirY:dy/d,
+          });
+        }
+      }
+
+      // Recebe dano de colisão de inimigos
+      for (const e of enemies) {
+        if (Math.hypot(e.x - tower.x, e.y - tower.y) < tower.r + (e.r||20)) {
+          tower.hp -= 15 * dt;
+        }
+      }
+    }
+    this._cardsTowers = this._cardsTowers.filter(t => t.hp > 0);
+  }
+
+  _updateCardsTraps(dt) {
+    const enemies = this.enemyMgr.enemies.filter(e => !e.dead);
+    for (const trap of this._cardsTraps) {
+      if (trap.triggered) continue;
+      for (const e of enemies) {
+        if (Math.hypot(e.x - trap.x, e.y - trap.y) < trap.r + (e.r||20)) {
+          trap.triggered = true;
+          // Explosão em área
+          this.combat.spawnExplosion(trap.x, trap.y, trap.radius, '#ff4400');
+          for (const target of enemies) {
+            if (Math.hypot(target.x - trap.x, target.y - trap.y) < trap.radius) {
+              target.hp -= trap.dmg;
+            }
+          }
+          this.arena.spawnParticles(trap.x, trap.y, '#ff8800', 28, 260);
+          this.addShake(8);
+          this.ui.notify('ARMADILHA!', '#ff8800');
+          break;
+        }
+      }
+    }
+    this._cardsTraps = this._cardsTraps.filter(t => !t.triggered);
+  }
+
+  _endCardsGame() {
+    if (this.over) return;
+    this.over = true;
+    cancelAnimationFrame(this._rafId);
+    this._audio.stopEngine();
+    this._audio.playDeath?.();
+
+    const level     = this._cardsLevel;
+    const kills     = this.player.kills;
+    const livesLeft = this._cardsLives;
+    const score     = Math.round(kills * level * (1 + livesLeft * 0.5));
+    const cardsUsed = this.player._cardsOwned.map(c => c.id).join(',');
+
+    // Salva no ranking via cookie (sem Bearer token — usa cookie de sessão)
+    fetch('/api/cards/ranking', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      credentials:'include',
+      body:JSON.stringify({ score, level, kills, lives_left:livesLeft, cards_used:cardsUsed }),
+    }).catch(()=>{});
+
+    setTimeout(()=>{
+      window.showGameOver?.({
+        win:false, kills, score,
+        items:this.player.itemsCollected,
+        itemTypeCounts:this.player.itemTypeCounts,
+        skinIndex:this.player.skinIndex,
+        skinName:this.player.skin.name,
+        playerName:this.player.name,
+        level, livesLeft, cardsUsed,
+        mode:'cards',
+      });
+    }, 700);
   }
 
   _endGame(survived) {

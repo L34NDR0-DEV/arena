@@ -114,6 +114,21 @@ CREATE TABLE IF NOT EXISTS owned_trails (
 CREATE INDEX IF NOT EXISTS idx_owned_trails_user ON owned_trails(user_id);
 `);
 
+// Ranking do modo Cards of Defense
+db.exec(`
+CREATE TABLE IF NOT EXISTS cards_ranking (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id    INTEGER NOT NULL REFERENCES users(id),
+  score      INTEGER NOT NULL,
+  level      INTEGER NOT NULL,
+  kills      INTEGER NOT NULL DEFAULT 0,
+  lives_left INTEGER NOT NULL DEFAULT 0,
+  cards_used TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_cards_ranking_score ON cards_ranking(score DESC);
+`);
+
 // `details` guarda um JSON com dados ricos da partida (itens coletados, nível,
 // nome da skin, contagem por tipo de item) que não têm coluna própria — usado
 // para reconstruir o histórico completo a partir do servidor em qualquer dispositivo.
@@ -176,6 +191,9 @@ const stmts = {
   // Aprova o pedido e credita o saldo atomicamente, só se ainda 'pending'.
   // O filtro WHERE garante idempotência: reprocessar o mesmo webhook não soma duas vezes.
   approveOrderIfPending: db.prepare(`UPDATE credit_orders SET status = 'approved', mp_payment_id = ?, updated_at = datetime('now') WHERE id = ? AND status = 'pending'`),
+
+  insertCardsRank:  db.prepare(`INSERT INTO cards_ranking (user_id, score, level, kills, lives_left, cards_used) VALUES (?,?,?,?,?,?)`),
+  topCardsRanking:  db.prepare(`SELECT cr.score, cr.level, cr.kills, cr.lives_left, cr.cards_used, cr.created_at, u.display_name, u.email FROM cards_ranking cr JOIN users u ON u.id = cr.user_id ORDER BY cr.score DESC, cr.level DESC LIMIT 20`),
 };
 
 function transaction(fn) {

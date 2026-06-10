@@ -220,6 +220,54 @@ const tdQueue = []; // [{ id, name, skinIndex, profileIcon, socket }] aguardando
 let   tdMatch = null; // { roomId, players, teamCounts, started, tournamentEligible, botIds, hostId }
 let   tdWaitTimer = null;
 
+// ── Cards of Defense — fila co-op (até 5) ──────────────────────
+const CARDS_MATCH_SIZE = 5;
+const CARDS_WAIT_MS    = 15_000;
+const cardsQueue = []; // [{ id, name, skinIndex, profileIcon, socket }]
+let   cardsWaitTimer = null;
+let   cardsMatchSeq  = 1;
+
+function flushCardsQueue(allowBots = false) {
+  if (cardsQueue.length === 0) return;
+  if (cardsWaitTimer) { clearTimeout(cardsWaitTimer); cardsWaitTimer = null; }
+  const realCount = Math.min(CARDS_MATCH_SIZE, cardsQueue.length);
+  const chosen = cardsQueue.splice(0, realCount);
+  const roomId = `cards_room_${cardsMatchSeq++}`;
+  const hostId = chosen[0].id;
+  const botIds = new Set();
+
+  // Preenche vagas com bots
+  const slotsToFill = CARDS_MATCH_SIZE - chosen.length;
+  for (let i = 0; i < slotsToFill; i++) {
+    const botId = `cards_bot_${roomId}_${i}`;
+    botIds.add(botId);
+  }
+
+  // Cria sala e notifica jogadores
+  const players = chosen.map((p, idx) => ({
+    id: p.id, name: p.name, skinIndex: p.skinIndex,
+    profileIcon: p.profileIcon, socket: p.socket,
+    isBot: false, isHost: idx === 0,
+  }));
+
+  for (const p of players) {
+    const botList = [...botIds].map((bid, i) => ({
+      id: bid, name: `Bot ${i+1}`, skinIndex: i % 3, profileIcon: 0, isBot: true,
+    }));
+    const peers = players.filter(pp => pp.id !== p.id).map(pp => ({
+      id: pp.id, name: pp.name, skinIndex: pp.skinIndex, profileIcon: pp.profileIcon, isBot: false,
+    }));
+    wsSend(p.socket, JSON.stringify({
+      type: 'cards_match_start',
+      roomId,
+      isHost: p.id === hostId,
+      peers: [...peers, ...botList],
+      bots: botList,
+    }));
+  }
+  console.log(`[Cards] Partida iniciada: sala ${roomId}, ${players.length} real + ${slotsToFill} bot(s)`);
+}
+
 function tdQueuePosition(userId) {
   return tdQueue.findIndex(p => p.id === userId);
 }
@@ -586,6 +634,25 @@ function handleMsg(socket, raw) {
     case 'td_queue_leave':
       leaveTdQueue(socket, info);
       break;
+    case 'cards_queue_join': {
+      if (isLocked()) { wsSend(socket, JSON.stringify({ type: 'cards_unavailable', reason:'locked' })); break; }
+      const already = cardsQueue.findIndex(p => p.id === info.id) !== -1;
+      if (already) break;
+      if (cardsQueue.length >= CARDS_MATCH_SIZE) { flushCardsQueue(true); }
+      cardsQueue.push({ id: info.id, name: info.name, skinIndex: info.skinIndex, profileIcon: info.profileIcon, socket });
+      wsSend(socket, JSON.stringify({ type: 'cards_queue_state', position: cardsQueue.length }));
+      if (cardsQueue.length >= CARDS_MATCH_SIZE) {
+        flushCardsQueue(false);
+      } else if (!cardsWaitTimer) {
+        cardsWaitTimer = setTimeout(() => { cardsWaitTimer = null; flushCardsQueue(true); }, CARDS_WAIT_MS);
+      }
+      break;
+    }
+    case 'cards_queue_leave': {
+      const qi = cardsQueue.findIndex(p => p.id === info.id);
+      if (qi !== -1) cardsQueue.splice(qi, 1);
+      break;
+    }
     case 'td_match_end': {
       // Reportado pelo cliente que presenciou a torre central ser destruída
       // e conquistada — qualquer jogador da partida pode reportar; o servidor

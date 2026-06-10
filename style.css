@@ -1410,3 +1410,170 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 #maint-banner.maint-banner-locked .maint-banner-sub{color:#a05060;}
 @keyframes maintBannerIn{from{opacity:0;transform:translateY(-100%)}to{opacity:1;transform:none}}
 @keyframes maintPulse{0%,100%{box-shadow:0 0 10px #ffaa4444}50%{box-shadow:0 0 22px #ffaa44aa}}
+
+/* ══ Cards of Defense — botão na grade de modos ══════════════════ */
+.mode-cards{position:relative;}
+.mode-badge-cards{
+  position:absolute;top:4px;right:4px;
+  font-family:'Press Start 2P',monospace;font-size:6px;
+  background:linear-gradient(135deg,#00ff88,#00d4ff);
+  color:#02050d;padding:2px 5px;border-radius:3px;letter-spacing:.5px;
+}
+
+/* ══ Cards of Defense — overlay de escolha de carta ═════════════ */
+#cards-overlay{
+  display:none;
+  position:fixed;inset:0;z-index:9500;
+  align-items:center;justify-content:center;
+}
+#cards-overlay.show{ display:flex; }
+.cards-bg-blur{
+  position:absolute;inset:0;
+  background:#000000cc;
+  backdrop-filter:blur(6px);
+}
+.cards-panel{
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;align-items:center;gap:20px;
+  width:min(1100px,97vw);padding:28px 20px 24px;
+}
+.cards-header{
+  display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;
+}
+.cards-title{
+  font-family:'Press Start 2P',monospace;font-size:clamp(10px,2.5vw,18px);
+  color:#00ffcc;text-shadow:0 0 30px #00ffcc88;letter-spacing:4px;
+}
+.cards-level-badge{
+  font-size:11px;color:#8800ff;letter-spacing:3px;
+  background:#8800ff15;border:1px solid #8800ff44;
+  padding:4px 14px;border-radius:20px;
+  font-family:'Press Start 2P',monospace;
+}
+.cards-timer-wrap{display:flex;align-items:center;gap:8px;}
+.cards-timer-bar{
+  width:160px;height:5px;background:#ffffff15;border-radius:3px;overflow:hidden;
+}
+.cards-timer-fill{
+  height:100%;background:linear-gradient(90deg,#00ffcc,#8800ff);
+  border-radius:3px;transition:width .2s linear;
+}
+.cards-timer-text{font-size:10px;color:#ffffff55;}
+.cards-grid{
+  display:flex;gap:16px;flex-wrap:wrap;justify-content:center;
+}
+.card-choice{
+  position:relative;
+  width:clamp(170px,22vw,240px);
+  background:linear-gradient(160deg,#0a0220,#04091c);
+  border:1.5px solid #8800ff44;border-radius:14px;
+  padding:22px 18px 18px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  transition:transform .18s,border-color .18s,box-shadow .18s;
+  animation:cardReveal .5s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+.card-choice:hover{
+  transform:translateY(-6px) scale(1.03);
+  border-color:#00ffcc;
+  box-shadow:0 8px 40px #00ffcc33;
+}
+.card-choice:nth-child(1){animation-delay:0s;}
+.card-choice:nth-child(2){animation-delay:.15s;}
+.card-choice:nth-child(3){animation-delay:.30s;}
+@keyframes cardReveal{
+  from{opacity:0;transform:translateY(50px) scale(0.82);}
+  to{opacity:1;transform:none;}
+}
+.card-rarity-bar{
+  position:absolute;top:0;left:12px;right:12px;height:3px;border-radius:0 0 3px 3px;
+}
+.card-rarity-positive .card-rarity-bar{background:linear-gradient(90deg,#00ffcc,#00aaff);}
+.card-rarity-neutral  .card-rarity-bar{background:linear-gradient(90deg,#ffcc44,#ff8800);}
+.card-rarity-negative .card-rarity-bar{background:linear-gradient(90deg,#ff4455,#aa0022);}
+.card-rarity-upgrade  .card-rarity-bar{background:linear-gradient(90deg,#8800ff,#ff00cc,#ffcc00);}
+.card-icon{
+  width:52px;height:52px;
+  display:flex;align-items:center;justify-content:center;
+  background:#ffffff08;border-radius:50%;
+}
+.card-icon svg{width:30px;height:30px;stroke:#00ffcc;fill:none;stroke-width:1.6;}
+.card-rarity-negative .card-icon svg{stroke:#ff6677;}
+.card-rarity-upgrade  .card-icon svg{stroke:#cc88ff;}
+.card-rarity-neutral  .card-icon svg{stroke:#ffcc44;}
+.card-name{
+  font-family:'Press Start 2P',monospace;font-size:clamp(7px,1.2vw,9px);
+  color:#e0f0ff;letter-spacing:1px;text-align:center;line-height:1.5;
+}
+.card-desc{font-size:10px;color:#8090a8;text-align:center;line-height:1.5;}
+.card-stat{
+  font-size:11px;font-weight:700;
+  color:#00ffcc;background:#00ffcc15;
+  padding:4px 10px;border-radius:6px;letter-spacing:.5px;
+}
+.card-rarity-negative .card-stat{color:#ff8899;background:#ff000015;}
+.card-rarity-upgrade  .card-stat{color:#cc88ff;background:#8800ff15;}
+.card-rarity-neutral  .card-stat{color:#ffcc44;background:#ffcc0015;}
+.card-level-badge{
+  position:absolute;top:8px;right:10px;
+  font-size:8px;color:#ffcc44;background:#ffcc0022;
+  border:1px solid #ffcc4444;border-radius:4px;
+  padding:1px 5px;font-family:'Press Start 2P',monospace;
+}
+.card-returning-badge{
+  font-size:8px;color:#ff88aa;background:#ff005522;
+  border:1px solid #ff005544;border-radius:4px;
+  padding:2px 6px;font-family:'Press Start 2P',monospace;letter-spacing:.5px;
+}
+.cards-hint{font-size:10px;color:#ffffff28;letter-spacing:.5px;text-align:center;}
+
+/* ══ Cards of Defense — modal de ranking ════════════════════════ */
+#cards-ranking-modal{
+  position:fixed;inset:0;z-index:9400;
+  background:#000000cc;backdrop-filter:blur(4px);
+  display:none;align-items:center;justify-content:center;
+}
+#cards-ranking-modal.show{display:flex;}
+.crm-panel{
+  background:linear-gradient(160deg,#06101e,#020810);
+  border:1px solid #00d4ff22;border-radius:14px;
+  padding:28px 24px;width:min(700px,95vw);max-height:85vh;
+  display:flex;flex-direction:column;gap:16px;
+}
+.crm-title{
+  font-family:'Press Start 2P',monospace;font-size:12px;
+  color:#00ffcc;letter-spacing:3px;text-align:center;
+  text-shadow:0 0 20px #00ffcc66;
+}
+.crm-table-wrap{overflow-y:auto;flex:1;}
+.crm-table{width:100%;border-collapse:collapse;font-size:12px;}
+.crm-table th{color:#4a7a9a;font-size:10px;padding:8px 10px;border-bottom:1px solid #00d4ff15;text-align:left;}
+.crm-table td{padding:8px 10px;border-bottom:1px solid #00d4ff0a;color:#c8d8e8;}
+.crm-table tr:nth-child(1) td:first-child{color:#ffcc44;}
+.crm-table tr:nth-child(2) td:first-child{color:#aaaaaa;}
+.crm-table tr:nth-child(3) td:first-child{color:#cc8844;}
+.btn-close-crm{
+  align-self:center;
+  background:none;border:1px solid #00d4ff44;color:#00d4ff;
+  padding:8px 24px;border-radius:8px;cursor:pointer;font-size:12px;
+  transition:background .2s;
+}
+.btn-close-crm:hover{background:#00d4ff15;}
+
+/* ══ Cards of Defense — mini-ranking na tela inicial ════════════ */
+#cards-mini-ranking{
+  margin-top:12px;padding:12px 14px;
+  background:#00ffcc08;border:1px solid #00ffcc22;border-radius:10px;
+}
+.cmr-title{
+  font-family:'Press Start 2P',monospace;font-size:7px;
+  color:#00ffcc88;letter-spacing:2px;margin-bottom:8px;
+}
+.cmr-list{display:flex;flex-direction:column;gap:4px;}
+.cmr-row{
+  display:flex;align-items:center;gap:8px;
+  font-size:11px;color:#c8d8e8;
+}
+.cmr-pos{color:#ffcc44;font-weight:700;min-width:16px;}
+.cmr-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cmr-score{color:#00ffcc;font-weight:700;}
+.cmr-level{font-size:10px;color:#8090a8;}

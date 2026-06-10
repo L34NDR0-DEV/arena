@@ -60,9 +60,12 @@ export class NetworkClient {
       case 'match_start': this.myId = msg.you?.id ?? this.myId; h.onMatchStart?.(msg); break;
       case 'td_queue_state':  h.onTdQueueState?.(msg);          break;
       case 'td_unavailable':  h.onTdUnavailable?.(msg);         break;
-      case 'td_match_start':  this.myId = msg.you?.id ?? this.myId; h.onTdMatchStart?.(msg); break;
-      case 'td_reward_granted':        h.onTdRewardGranted?.(msg);        break;
-      case 'player_replaced_by_bot':   h.onPlayerReplacedByBot?.(msg);    break;
+      case 'td_match_start':         this.myId = msg.you?.id ?? this.myId; h.onTdMatchStart?.(msg);    break;
+      case 'td_reward_granted':      h.onTdRewardGranted?.(msg);                                        break;
+      case 'player_replaced_by_bot': h.onPlayerReplacedByBot?.(msg);                                   break;
+      case 'cards_match_start':      h.onCardsMatchStart?.(msg);                                        break;
+      case 'cards_queue_state':      h.onCardsQueueState?.(msg);                                        break;
+      case 'cards_unavailable':      h.onCardsUnavailable?.(msg);                                       break;
       case 'pong':        this._onPong(msg);                    break;
       case 'maintenance_locked':
         if (typeof window._handleMaintenanceLocked === 'function')
@@ -129,6 +132,9 @@ export class NetworkClient {
   // Reporta o fim da partida ao destruir/conquistar a torre central —
   // qualquer jogador da disputa pode reportar (servidor ignora duplicatas).
   tdReportMatchEnd(winnerTeam) { this.send({ type: 'td_match_end', winnerTeam }); }
+
+  cardsQueueJoin(name, skinIndex, profileIcon=0) { this.send({ type: 'cards_queue_join', name, skinIndex, profileIcon }); }
+  cardsQueueLeave() { this.send({ type: 'cards_queue_leave' }); }
 
   sendState(data)  { this.send({ type: 'state', data }); }
   sendEvent(data)  { this.send({ type: 'event', data }); }

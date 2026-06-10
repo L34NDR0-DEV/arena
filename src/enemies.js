@@ -1153,3 +1153,508 @@ export class EnemyManager {
   get isWaveActive()  { return this.waveActive; }
   get waveCountdown() { return Math.ceil(this.waveTimer); }
 }
+
+// ── SwarmerEnemy: inimigo pequeno de enxame (modo Cards) ─────
+export class SwarmerEnemy {
+  constructor(x, y, difficulty, cardMode=false) {
+    const m = DIFF[difficulty]||1;
+    this.x=x; this.y=y; this.vx=0; this.vy=0;
+    this.r=16; this.angle=0; this._age=0;
+    this.maxHp=28+8*m; this.hp=this.maxHp;
+    this.lives=1; this.maxLives=1;
+    this.speed=340+60*m;
+    this.damage=8*m;
+    this.score=5;
+    this.color=cardMode ? '#66ff44' : '#ff8822';
+    this.dead=false; this._dying=false; this._dyingAge=0;
+    this.shards=[];
+    this._wobble=Math.random()*Math.PI*2;
+    this._flockOffset={ x:(Math.random()-0.5)*80, y:(Math.random()-0.5)*80 };
+    this.isAlien=true;
+    this._audio=null;
+    this._respawnTimer=0; this._respawnDuration=0;
+    this._respawnX=x; this._respawnY=y;
+    // SwarmerEnemy não atira — só dano por colisão
+  }
+
+  setAudio(a) { this._audio=a; }
+  get isRespawning() { return this._respawnTimer > 0; }
+
+  update(dt, player, bullets) {
+    if (this.dead) return;
+    this._age+=dt;
+    // Movimento em direção ao player com wobble de enxame
+    const dx=player.x+this._flockOffset.x-this.x;
+    const dy=player.y+this._flockOffset.y-this.y;
+    const dist=Math.hypot(dx,dy)||1;
+    this.vx=dx/dist*this.speed;
+    this.vy=dy/dist*this.speed;
+    this.x+=this.vx*dt;
+    this.y+=this.vy*dt;
+    this.angle=Math.atan2(dy,dx);
+    // Colisão com player — dano corpo a corpo
+    const pd=Math.hypot(this.x-player.x, this.y-player.y);
+    if (pd < this.r+player.r && !player.invincible && !this._hitCooldown) {
+      player.takeDamage(this.damage);
+      this._hitCooldown=0.6;
+      this._audio?.playHit?.();
+    }
+    if (this._hitCooldown>0) this._hitCooldown-=dt;
+    // Colisão com balas
+    for (const b of bullets) {
+      if (b.team==='enemy' || b.dead) continue;
+      if (Math.hypot(this.x-b.x, this.y-b.y) < this.r+b.r) {
+        b.dead=true;
+        this.hp-=b.damage||20;
+        if (this.hp<=0) this.dead=true;
+      }
+    }
+  }
+
+  startDeath() {
+    this._dying=true; this._dyingAge=0;
+    this.shards=Array.from({length:6},()=>({
+      x:this.x,y:this.y,
+      vx:(Math.random()-0.5)*220,vy:(Math.random()-0.5)*220,
+      life:0.5+Math.random()*0.3,age:0,
+      r:3+Math.random()*4,
+    }));
+  }
+
+  draw(ctx) {
+    if (this.dead && !this._dying) return;
+    if (this._dying) {
+      this._dyingAge+=0.016;
+      for (const s of this.shards) {
+        s.age+=0.016; s.x+=s.vx*0.016; s.y+=s.vy*0.016;
+        const a=Math.max(0,1-s.age/s.life);
+        ctx.globalAlpha=a;
+        ctx.fillStyle=this.color;
+        ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
+      }
+      ctx.globalAlpha=1;
+      if (this._dyingAge>0.5) this.dead=true;
+      return;
+    }
+    // Corpo: triângulo pequeno apontando para o player
+    ctx.save();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.angle);
+    ctx.beginPath();
+    ctx.moveTo(this.r,0); ctx.lineTo(-this.r*0.7,this.r*0.6); ctx.lineTo(-this.r*0.7,-this.r*0.6);
+    ctx.closePath();
+    ctx.fillStyle=this.color;
+    ctx.shadowColor=this.color; ctx.shadowBlur=8;
+    ctx.fill();
+    ctx.restore();
+    ctx.globalAlpha=0.4;
+    ctx.strokeStyle=this.color; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(this.x,this.y,this.r+4,0,Math.PI*2); ctx.stroke();
+    ctx.globalAlpha=1;
+    // HP bar
+    const bw=28;
+    ctx.fillStyle='#0d1e32bb'; ctx.fillRect(this.x-bw/2,this.y-this.r-8,bw,3);
+    ctx.fillStyle=this.color; ctx.fillRect(this.x-bw/2,this.y-this.r-8,bw*Math.max(0,this.hp/this.maxHp),3);
+  }
+}
+
+// ── TitanEnemy: tanque pesado (modo Cards, levels 5/13/17/25) ─
+export class TitanEnemy {
+  constructor(x, y, difficulty, hpMult=1) {
+    const m = DIFF[difficulty]||1;
+    this.x=x; this.y=y; this.vx=0; this.vy=0; this.angle=0;
+    this.r=70;
+    this.maxHp=Math.round((800+200*m)*hpMult); this.hp=this.maxHp;
+    this.shield=120*hpMult; this.maxShield=this.shield;
+    this.lives=1; this.maxLives=1;
+    this.speed=90+20*m;
+    this.damage=45*m;
+    this.score=200+Math.round(100*hpMult);
+    this.color='#226633';
+    this.shieldColor='#00ff66';
+    this.dead=false; this._age=0;
+    this.shards=[]; this._dying=false; this._dyingAge=0;
+    this._respawnTimer=0; this._respawnDuration=0;
+    this._respawnX=x; this._respawnY=y;
+    this._shootTimer=1.5+Math.random()*0.5;
+    this._shootCd=2.2-m*0.2;
+    this._shieldRegen=20; // HP escudo por segundo
+    this.isAlien=true;
+    this._audio=null;
+  }
+
+  setAudio(a) { this._audio=a; }
+  get isRespawning() { return this._respawnTimer > 0; }
+
+  update(dt, player, bullets) {
+    if (this.dead) return;
+    this._age+=dt;
+    // Regen de escudo
+    if (this.shield < this.maxShield) this.shield=Math.min(this.maxShield, this.shield+this._shieldRegen*dt);
+    // Movimento em direção ao player
+    const dx=player.x-this.x, dy=player.y-this.y;
+    const dist=Math.hypot(dx,dy)||1;
+    if (dist > this.r+player.r+20) {
+      this.x+=dx/dist*this.speed*dt;
+      this.y+=dy/dist*this.speed*dt;
+    }
+    this.angle=Math.atan2(dy,dx);
+    // Tiro em leque (3 projéteis)
+    this._shootTimer-=dt;
+    if (this._shootTimer<=0) {
+      this._shootTimer=this._shootCd;
+      this._audio?.playShoot?.();
+      for (let a=-1;a<=1;a++) {
+        const ang=this.angle+a*0.35;
+        bullets.push({
+          x:this.x+Math.cos(ang)*(this.r+10),
+          y:this.y+Math.sin(ang)*(this.r+10),
+          vx:Math.cos(ang)*320, vy:Math.sin(ang)*320,
+          r:8, damage:this.damage, team:'enemy',
+          life:3, dead:false, color:'#00ff44',
+          update(dt2){ this.x+=this.vx*dt2; this.y+=this.vy*dt2; this.life-=dt2; if(this.life<=0)this.dead=true; },
+          draw(ctx){ ctx.beginPath(); ctx.arc(this.x,this.y,this.r,0,Math.PI*2); ctx.fillStyle='#00ff44'; ctx.shadowColor='#00ff44'; ctx.shadowBlur=12; ctx.fill(); },
+        });
+      }
+    }
+    // Colisão com balas do jogador
+    for (const b of bullets) {
+      if (b.team==='enemy' || b.dead) continue;
+      if (Math.hypot(this.x-b.x, this.y-b.y) < this.r+b.r) {
+        b.dead=true;
+        const dmg=b.damage||20;
+        if (this.shield>0) {
+          const absorbed=Math.min(this.shield,dmg);
+          this.shield-=absorbed;
+          const rest=dmg-absorbed;
+          if (rest>0) this.hp-=rest;
+        } else {
+          this.hp-=dmg;
+        }
+        if (this.hp<=0) this.dead=true;
+      }
+    }
+  }
+
+  startDeath() {
+    this._dying=true; this._dyingAge=0;
+    this.shards=Array.from({length:18},()=>({
+      x:this.x,y:this.y,
+      vx:(Math.random()-0.5)*300,vy:(Math.random()-0.5)*300,
+      life:0.8+Math.random()*0.5,age:0,
+      r:6+Math.random()*10,
+    }));
+  }
+
+  draw(ctx) {
+    if (this.dead && !this._dying) return;
+    if (this._dying) {
+      this._dyingAge+=0.016;
+      for (const s of this.shards) {
+        s.age+=0.016; s.x+=s.vx*0.016; s.y+=s.vy*0.016;
+        const a=Math.max(0,1-s.age/s.life);
+        ctx.globalAlpha=a;
+        ctx.fillStyle=this.color;
+        ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill();
+      }
+      ctx.globalAlpha=1;
+      if (this._dyingAge>1) this.dead=true;
+      return;
+    }
+    // Corpo hexagonal
+    ctx.save();
+    ctx.translate(this.x,this.y); ctx.rotate(this.angle);
+    ctx.beginPath();
+    for (let i=0;i<6;i++) {
+      const a=i*Math.PI/3;
+      i===0 ? ctx.moveTo(Math.cos(a)*this.r, Math.sin(a)*this.r)
+             : ctx.lineTo(Math.cos(a)*this.r, Math.sin(a)*this.r);
+    }
+    ctx.closePath();
+    ctx.fillStyle=this.color; ctx.shadowColor='#00ff44'; ctx.shadowBlur=20;
+    ctx.fill();
+    ctx.strokeStyle='#44ff88'; ctx.lineWidth=3; ctx.stroke();
+    ctx.restore();
+    // Anel de escudo
+    if (this.shield>0) {
+      const shieldAlpha=0.25+0.45*(this.shield/this.maxShield);
+      ctx.globalAlpha=shieldAlpha;
+      ctx.strokeStyle=this.shieldColor; ctx.lineWidth=6;
+      ctx.shadowColor=this.shieldColor; ctx.shadowBlur=18;
+      ctx.beginPath(); ctx.arc(this.x,this.y,this.r+12,0,Math.PI*2); ctx.stroke();
+      ctx.globalAlpha=1; ctx.shadowBlur=0;
+    }
+    // HP bar
+    const bw=80;
+    ctx.fillStyle='#0d1e32bb'; ctx.fillRect(this.x-bw/2,this.y-this.r-18,bw,8);
+    ctx.fillStyle='#44ff88'; ctx.fillRect(this.x-bw/2,this.y-this.r-18,bw*Math.max(0,this.hp/this.maxHp),8);
+    // Shield bar
+    ctx.fillStyle='#003322'; ctx.fillRect(this.x-bw/2,this.y-this.r-28,bw,4);
+    ctx.fillStyle=this.shieldColor; ctx.fillRect(this.x-bw/2,this.y-this.r-28,bw*Math.max(0,this.shield/this.maxShield),4);
+    ctx.fillStyle='#44ff88'; ctx.font='bold 10px system-ui'; ctx.textAlign='center';
+    ctx.fillText('TITAN',this.x,this.y-this.r-34);
+  }
+}
+
+// ── CardDefenseManager: gerencia os 25 levels do modo Cards ──
+export class CardDefenseManager {
+  constructor(difficulty='moderado') {
+    this.difficulty=difficulty;
+    this.enemies=[];
+    this.completedWaves=0;   // ondas concluídas desde o início
+    this.currentLevel=1;     // 1-25
+    this.waveInLevel=0;      // 0-2 (3 ondas por level)
+    this.waveActive=false;
+    this.waveTimer=5;        // pausa antes da primeira onda
+    this.toSpawn=[];
+    this.spawnTimer=0;
+    this.enemyScore=0;
+    this._audio=null;
+    this._pendingCardLevel=null; // level que disparou evento de carta
+    this._prepareWave();
+
+    // Levels que disparam escolha de carta (ao completar)
+    this._cardLevels=new Set([1,3,5,7,9,11,13,15,17,19,21,23,24,25]);
+  }
+
+  setAudio(a) { this._audio=a; }
+
+  get maxSimultaneous() {
+    // Escala com o level: mínimo 4, máximo 12
+    return Math.min(4 + Math.floor(this.currentLevel/3), 12);
+  }
+
+  _levelScale() {
+    // Multiplicador de força dos inimigos por level
+    const l=this.currentLevel;
+    if (l<=4)  return 1;
+    if (l<=8)  return 1+0.15*(l-4);
+    if (l<=12) return 1.6+0.2*(l-8);
+    if (l<=16) return 2.4+0.25*(l-12);
+    if (l<=20) return 3.4+0.3*(l-16);
+    return Math.min(3.5, 4.6+0.2*(l-20)); // cap em 3.5×
+  }
+
+  _edge() {
+    const W=ARENA_W, H=ARENA_H;
+    const side=Math.floor(Math.random()*4);
+    if (side===0) return {x:Math.random()*W, y:-80};
+    if (side===1) return {x:Math.random()*W, y:H+80};
+    if (side===2) return {x:-80, y:Math.random()*H};
+    return {x:W+80, y:Math.random()*H};
+  }
+
+  _prepareWave() {
+    const l=this.currentLevel;
+    const scale=this._levelScale();
+    this.toSpawn=[];
+    // Quantidade base de inimigos
+    const base=Math.min(2+Math.floor(l*0.7), 10);
+    // Composição por level
+    if (l<=2) {
+      // Só SmartEnemy e DroneEnemy
+      for (let i=0;i<base;i++)
+        this.toSpawn.push(Math.random()<0.4 ? 'drone' : 'smart');
+    } else if (l<=4) {
+      // Adiciona SwarmerEnemy
+      for (let i=0;i<base;i++) {
+        const r=Math.random();
+        this.toSpawn.push(r<0.3?'drone': r<0.55?'swarm':'smart');
+      }
+    } else if (l===5) {
+      // Onda especial: chefe Titan ao final
+      for (let i=0;i<base;i++) this.toSpawn.push(Math.random()<0.5?'swarm':'smart');
+      this.toSpawn.push('titan_1'); // HP×1
+    } else if (l<=12) {
+      // Mistura crescente com swarmers
+      for (let i=0;i<base;i++) {
+        const r=Math.random();
+        this.toSpawn.push(r<0.35?'swarm': r<0.6?'drone':'smart');
+      }
+    } else if (l===13) {
+      for (let i=0;i<base;i++) this.toSpawn.push(Math.random()<0.5?'swarm':'smart');
+      this.toSpawn.push('titan_15'); // HP×1.5
+    } else if (l<=16) {
+      for (let i=0;i<base;i++) {
+        const r=Math.random();
+        this.toSpawn.push(r<0.4?'swarm': r<0.65?'drone':'smart');
+      }
+    } else if (l===17) {
+      for (let i=0;i<base;i++) this.toSpawn.push(Math.random()<0.5?'swarm':'drone');
+      this.toSpawn.push('titan_2'); // HP×2
+    } else if (l<=23) {
+      // Escalamento máximo
+      for (let i=0;i<base;i++) {
+        const r=Math.random();
+        this.toSpawn.push(r<0.4?'swarm': r<0.65?'drone':'smart');
+      }
+    } else if (l===24) {
+      for (let i=0;i<base;i++) this.toSpawn.push(Math.random()<0.5?'swarm':'smart');
+      this.toSpawn.push('titan_15'); this.toSpawn.push('titan_15');
+    } else {
+      // Level 25 — boss: 3 Titans HP×3.5
+      this.toSpawn=['titan_35','titan_35','titan_35'];
+    }
+    this.waveActive=false;
+    this.waveTimer=this.waveInLevel===0 ? 5 : 3;
+    this.spawnTimer=0;
+  }
+
+  update(dt, player, bullets, arena, itemMgr) {
+    // Contagem de timer entre ondas
+    if (!this.waveActive) {
+      this.waveTimer-=dt;
+      if (this.waveTimer<=0) { this.waveActive=true; this._audio?.playWaveStart?.(); }
+      this._updateEnemies(dt, player, bullets, arena, itemMgr);
+      return null;
+    }
+
+    // Spawn
+    this.spawnTimer-=dt;
+    const alive=this.enemies.filter(e=>!e.dead&&!e.isRespawning).length;
+    if (this.spawnTimer<=0 && this.toSpawn.length>0 && alive<this.maxSimultaneous) {
+      this.spawnTimer=0.6;
+      const type=this.toSpawn.pop();
+      const {x,y}=this._edge();
+      const d=this.difficulty;
+      let e;
+      if (type==='swarm')        e=new SwarmerEnemy(x,y,d,true);
+      else if (type==='drone')   e=new DroneEnemy(x,y,d);
+      else if (type==='titan_1') e=new TitanEnemy(x,y,d,1);
+      else if (type==='titan_15')e=new TitanEnemy(x,y,d,1.5);
+      else if (type==='titan_2') e=new TitanEnemy(x,y,d,2);
+      else if (type==='titan_35')e=new TitanEnemy(x,y,d,3.5);
+      else {
+        // SmartEnemy com cor verde/alien para o modo Cards
+        e=new SmartEnemy(x,y,d,this.currentLevel,1);
+        e.color='#44ff88';
+      }
+      e.setAudio(this._audio);
+      this.enemies.push(e);
+    }
+
+    this._updateEnemies(dt, player, bullets, arena, itemMgr);
+
+    // Verificar fim de onda
+    if (this.waveActive && this.toSpawn.length===0 && this.enemies.filter(e=>!e.dead).length===0) {
+      this.completedWaves++;
+      this.waveInLevel++;
+
+      if (this.waveInLevel>=3) {
+        // Level concluído
+        const finishedLevel=this.currentLevel;
+        this.waveInLevel=0;
+        if (this.currentLevel < 25) this.currentLevel++;
+        this._prepareWave();
+
+        if (this._cardLevels.has(finishedLevel)) {
+          this._pendingCardLevel=finishedLevel;
+          return { waveComplete:true, levelComplete:true, cardLevel:finishedLevel };
+        }
+        return { waveComplete:true, levelComplete:true, cardLevel:null };
+      } else {
+        // Próxima onda dentro do mesmo level
+        this._prepareWave();
+        return { waveComplete:true, levelComplete:false, cardLevel:null };
+      }
+    }
+    return null;
+  }
+
+  _updateEnemies(dt, player, bullets, arena, itemMgr) {
+    const next=[];
+    for (const e of this.enemies) {
+      if (e.dead && !e._dying) {
+        e.startDeath?.();
+        arena.spawnParticles(e.x,e.y,e.color||'#44ff88',16,180);
+        itemMgr.spawnAt(e.x,e.y,2,arena);
+        this.enemyScore+=e.score||10;
+        this._audio?.playExplosion?.(1.5);
+        next.push(e);
+      } else if (e._dying) {
+        if (!e.dead) next.push(e);
+      } else {
+        if (e instanceof TitanEnemy) e.update(dt, player, bullets);
+        else if (e instanceof SwarmerEnemy) e.update(dt, player, bullets);
+        else e.update(dt, player, bullets);
+        next.push(e);
+      }
+    }
+    this.enemies=next;
+  }
+
+  draw(ctx) {
+    for (const e of this.enemies) e.draw(ctx);
+    drawDamageNumbers(ctx);
+  }
+
+  get currentWave()   { return this.completedWaves+1; }
+  get isWaveActive()  { return this.waveActive; }
+  get waveCountdown() { return Math.ceil(this.waveTimer); }
+
+  // Pilha de cartas rejeitadas: { id, rejectCount }
+  _rejectedCards = [];
+
+  recordRejection(cardId) {
+    const existing = this._rejectedCards.find(r => r.id === cardId);
+    if (existing) existing.rejectCount++;
+    else this._rejectedCards.push({ id: cardId, rejectCount: 1 });
+  }
+
+  generateCardOptions(level, ownedCardIds=[]) {
+    // Decks por tipo de level
+    const positive = ['iron_hull','shield_wall','rapid_core','adrenaline','mana_surge','vampire_shot','lucky_drop','multi_barrel','magnet_field','burst_dash','rapid_charge','freeze_core','nova_core','shield_charge','regen_core'];
+    const structures= ['tower_card','trap_card'];
+    const negative  = ['glass_cannon','cursed_engine','blind_fire','berserker'];
+    const upgrades  = ['power_surge','life_weave','speed_overclock'];
+    const special   = ['fortify'];
+
+    let pool = [];
+    if (level <= 2) {
+      pool = [...positive];
+    } else if (level <= 4) {
+      pool = [...positive, ...structures];
+    } else if (level <= 8) {
+      pool = [...positive, ...structures, ...negative];
+    } else if ([9,13,17].includes(level)) {
+      pool = [...upgrades, ...structures, ...positive.slice(0,5)];
+    } else if ([24,25].includes(level)) {
+      pool = [...special, ...upgrades, ...positive.slice(0,4)];
+    } else {
+      pool = [...positive, ...structures, ...negative, ...upgrades];
+    }
+
+    // Remove já escolhidos (se já ownership de 3 levels — máximo)
+    const owned3 = new Set(ownedCardIds.filter(id => ownedCardIds.filter(x=>x===id).length>=3));
+    pool = pool.filter(id => !owned3.has(id));
+    if (!pool.length) pool = [...positive]; // fallback
+
+    // Embaralha
+    for (let i=pool.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
+
+    // Pega 3 cartas únicas
+    const chosen = [];
+    const seen = new Set();
+    for (const id of pool) {
+      if (!seen.has(id)) { seen.add(id); chosen.push(id); }
+      if (chosen.length >= 3) break;
+    }
+    while (chosen.length < 3) chosen.push(positive[Math.floor(Math.random()*positive.length)]);
+
+    // Sorteia 1 carta rejeitada para incluir (substitui uma das 3)
+    let returnedCard = null;
+    if (this._rejectedCards.length > 0) {
+      const ri = Math.floor(Math.random() * this._rejectedCards.length);
+      const rejected = this._rejectedCards[ri];
+      returnedCard = { id: rejected.id, level: Math.min(3, rejected.rejectCount + 1), returned: true };
+      chosen[0] = rejected.id; // substitui a primeira
+    }
+
+    // Determina level das cartas
+    return chosen.map((id, idx) => {
+      if (idx === 0 && returnedCard && returnedCard.id === id) return returnedCard;
+      const ownedCount = ownedCardIds.filter(x => x === id).length;
+      return { id, level: Math.min(3, ownedCount + 1), returned: false };
+    });
+  }
+}

@@ -498,20 +498,6 @@ export class Inventory {
     return false;
   }
 
-  use(idx) {
-    if (idx < 0 || idx > 5) return null;
-    if (idx === 5) {
-      const item = this.extraSlot;
-      if (!item) return null;
-      this.extraSlot = null;
-      return { ...item, bonus: true };
-    }
-    const item = this.slots[idx];
-    if (!item) return null;
-    this.slots[idx] = null;
-    return item;
-  }
-
   trackEffect(type, duration) {
     this.activeEffects = this.activeEffects.filter(e => e.type !== type);
     this.activeEffects.push({ type, timer: duration, maxTimer: duration });
@@ -523,7 +509,42 @@ export class Inventory {
 
   isFull()      { return this.slots.every(s => s !== null); }
   isExtraFull() { return this.extraSlot !== null; }
-}
+
+  // Cartas de item permanente — ficam no slot e não são consumidas ao usar
+  addPermanent(type, levelOrDuration) {
+    const existing = this.slots.find(s => s && s.type === type && s.permanent);
+    if (existing) {
+      existing.cardLevel = (existing.cardLevel || 1) + 1;
+      existing.permanentValue = levelOrDuration;
+      return;
+    }
+    const idx = this.slots.indexOf(null);
+    if (idx !== -1) {
+      this.slots[idx] = {
+        type,
+        def: ITEM_DEFS[type] || { label: type, color: '#88ff88', usable: true },
+        permanent: true,
+        cardLevel: 1,
+        permanentValue: levelOrDuration,
+      };
+    }
+  }
+
+  use(idx) {
+    if (idx < 0 || idx > 5) return null;
+    if (idx === 5) {
+      const item = this.extraSlot;
+      if (!item) return null;
+      if (item.permanent) return { ...item, bonus: false }; // permanente: não consome
+      this.extraSlot = null;
+      return { ...item, bonus: true };
+    }
+    const item = this.slots[idx];
+    if (!item) return null;
+    if (item.permanent) return { ...item, bonus: false }; // permanente: não consome
+    this.slots[idx] = null;
+    return item;
+  }
 
 // ── Efeito visual de borda ao usar item ───────────────────────
 export class BorderEffect {

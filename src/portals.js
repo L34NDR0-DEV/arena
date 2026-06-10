@@ -2,8 +2,12 @@
 import { ARENA_W, ARENA_H } from './arena.js';
 
 const PORTAL_R        = 72;          // maior e mais visível
-const PORTAL_COOLDOWN = 6;
+let PORTAL_COOLDOWN   = 6;           // pode ser sobrescrito por setPortalCooldown()
 const PORTAL_PAIR_COUNT = 3;
+
+// Permite que modos de jogo alterem o cooldown de portal (ex: modo cards usa 8s)
+export function setPortalCooldown(seconds) { PORTAL_COOLDOWN = seconds; }
+export function resetPortalCooldown()      { PORTAL_COOLDOWN = 6; }
 
 const BLACKHOLE_R        = 55;       // núcleo visual
 const BLACKHOLE_INFLUENCE= 480;      // raio de gravidade

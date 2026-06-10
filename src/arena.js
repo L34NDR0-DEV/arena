@@ -15,19 +15,20 @@ export function setArenaSize(w, h) {
 
 // Todas as arenas disponíveis
 export const ARENA_TYPES = [
-  { id:'nebulosa',     label:'Nebulosa Azul'        },
-  { id:'asteroide',    label:'Campo de Asteroides'  },
-  { id:'vazio',        label:'Vazio Profundo'        },
-  { id:'pulsar',       label:'Campo do Pulsar'       },
-  { id:'supernova',    label:'Cinzas da Supernova'  },
-  { id:'cristal',      label:'Gruta de Cristal'     },
-  { id:'tempestade',   label:'Tempestade Ionica'    },
-  { id:'abismo',       label:'Abismo Negro'         },
-  { id:'aurora',       label:'Aurora Cósmica'       },
-  { id:'radiacao',     label:'Zona de Radiação'     },
-  { id:'buraconegro',  label:'Buraco Negro'         },
-  { id:'neon',         label:'Cidade Neon'          },
-  { id:'gelido',       label:'Vácuo Gélido'         },
+  { id:'nebulosa',      label:'Nebulosa Azul'          },
+  { id:'asteroide',     label:'Campo de Asteroides'    },
+  { id:'vazio',         label:'Vazio Profundo'          },
+  { id:'pulsar',        label:'Campo do Pulsar'         },
+  { id:'supernova',     label:'Cinzas da Supernova'    },
+  { id:'cristal',       label:'Gruta de Cristal'       },
+  { id:'tempestade',    label:'Tempestade Ionica'      },
+  { id:'abismo',        label:'Abismo Negro'            },
+  { id:'aurora',        label:'Aurora Cósmica'          },
+  { id:'radiacao',      label:'Zona de Radiação'       },
+  { id:'buraconegro',   label:'Buraco Negro'            },
+  { id:'neon',          label:'Cidade Neon'             },
+  { id:'gelido',        label:'Vácuo Gélido'           },
+  { id:'cristal_cards', label:'Fragmento Cristalino'   },
 ];
 
 // Configuração visual por arena
@@ -44,7 +45,8 @@ const ARENA_CFG = {
   radiacao:    { bg:['#040a00','#081400'], grid:'#102200', gridAlpha:1.0, nebHue:82,  nebSat:80,  nebLight:30, starPalette:[[160,255,60],[140,230,40],[200,255,80]],   borderColor:'#335500', glowColor:'#88ff00', glowAlpha:0.6, arcadeColor:'#1a2800' },
   buraconegro: { bg:['#000000','#010001'], grid:'#050005', gridAlpha:0.6, nebHue:300, nebSat:60,  nebLight:20, starPalette:[[220,160,255],[200,130,240],[255,180,255]], borderColor:'#440044', glowColor:'#ff00ff', glowAlpha:0.5, arcadeColor:'#1a001a' },
   neon:        { bg:['#020204','#040208'], grid:'#0a0416', gridAlpha:1.1, nebHue:320, nebSat:75,  nebLight:35, starPalette:[[255,80,200],[255,120,220],[200,80,255]],   borderColor:'#660044', glowColor:'#ff0088', glowAlpha:0.7, arcadeColor:'#330022' },
-  gelido:      { bg:['#020810','#040d18'], grid:'#081830', gridAlpha:0.9, nebHue:200, nebSat:50,  nebLight:45, starPalette:[[200,230,255],[220,245,255],[180,215,255]], borderColor:'#1a4466', glowColor:'#88ccff', glowAlpha:0.5, arcadeColor:'#0a2233' },
+  gelido:        { bg:['#020810','#040d18'], grid:'#081830', gridAlpha:0.9, nebHue:200, nebSat:50,  nebLight:45, starPalette:[[200,230,255],[220,245,255],[180,215,255]], borderColor:'#1a4466', glowColor:'#88ccff', glowAlpha:0.5, arcadeColor:'#0a2233' },
+  cristal_cards: { bg:['#020812','#03041a'], grid:'#0a0228', gridAlpha:1.0, nebHue:155, nebSat:85,  nebLight:32, starPalette:[[0,255,140],[140,80,255],[0,220,255]],      borderColor:'#003322', glowColor:'#00ffcc', glowAlpha:0.7, arcadeColor:'#001a11', noAsteroids:true },
 };
 
 export class Arena {
@@ -69,6 +71,7 @@ export class Arena {
   }
 
   _genAsteroids() {
+    if (this.cfg?.noAsteroids) return []; // arenas sem asteroides (ex: cristal_cards)
     const count = 18 + Math.floor(Math.random()*10); // 18-27 para arena grande
     const asts = [];
     for (let i = 0; i < count; i++) {
@@ -589,6 +592,35 @@ export class Arena {
         ctx.beginPath(); ctx.arc(dx2,dy2,dp.r,0,Math.PI*2); ctx.fill();
       }
       ctx.globalAlpha=1;
+
+    } else if (type === 'cristal_cards') {
+      // Fragmentos cristalinos verdes/violeta flutuando
+      ctx.globalAlpha=0.07;
+      for (const fl of d.cardCrystals) {
+        const fy=(fl.y+t*fl.vy*12)%ARENA_H;
+        const fx=(fl.x+t*fl.vx*8)%ARENA_W;
+        ctx.save(); ctx.translate(fx, fy); ctx.rotate(t*fl.rot);
+        ctx.strokeStyle=fl.color; ctx.lineWidth=1.5;
+        ctx.shadowColor=fl.color; ctx.shadowBlur=8;
+        ctx.beginPath();
+        for (let i=0;i<6;i++) {
+          const a=i*Math.PI/3;
+          i===0 ? ctx.moveTo(Math.cos(a)*fl.r,Math.sin(a)*fl.r)
+                : ctx.lineTo(Math.cos(a)*fl.r,Math.sin(a)*fl.r);
+        }
+        ctx.closePath(); ctx.stroke();
+        ctx.restore();
+      }
+      ctx.globalAlpha=0.04;
+      // Pulsos de energia verde do centro
+      const pulse2=(t*0.3)%1;
+      for (let i=0;i<3;i++) {
+        const rp=((t*0.25+i/3)%1)*Math.max(ARENA_W,ARENA_H)*0.7;
+        ctx.globalAlpha=0.08*(1-rp/(Math.max(ARENA_W,ARENA_H)*0.7));
+        ctx.strokeStyle='#00ffcc'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.arc(ARENA_W/2,ARENA_H/2,rp,0,Math.PI*2); ctx.stroke();
+      }
+      ctx.globalAlpha=1; ctx.shadowBlur=0;
     }
   }
 
@@ -638,6 +670,14 @@ export class Arena {
     d.dust=Array.from({length:100},()=>({
       x:rnd(0,ARENA_W), y:rnd(0,ARENA_H),
       vx:(Math.random()-0.5)*2, vy:(Math.random()-0.5)*1.5, r:3+Math.random()*10
+    }));
+    // Cristais flutuantes do modo Cards
+    const cardColors=['#00ffcc','#8800ff','#00ff88','#cc44ff'];
+    d.cardCrystals=Array.from({length:80},()=>({
+      x:rnd(0,ARENA_W), y:rnd(0,ARENA_H),
+      vx:(Math.random()-0.5)*2, vy:(Math.random()-0.5)*2,
+      r:15+Math.random()*40, rot:(Math.random()-0.5)*0.015,
+      color:cardColors[Math.floor(Math.random()*cardColors.length)],
     }));
     return d;
   }

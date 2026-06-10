@@ -50,6 +50,10 @@ export const ITEM_DEFS = {
   VAMPIRO:    { color:'#cc0044', glow:'#cc004477', rarity:'legendary', label:'VAMP',   desc:'Tiro drena HP 6s',      usable:true,  harmful:false, legendary:true  },
   WARP:       { color:'#aa44ff', glow:'#aa44ff77', rarity:'legendary', label:'WARP',   desc:'Teleporta ao cursor',   usable:true,  harmful:false, legendary:true  },
 
+  // ── ITENS DE CARTA (permanentes, modo Cards) ─────────────────
+  TOWER_DEPLOY: { color:'#00ddff', glow:'#00ddff77', rarity:'epic', label:'TORRE',     desc:'Coloca torre aliada',   usable:true, harmful:false, legendary:false },
+  TRAP_DEPLOY:  { color:'#aa44ff', glow:'#aa44ff77', rarity:'epic', label:'ARMADILHA', desc:'Coloca armadilha',      usable:true, harmful:false, legendary:false },
+
   // ── MALEFÍCIOS — inimigo pode coletar e usar ──────────────────
   SLOW:       { color:'#cc44aa', glow:'#cc44aa44', rarity:'common',    label:'SLOW',   desc:'-50% Vel 5s',           usable:false, harmful:true,  legendary:false },
   DRAIN:      { color:'#aa2200', glow:'#aa220044', rarity:'common',    label:'DRAIN',  desc:'-30 Mana',              usable:false, harmful:true,  legendary:false },

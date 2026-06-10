@@ -405,6 +405,27 @@ export class Player {
 
     this._lifeTimer=0;
     this._audio=null;
+
+    // ── Modo Cards of Defense ──
+    this._isCardsMode=false;
+    // Multiplicadores aplicados por cartas (permanentes)
+    this._cardDmgMult=1;       // dano de projétil
+    this._cardSpeedMult=1;     // velocidade
+    this._cardShootMult=1;     // cooldown de tiro (multiplicador: <1 = mais rápido)
+    this._cardLifeSteal=0;     // fração de life-steal no dano
+    this._cardMultiBarrel=0;   // 0=simples,1=duplo,2=triplo,3=quádruplo
+    this._cardBurstDash=0;     // dano de área no dash
+    this._cardBurstDashStun=0; // duração do stun no dash explosivo
+    this._cardMagnetMult=1;    // raio de coleta
+    this._cardLucky=0;         // chance extra de item raro (0-1)
+    this._cardHpBonus=0;       // HP extra adicionado por cartas
+    this._cardShieldBonus=0;   // escudo extra adicionado por cartas
+    this._cardVampire=0;       // fraction life-steal combinada com _cardLifeSteal
+    this._cardsOwned=[];       // array de { id, level } cartas ativas
+    this._cardSkinDmgBonus=1;  // bônus por skin comprada
+    this._cardSkinRegenBonus=1;
+    // Propulsão cards: partículas extras de chama coloridas
+    this._cardFlames=[];
   }
 
   setAudio(a) { this._audio=a; }
@@ -699,7 +720,7 @@ export class Player {
         const dist=Math.hypot(ddx,ddy);
         if (dist<5&&!input.holdRight) { this._moving=false; }
         else {
-          const spd=SPEED*(this.hasRapid?1.35:1)*(this.hasBoost?1.5:1)*(this.isSlowed?0.45:1);
+          const spd=SPEED*(this.hasRapid?1.35:1)*(this.hasBoost?1.5:1)*(this.isSlowed?0.45:1)*this._cardSpeedMult;
           this.vx+=(((ddx/Math.max(dist,1))*spd)-this.vx)*Math.min(1,9*dt);
           this.vy+=(((ddy/Math.max(dist,1))*spd)-this.vy)*Math.min(1,9*dt);
           this.mana=Math.max(0,this.mana-MANA_MOVE*dt);
@@ -726,13 +747,15 @@ export class Player {
     if (this.x<=this.r||this.x>=ARENA_W-this.r||this.y<=this.r||this.y>=ARENA_H-this.r) this._moving=false;
 
     // ── Chamas nos motores ───────────────────────────────────
-    if (!this.isAlien && (this._moving || this.skin.spinsOnAxis)) {
+    if (this._isCardsMode) {
+      this._updateCardsThrust(dt);
+    } else if (!this.isAlien && (this._moving || this.skin.spinsOnAxis)) {
       const visualAngle = this.skin.spinsOnAxis ? (this._alienAngle * 2.5) : this.angle;
       const engPoints=this.skin.getEngines(this.x,this.y,visualAngle,1.76);
       const intensity=this.skin.spinsOnAxis ? 0.8 : this.mana/this.maxMana;
       for (const ep of engPoints) spawnFlameAt(this.flames,ep.x,ep.y,visualAngle,intensity);
     }
-    this.flames=updateFlames(this.flames,dt);
+    if (!this._isCardsMode) this.flames=updateFlames(this.flames,dt);
 
     // ── Rastro visual cosmético ──────────────────────────────
     const trailDef = TRAILS[this.equippedTrailId];
@@ -754,7 +777,7 @@ export class Player {
     this._audio?.setEngineIntensity(0.3+(spd/SPEED)*0.7);
 
     // ── Tiro com Espaço ──────────────────────────────────────
-    const cd=this.hasRapid ? SHOOT_CD*0.35 : SHOOT_CD;
+    const cd=(this.hasRapid ? SHOOT_CD*0.35 : SHOOT_CD) * this._cardShootMult;
     if (input.space && this.shootCd<=0) {
       this._shoot(input.worldMouseX, input.worldMouseY, bullets, combat);
       this.shootCd=cd;
@@ -841,7 +864,9 @@ export class Player {
   _shoot(tx, ty, bullets, combat) {
     const shootAngle = this._aimAngle ?? this.angle;
     const nozzle = this.skin.getNozzle(this.x, this.y, shootAngle, 1.76);
-    const baseDmg = (38 + (this.level-1)*5) * (this.hasOverclock ? 2 : 1);
+    const rawDmg = (38 + (this.level-1)*5) * (this.hasOverclock ? 2 : 1);
+    const baseDmg = rawDmg * this._cardDmgMult * this._cardSkinDmgBonus
+                  * (this._cardBerserker && this.hp < this.maxHp * 0.30 ? 1.50 : 1);
     const sp = 600;
 
     // Buff de míssil ativo: cada tiro vira um míssil teleguiado (reusa o array
@@ -852,29 +877,45 @@ export class Player {
       return;
     }
 
-    const _spawnBullet = (dx, dy, dmg=baseDmg) => {
-      const d = Math.hypot(dx, dy)||1;
+    const _spawnBullet = (dx, dy, dmg=baseDmg, angleOffset=0) => {
+      let adx = dx, ady = dy;
+      if (angleOffset !== 0) {
+        const c = Math.cos(angleOffset), s2 = Math.sin(angleOffset);
+        adx = dx*c - dy*s2; ady = dx*s2 + dy*c;
+      }
+      // Blind fire: dispersão extra de projéteis
+      if (this._cardBlindFire) {
+        const jitter = (Math.random() - 0.5) * 2 * this._cardBlindFire;
+        const cj = Math.cos(jitter), sj = Math.sin(jitter);
+        adx = adx*cj - ady*sj; ady = adx*sj + ady*cj;
+      }
+      const d = Math.hypot(adx, ady) || 1;
       bullets.push({
         x: nozzle.x, y: nozzle.y,
-        vx:(dx/d)*sp, vy:(dy/d)*sp,
+        vx:(adx/d)*sp, vy:(ady/d)*sp,
         damage: dmg, owner:'player', life:1.5,
         owner_color: this.hasOverclock ? '#ffdd00' : (this.isVampire ? '#cc0044' : this.skin.color),
         piercing: this.hasPiercing,
         vampire:  this.isVampire,
         _player:  this,
-        dirX: dx/d, dirY: dy/d,
+        dirX: adx/d, dirY: ady/d,
       });
     };
 
     const mx = tx - nozzle.x, my = ty - nozzle.y;
 
-    if (this.hasMultishot) {
-      // 3 projéteis: centro, +15°, -15°
+    // Cards: multi_barrel determina quantidade de canos (1=duplo 2=triplo 3=quádruplo)
+    const extraBarrels = this._cardMultiBarrel || 0;
+
+    if (this.hasMultishot || extraBarrels >= 2) {
       const spread = 0.26;
       _spawnBullet(mx, my);
-      const c = Math.cos(spread), s2 = Math.sin(spread);
-      _spawnBullet(mx*c - my*s2, mx*s2 + my*c, baseDmg*0.8);
-      _spawnBullet(mx*c + my*s2, -mx*s2 + my*c, baseDmg*0.8);
+      _spawnBullet(mx, my,  baseDmg * 0.8,  spread);
+      _spawnBullet(mx, my,  baseDmg * 0.8, -spread);
+      if (extraBarrels >= 3) _spawnBullet(mx, my, baseDmg * 0.7,  spread * 2);
+    } else if (extraBarrels === 1) {
+      _spawnBullet(mx, my);
+      _spawnBullet(mx, my, baseDmg * 0.85, 0.18);
     } else {
       _spawnBullet(mx, my);
     }
@@ -929,8 +970,14 @@ export class Player {
     // Chamas — discos "UFO" totalmente blindados (noThruster) não emitem
     // nenhum rastro de propulsão, nem o clássico nem o thruster alienígena.
     if (!this.skin.noThruster) {
-      if (!this.isAlien) drawFlames(ctx,this.flames);
-      else { const e=this.skin.getEngine(this.x,this.y,this.angle,1.76); drawAlienThruster(ctx,e.x,e.y,this._age); }
+      if (this._isCardsMode) {
+        this._drawCardsThrust(ctx);
+      } else if (!this.isAlien) {
+        drawFlames(ctx,this.flames);
+      } else {
+        const e=this.skin.getEngine(this.x,this.y,this.angle,1.76);
+        drawAlienThruster(ctx,e.x,e.y,this._age);
+      }
     }
 
     // Nave
@@ -959,6 +1006,7 @@ export class Player {
 
     // ── Barra de vida grudada na nave ────────────────────────
     this._drawAttachedBars(ctx);
+    if (this._isCardsMode) this._drawCardsModeHpBar(ctx);
 
     // Anel magnético
     if (this.hasMagnet) {
@@ -1056,6 +1104,197 @@ export class Player {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
     ctx.fillText(this.name, this.x, yHp - bh - 2);
+  }
+
+  // ── Modo Cards of Defense ─────────────────────────────────────────
+
+  enableCardsMode(hasPurchasedSkin) {
+    this._isCardsMode = true;
+    this.maxHp  = 600;
+    this.hp     = 600;
+    this.maxMana= 150;
+    this.mana   = 150;
+    if (hasPurchasedSkin) {
+      this._cardSkinDmgBonus   = 1.10;
+      this._cardSkinRegenBonus = 1.15;
+    }
+  }
+
+  applyCard(cardId, cardLevel) {
+    const lv = cardLevel || 1; // 1, 2 ou 3
+    this._cardsOwned.push({ id: cardId, level: lv });
+
+    switch (cardId) {
+      // ── Passivos de atributo ──────────────────────────────────
+      case 'iron_hull': {
+        const bonus = [100, 180, 280][lv - 1];
+        this.maxHp += bonus;
+        this.hp = Math.min(this.maxHp, this.hp + bonus);
+        break;
+      }
+      case 'shield_wall': {
+        const bonus = [80, 150, 250][lv - 1];
+        this.maxShield += bonus;
+        break;
+      }
+      case 'rapid_core': {
+        // diminui o cooldown de tiro; guardamos como multiplicador
+        this._cardShootMult = [0.80, 0.65, 0.50][lv - 1];
+        break;
+      }
+      case 'adrenaline': {
+        this._cardSpeedMult = [1.25, 1.40, 1.60][lv - 1];
+        break;
+      }
+      case 'mana_surge': {
+        const manaBonus = [30, 60, 100][lv - 1];
+        this.maxMana += manaBonus;
+        this.mana = Math.min(this.maxMana, this.mana + manaBonus);
+        break;
+      }
+      case 'vampire_shot': {
+        this._cardLifeSteal = [0.15, 0.25, 0.40][lv - 1];
+        break;
+      }
+      case 'lucky_drop': {
+        this._cardLucky = lv; // 1=+40%, 2=+65%, 3=sempre raro
+        break;
+      }
+      // ── Habilidades permanentes ───────────────────────────────
+      case 'multi_barrel': {
+        this._cardMultiBarrel = lv; // 1=duplo 2=triplo 3=quádruplo
+        break;
+      }
+      case 'magnet_field': {
+        this._cardMagnetMult = [2, 3, 4][lv - 1];
+        break;
+      }
+      case 'burst_dash': {
+        this._cardBurstDash = [40, 80, 120][lv - 1];
+        this._cardBurstDashStun = lv >= 3 ? 1 : 0;
+        break;
+      }
+      // ── Itens de slot permanente ──────────────────────────────
+      case 'rapid_charge':
+        this.inventory.addPermanent('RAPID', [8, 12, 16][lv - 1]); break;
+      case 'freeze_core':
+        this.inventory.addPermanent('FREEZE', [4, 7, 10][lv - 1]); break;
+      case 'nova_core':
+        this.inventory.addPermanent('NOVA', lv); break;
+      case 'shield_charge':
+        this.inventory.addPermanent('SHIELD_BIG', [120, 200, 300][lv - 1]); break;
+      case 'regen_core':
+        this.inventory.addPermanent('REGEN', [8, 10, 14][lv - 1]); break;
+      // ── Estruturas (itens de colocação na arena) ─────────────
+      case 'tower_card':
+        this.inventory.addPermanent('TOWER_DEPLOY', lv); break;
+      case 'trap_card':
+        this.inventory.addPermanent('TRAP_DEPLOY', lv); break;
+      // ── Cartas medianas/negativas ─────────────────────────────
+      case 'glass_cannon':
+        this.maxHp = Math.max(100, Math.round(this.maxHp * 0.70));
+        this.hp    = Math.min(this.maxHp, this.hp);
+        this._cardDmgMult *= 1.60;
+        break;
+      case 'cursed_engine':
+        this._cardSpeedMult *= 0.80;
+        this._cardDmgMult   *= 1.80;
+        break;
+      case 'blind_fire':
+        this._cardBlindFire  = (this._cardBlindFire || 0) + 0.26;
+        this._cardDmgMult   *= 1.45;
+        break;
+      case 'berserker':
+        this._cardBerserker  = true;
+        break;
+      // ── Upgrades globais ──────────────────────────────────────
+      case 'power_surge':
+        this._cardDmgMult    *= 1.25; break;
+      case 'life_weave':
+        this.maxHp    = Math.round(this.maxHp * 1.20);
+        this.maxShield= Math.round(this.maxShield * 1.20);
+        break;
+      case 'speed_overclock':
+        this._cardSpeedMult *= 1.20; break;
+      // ── Fortify (sem efeito direto no player — game.js usa) ──
+      case 'fortify':
+        this._cardFortify = (this._cardFortify || 0) + 1; break;
+    }
+  }
+
+  // Barra de HP no modo cards: maior, verde-neon, 40px acima da nave
+  _drawCardsModeHpBar(ctx) {
+    if (this.dead || this.rebuilding) return;
+    const W = 60, H = 12;
+    const bx = this.x - W / 2;
+    const by = this.y - this.r - 40 - H;
+    const ratio = Math.max(0, this.hp / this.maxHp);
+    const hpColor = ratio > 0.5 ? '#00ff88' : ratio > 0.25 ? '#ffcc00' : '#ff2244';
+
+    // Fundo
+    ctx.fillStyle = '#0a1a0a';
+    ctx.fillRect(bx - 1, by - 1, W + 2, H + 2);
+    // Preenchimento
+    ctx.fillStyle = hpColor;
+    ctx.shadowColor = hpColor;
+    ctx.shadowBlur  = 8;
+    ctx.fillRect(bx, by, W * ratio, H);
+    ctx.shadowBlur = 0;
+    // Borda
+    ctx.strokeStyle = '#00ff4422';
+    ctx.lineWidth   = 1;
+    ctx.strokeRect(bx, by, W, H);
+    // Texto HP
+    ctx.fillStyle    = '#ffffff';
+    ctx.font         = 'bold 8px monospace';
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${Math.round(this.hp)}/${this.maxHp}`, this.x, by + H / 2);
+  }
+
+  // Propulsão colorida no modo cards (reutiliza spawnFlameAt com cores customizadas)
+  _updateCardsThrust(dt) {
+    if (this.dead || this.rebuilding) return;
+    if (!this._moving && Math.hypot(this.vx, this.vy) < 20) return;
+    const visualAngle = this.angle;
+    const engPoints   = this.skin.getEngines(this.x, this.y, visualAngle, 1.76);
+    const intensity   = Math.max(0.4, this.mana / this.maxMana);
+    for (const ep of engPoints) {
+      spawnFlameAt(this._cardFlames, ep.x, ep.y, visualAngle, intensity);
+    }
+    this._cardFlames = updateFlames(this._cardFlames, dt);
+  }
+
+  _drawCardsThrust(ctx) {
+    if (!this._cardFlames.length) return;
+    for (const f of this._cardFlames) {
+      const t  = f.life / f.maxLife;
+      const fk = 0.7 + 0.3 * Math.sin(f.flicker * 40 + Date.now() * 0.03);
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, t * 1.3) * fk;
+      if (f.kind === 'spark') {
+        const len = f.size * 3 * t + 2;
+        ctx.translate(f.x, f.y); ctx.rotate(f.angle);
+        const g = ctx.createLinearGradient(0, 0, -len, 0);
+        g.addColorStop(0, 'rgba(0,255,180,0.95)');
+        g.addColorStop(1, 'rgba(0,180,100,0)');
+        ctx.strokeStyle = g; ctx.lineWidth = f.size * t + 0.6; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-len, 0); ctx.stroke();
+      } else {
+        const len = f.size * (1.8 + t), wid = f.size * t * 0.85;
+        ctx.translate(f.x, f.y); ctx.rotate(f.angle);
+        const g = ctx.createLinearGradient(0, 0, -len, 0);
+        g.addColorStop(0,    'rgba(180,255,255,1)');
+        g.addColorStop(0.28, 'rgba(0,255,140,0.95)');
+        g.addColorStop(0.6,  'rgba(0,200,80,0.8)');
+        g.addColorStop(1,    'rgba(0,100,40,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.ellipse(-len * 0.5, 0, len * 0.5, wid, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
   }
 
   _drawRebuild(ctx) {

@@ -474,7 +474,7 @@ const MODE_TIPS={
   livre:   'LIVRE — SEM TIMER. PRATIQUE À VONTADE.',
   teste:   'TESTE — INIMIGOS NÃO ATACAM.',
   tower_defense: 'TORNEIO TOWER DEFENSE — destrua a torre central para conquistá-la! 2x2 online, vencedores ganham a skin exclusiva "Hex Champion".',
-  survivor:'SURVIVOR — ONDAS INFINITAS. SOBREVIVA!',
+  cards: 'CARDS OF DEFENSE — PvE cooperativo até 5. Escolha cartas a cada level, sobreviva com suas 9 vidas!',
 };
 
 // ── Status dos modos de jogo (badge perto do nome do piloto) ─────
@@ -492,7 +492,7 @@ function modeStatusEntries(){
     tournamentOn
       ? { id:'tower_defense', label:'Torneio Tower Defense', maintenance:_disabledModes.includes('tower_defense') }
       : { id:'teste',         label:'Teste',                 maintenance:_disabledModes.includes('teste') },
-    { id:'survivor',      label:'Survivor',              maintenance:_disabledModes.includes('survivor') },
+    { id:'cards',         label:'Cards of Defense',      maintenance:_disabledModes.includes('cards') },
   ];
 }
 function isModeInMaintenance(mode){
@@ -2250,6 +2250,12 @@ window.showGameOver=function(data){
     document.getElementById('go-sub').textContent = data.win
       ? `Seu time destruiu a torre central e venceu o confronto! ${(profile&&profile.tournament&&profile.tournament.active) ? 'Você desbloqueou a skin exclusiva "Hex Champion"!' : ''}`
       : `${teamLabel(data.teamWinner)} destruiu a torre central primeiro. Tente novamente na fila do torneio!`;
+  } else if (data.mode === 'cards' || selectedMode === 'cards') {
+    document.getElementById('go-title').textContent = `LEVEL ${data.level || 1} ATINGIDO`;
+    document.getElementById('go-sub').textContent =
+      `Vidas restantes: ${data.livesLeft ?? 0} | Abates: ${data.kills} | Cartas: ${(data.cardsUsed||'').split(',').filter(Boolean).length}`;
+    // Recarrega mini-ranking após partida
+    loadCardsMiniRanking();
   } else {
     document.getElementById('go-title').textContent=data.win?'MISSÃO CUMPRIDA':'NAVE DESTRUÍDA';
     document.getElementById('go-sub').textContent=data.win?'Você dominou a arena.':'Suas vidas acabaram.';
@@ -2299,6 +2305,179 @@ window.showGameOver=function(data){
     });
   }
 };
+
+// Icones SVG para as cartas de jogo (sem emojis)
+const CARD_ICONS = {
+  "iron_hull": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M12 2L4 6v6c0 5.25 3.5 9.74 8 11 4.5-1.26 8-5.75 8-11V6L12 2z\"/></svg>",
+  "shield_wall": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M12 2L4 6v6c0 5.25 3.5 9.74 8 11 4.5-1.26 8-5.75 8-11V6L12 2z\"/><line x1=\"12\" y1=\"8\" x2=\"12\" y2=\"16\"/><line x1=\"8\" y1=\"12\" x2=\"16\" y2=\"12\"/></svg>",
+  "rapid_core": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><polygon points=\"13,2 3,14 12,14 11,22 21,10 12,10\"/></svg>",
+  "adrenaline": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M5 12h14M15 8l4 4-4 4\"/><path d=\"M3 8l4 4-4 4\"/></svg>",
+  "mana_surge": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><ellipse cx=\"12\" cy=\"12\" rx=\"8\" ry=\"10\"/><path d=\"M12 6v12M8 9l4-3 4 3M8 15l4 3 4-3\"/></svg>",
+  "vampire_shot": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M12 9V3M12 21v-6M3 12h6M21 12h-6\"/></svg>",
+  "lucky_drop": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><polygon points=\"12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26\"/></svg>",
+  "multi_barrel": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><rect x=\"3\" y=\"10\" width=\"14\" height=\"4\" rx=\"1\"/><rect x=\"3\" y=\"5\" width=\"14\" height=\"3\" rx=\"1\"/><rect x=\"3\" y=\"16\" width=\"14\" height=\"3\" rx=\"1\"/><line x1=\"17\" y1=\"12\" x2=\"21\" y2=\"12\"/><line x1=\"17\" y1=\"6.5\" x2=\"21\" y2=\"6.5\"/><line x1=\"17\" y1=\"17.5\" x2=\"21\" y2=\"17.5\"/></svg>",
+  "magnet_field": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M6 3h4v10a2 2 0 0 0 4 0V3h4v10a6 6 0 0 1-12 0V3z\"/></svg>",
+  "burst_dash": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M5 19l3-3M16 8l3-3\"/></svg>",
+  "rapid_charge": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><path d=\"M12 7v5l3 3\"/><polygon points=\"14,2 10,6 14,6\"/></svg>",
+  "freeze_core": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><line x1=\"12\" y1=\"2\" x2=\"12\" y2=\"22\"/><line x1=\"2\" y1=\"12\" x2=\"22\" y2=\"12\"/><line x1=\"4.93\" y1=\"4.93\" x2=\"19.07\" y2=\"19.07\"/><line x1=\"19.07\" y1=\"4.93\" x2=\"4.93\" y2=\"19.07\"/><circle cx=\"12\" cy=\"12\" r=\"2\"/></svg>",
+  "nova_core": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><circle cx=\"12\" cy=\"12\" r=\"3\"/><path d=\"M12 2v4M12 18v4M2 12h4M18 12h4M5 5l2.5 2.5M16.5 16.5L19 19M5 19l2.5-2.5M16.5 7.5L19 5\"/><circle cx=\"12\" cy=\"12\" r=\"7\" stroke-dasharray=\"3 2\"/></svg>",
+  "shield_charge": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M12 2L4 6v6c0 5.25 3.5 9.74 8 11 4.5-1.26 8-5.75 8-11V6L12 2z\"/><polyline points=\"9,12 11,14 15,10\"/></svg>",
+  "regen_core": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M12 21.7C7 19.3 3 15.3 3 10.5A6 6 0 0 1 12 5a6 6 0 0 1 9 5.5c0 4.8-4 8.8-9 11.2z\"/><line x1=\"12\" y1=\"9\" x2=\"12\" y2=\"15\"/><line x1=\"9\" y1=\"12\" x2=\"15\" y2=\"12\"/></svg>",
+  "tower_card": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><rect x=\"8\" y=\"12\" width=\"8\" height=\"9\"/><rect x=\"6\" y=\"9\" width=\"12\" height=\"4\"/><rect x=\"9\" y=\"3\" width=\"6\" height=\"7\"/><line x1=\"8\" y1=\"3\" x2=\"8\" y2=\"9\"/><line x1=\"16\" y1=\"3\" x2=\"16\" y2=\"9\"/></svg>",
+  "trap_card": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><polygon points=\"12,3 20,18 4,18\"/><line x1=\"12\" y1=\"10\" x2=\"12\" y2=\"14\"/><circle cx=\"12\" cy=\"16\" r=\"0.8\" fill=\"currentColor\"/></svg>",
+  "glass_cannon": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><line x1=\"4\" y1=\"20\" x2=\"20\" y2=\"4\"/><circle cx=\"18\" cy=\"6\" r=\"3\"/><circle cx=\"6\" cy=\"18\" r=\"3\" stroke-dasharray=\"2 2\"/></svg>",
+  "cursed_engine": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2v4M12 18v4M2 12h4M18 12h4\"/><line x1=\"5\" y1=\"5\" x2=\"8\" y2=\"8\" stroke-dasharray=\"2 1\"/><line x1=\"16\" y1=\"16\" x2=\"19\" y2=\"19\" stroke-dasharray=\"2 1\"/></svg>",
+  "blind_fire": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><line x1=\"2\" y1=\"2\" x2=\"22\" y2=\"22\"/><path d=\"M6.7 6.7C5 8 4 10 4 12s2 6 8 6 8-4 8-6\"/></svg>",
+  "berserker": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M13 2L3 14h9l-1 8 10-12h-9l1-8z\"/><line x1=\"19\" y1=\"3\" x2=\"21\" y2=\"5\"/></svg>",
+  "power_surge": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><polygon points=\"13,2 3,14 12,14 11,22 21,10 12,10\"/></svg>",
+  "life_weave": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z\"/><line x1=\"12\" y1=\"9\" x2=\"12\" y2=\"15\"/><line x1=\"9\" y1=\"12\" x2=\"15\" y2=\"12\"/></svg>",
+  "speed_overclock": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><polyline points=\"12,6 12,12 16,14\"/><line x1=\"16\" y1=\"3\" x2=\"20\" y2=\"7\"/><line x1=\"8\" y1=\"3\" x2=\"4\" y2=\"7\"/></svg>",
+  "fortify": "<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><path d=\"M12 22V12M12 12L7 7M12 12l5-5\"/><rect x=\"3\" y=\"3\" width=\"6\" height=\"6\" rx=\"1\"/><rect x=\"15\" y=\"3\" width=\"6\" height=\"6\" rx=\"1\"/><rect x=\"9\" y=\"15\" width=\"6\" height=\"6\" rx=\"1\"/></svg>"
+};
+
+const CARDS_CATALOG = {
+  iron_hull:       { name:'Casco de Ferro',        desc:['HP+100','HP+180','HP+280'],             rarity:'positive' },
+  shield_wall:     { name:'Muralha de Escudo',     desc:['Escudo+80','Escudo+150','Escudo+250'],  rarity:'positive' },
+  rapid_core:      { name:'Nucleo Veloz',          desc:['-20% CD tiro','-35% CD','-50% CD'],    rarity:'positive' },
+  adrenaline:      { name:'Adrenalina',            desc:['+25% vel','+40% vel','+60% vel'],      rarity:'positive' },
+  mana_surge:      { name:'Surto de Mana',         desc:['+30 mana','+60 mana','+100 mana'],     rarity:'positive' },
+  vampire_shot:    { name:'Tiro Vampiro',          desc:['15% lifesteal','25%','40%'],            rarity:'positive' },
+  lucky_drop:      { name:'Drop Sortudo',          desc:['+40% raro','+65%','sempre raro'],      rarity:'positive' },
+  multi_barrel:    { name:'Canhao Multiplo',       desc:['Tiro duplo','Tiro triplo','Tiro quad'], rarity:'positive' },
+  magnet_field:    { name:'Campo Magnetico',       desc:['Raio 2x','Raio 3x','Raio 4x'],         rarity:'positive' },
+  burst_dash:      { name:'Dash Explosivo',        desc:['+40 dano','+80 dano','+120+stun'],     rarity:'positive' },
+  rapid_charge:    { name:'Recarga Rapida',        desc:['RAPID 8s','12s','16s'],                rarity:'positive' },
+  freeze_core:     { name:'Nucleo de Gelo',        desc:['FREEZE 4s','7s','10s+area'],           rarity:'positive' },
+  nova_core:       { name:'Nucleo Nova',           desc:['NOVA slot','NOVA+','NOVA area total'],  rarity:'positive' },
+  shield_charge:   { name:'Carga de Escudo',       desc:['SHIELD+120','SHIELD+200','SHIELD+300'], rarity:'positive' },
+  regen_core:      { name:'Recarga de Vida',       desc:['REGEN 8s','REGEN 10s','REGEN 14s'],    rarity:'positive' },
+  tower_card:      { name:'Torre de Combate',      desc:['Torre aliada','Torre+','Torre++'],      rarity:'positive' },
+  trap_card:       { name:'Armadilha',             desc:['200 dano r160','300 r180','400 r280'],  rarity:'positive' },
+  glass_cannon:    { name:'Canhao de Vidro',       desc:['-30% HP +60% dano','',''],             rarity:'negative' },
+  cursed_engine:   { name:'Motor Amaldicado',      desc:['-20% vel +80% dano','',''],            rarity:'negative' },
+  blind_fire:      { name:'Tiro as Cegas',         desc:['Spread +45% dano','',''],              rarity:'negative' },
+  berserker:       { name:'Berserker',             desc:['+50% dano <30% HP','',''],             rarity:'neutral'  },
+  power_surge:     { name:'Surto de Poder',        desc:['+25% dano geral','',''],               rarity:'positive' },
+  life_weave:      { name:'Teia de Vida',          desc:['+20% HP/escudo','',''],                rarity:'positive' },
+  speed_overclock: { name:'Velocidade Maxima',     desc:['+20% vel geral','',''],                rarity:'positive' },
+  fortify:         { name:'Fortalecer Estruturas', desc:['Torres/armad. +50/100%','',''],         rarity:'positive' },
+};
+
+window.showCardsOverlay = function(ev) {
+  const overlay = document.getElementById('cards-overlay');
+  if (!overlay) return;
+  const grid = overlay.querySelector('.cards-grid');
+  if (!grid) return;
+
+  // Atualiza o level badge
+  const badge = overlay.querySelector('.cards-level-badge');
+  if (badge) badge.textContent = `Level ${ev.cardLevel || ev.level || '?'}`;
+
+  // Renderiza as 3 cartas
+  grid.innerHTML = '';
+  const options = ev.options || [];
+  options.forEach((opt, i) => {
+    const cat    = CARDS_CATALOG[opt.id] || { name: opt.id, desc:['','',''], rarity:'positive' };
+    const iconSvg= CARD_ICONS[opt.id] || '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="8"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>';
+    const lv     = opt.level || 1;
+    const descText = cat.desc[lv - 1] || cat.desc[0] || '';
+    const isReturn = opt.returned;
+    const div = document.createElement('div');
+    div.className = `card-choice card-rarity-${cat.rarity}`;
+    div.style.animationDelay = `${i * 0.15}s`;
+    div.innerHTML = `
+      ${isReturn ? '<span class="card-returning-badge">VOLTOU</span>' : ''}
+      <div class="card-icon">${iconSvg}</div>
+      <div class="card-name">${cat.name}</div>
+      <div class="card-desc">${descText}</div>
+      <div class="card-level-badge">Lv ${lv}</div>
+    `;
+    div.addEventListener('click', () => window._cardChoose(opt.id));
+    grid.appendChild(div);
+  });
+
+  overlay.classList.add('show');
+
+  // Timer de 40s para forçar uma escolha aleatória
+  if (window._cardsOverlayTimer) clearTimeout(window._cardsOverlayTimer);
+  window._cardsOverlayTimer = setTimeout(() => {
+    if (options.length) window._cardChoose(options[0].id);
+  }, 40000);
+};
+
+window.hideCardsOverlay = function() {
+  const overlay = document.getElementById('cards-overlay');
+  if (overlay) overlay.classList.remove('show');
+  if (window._cardsOverlayTimer) { clearTimeout(window._cardsOverlayTimer); window._cardsOverlayTimer=null; }
+};
+
+window._cardChoose = function(cardId) {
+  window._game?.cardChoose(cardId);
+  window.hideCardsOverlay();
+};
+
+// Mini-ranking ao vivo
+async function loadCardsMiniRanking() {
+  const el = document.getElementById('cards-mini-ranking');
+  if (!el) return;
+  try {
+    const res = await fetch('/api/cards/ranking');
+    if (!res.ok) return;
+    const { data } = await res.json();
+    if (!data || !data.length) { el.innerHTML = '<div style="color:#556;font-size:10px;text-align:center">Sem dados ainda</div>'; return; }
+    el.innerHTML = data.slice(0, 5).map((r, i) => `
+      <div class="cmr-row">
+        <span class="cmr-pos">#${i+1}</span>
+        <span class="cmr-name">${r.display_name||r.email||'Piloto'}</span>
+        <span class="cmr-score">${r.score}</span>
+        <span class="cmr-level">Lv${r.level}</span>
+      </div>`).join('');
+  } catch(e) { /* ignora erros de rede */ }
+}
+
+// Polling: atualiza mini-ranking a cada 30s quando estiver na tela de seleção
+let _cardsMiniRankingInterval = null;
+function startCardsMiniRankingPolling() {
+  loadCardsMiniRanking();
+  if (!_cardsMiniRankingInterval) {
+    _cardsMiniRankingInterval = setInterval(loadCardsMiniRanking, 30000);
+  }
+}
+
+// Modal de ranking completo
+window.showCardsRankingModal = async function() {
+  const modal = document.getElementById('cards-ranking-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  const tbody = modal.querySelector('.crm-table tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#556">Carregando...</td></tr>';
+  try {
+    const res = await fetch('/api/cards/ranking');
+    const { data } = await res.json();
+    if (!data || !data.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#556">Nenhum resultado ainda</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map((r, i) => `
+      <tr>
+        <td>#${i+1}</td>
+        <td>${r.display_name||r.email||'Piloto'}</td>
+        <td>${r.score}</td>
+        <td>Lv${r.level}</td>
+      </tr>`).join('');
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#f44">Erro ao carregar</td></tr>';
+  }
+};
+
+window.closeCardsRankingModal = function() {
+  const modal = document.getElementById('cards-ranking-modal');
+  if (modal) modal.style.display = 'none';
+};
+
+// Inicia o polling quando a página carrega
+document.addEventListener('DOMContentLoaded', () => startCardsMiniRankingPolling());
 
 // ── Carta de revelação da skin de recompensa do torneio (Hex Champion) ──
 window.closeSkinReveal=function(ev){

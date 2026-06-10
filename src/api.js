@@ -948,6 +948,32 @@ const ROUTES = [
     },
   },
 
+  // Cards of Defense: ranking público (top 20)
+  {
+    method: 'GET', path: '/api/cards/ranking',
+    handler: (req, res) => {
+      const rows = db.topCardsRanking.all();
+      sendJson(res, 200, { ok: true, data: rows });
+    },
+  },
+
+  // Cards of Defense: salvar resultado (auth, ignora bots)
+  {
+    method: 'POST', path: '/api/cards/ranking',
+    auth: true,
+    rateLimit: rateLimited('cards_rank', 10, 60_000, (req, { user }) => user.id),
+    handler: (req, res, { body, user }) => {
+      const score     = Math.round(Number(body.score)     || 0);
+      const level     = Math.round(Number(body.level)     || 1);
+      const kills     = Math.round(Number(body.kills)     || 0);
+      const livesLeft = Math.round(Number(body.lives_left)|| 0);
+      const cardsUsed = typeof body.cards_used === 'string' ? body.cards_used.slice(0, 500) : '';
+      if (!Number.isFinite(score) || score < 0) return sendJson(res, 400, { error: 'invalid_score' });
+      db.insertCardsRank.run(user.id, score, level, kills, livesLeft, cardsUsed);
+      sendJson(res, 200, { ok: true });
+    },
+  },
+
   // Admin: salvar modos desativados
   {
     method: 'POST', path: '/api/admin/shop/modes',
