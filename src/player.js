@@ -137,6 +137,43 @@ function drawTrail(ctx, trail, trailDef) {
   ctx.restore();
 }
 
+function colorWithAlpha(color, alpha) {
+  if (typeof color !== 'string') return `rgba(255,255,255,${alpha})`;
+  const raw = color.trim().replace('#', '');
+  if (raw.length === 3 || raw.length === 6) {
+    const full = raw.length === 3
+      ? raw.split('').map(c => c + c).join('')
+      : raw;
+    const r = parseInt(full.slice(0, 2), 16);
+    const g = parseInt(full.slice(2, 4), 16);
+    const b = parseInt(full.slice(4, 6), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+  return color;
+}
+
+function drawTintedSkin(ctx, skin, scale, color) {
+  const img = skin?.img;
+  if (!img?.complete || !img.naturalWidth || typeof document === 'undefined') {
+    skin?.draw?.(ctx, scale);
+    return;
+  }
+  const size = Math.ceil((skin._size ?? 72) * scale);
+  const canvas = drawTintedSkin._canvas || (drawTintedSkin._canvas = document.createElement('canvas'));
+  const g = canvas.getContext('2d');
+  if (canvas.width !== size || canvas.height !== size) {
+    canvas.width = size;
+    canvas.height = size;
+  }
+  g.clearRect(0, 0, size, size);
+  g.drawImage(img, 0, 0, size, size);
+  g.globalCompositeOperation = 'source-atop';
+  g.fillStyle = color;
+  g.fillRect(0, 0, size, size);
+  g.globalCompositeOperation = 'source-over';
+  ctx.drawImage(canvas, -size/2, -size/2, size, size);
+}
+
 const SPEED       = 220;
 const DASH_SPEED  = 650;
 const DASH_DUR    = 0.17;
@@ -153,7 +190,8 @@ const REBUILD_DUR = 10;         // segundos reconstruindo
 // ── Combustão na popa — estilo arcade: núcleo alongado + faíscas ──
 // `angle` aqui é sempre o ângulo de VOO da nave (para onde o bico aponta),
 // não o ângulo de mira — a chama sai pela popa, ou seja, na direção oposta.
-function spawnFlameAt(flames, ex, ey, angle, intensity) {
+function spawnFlameAt(flames, ex, ey, angle, intensity, flameColors=null) {
+  const colors = flameColors || ['#ffffeb', '#ffb840', '#ff3000'];
   const back = angle + Math.PI;
   // Núcleo: poucas partículas grandes, alongadas no eixo da popa — dão o
   // efeito de "jato" contínuo em vez de uma bolha de fumaça.
@@ -168,6 +206,7 @@ function spawnFlameAt(flames, ex, ey, angle, intensity) {
       x:ex+(Math.random()-.5)*2, y:ey+(Math.random()-.5)*2,
       vx:Math.cos(fa)*sp, vy:Math.sin(fa)*sp,
       angle: fa,
+      colors,
       life, maxLife:life, size:5+intensity*9+Math.random()*3, flicker:Math.random(),
     });
   }
@@ -184,6 +223,7 @@ function spawnFlameAt(flames, ex, ey, angle, intensity) {
       x:ex+(Math.random()-.5)*3, y:ey+(Math.random()-.5)*3,
       vx:Math.cos(fa)*sp, vy:Math.sin(fa)*sp,
       angle: fa,
+      colors,
       life, maxLife:life, size:1+Math.random()*2, flicker:Math.random(),
     });
   }
@@ -194,6 +234,10 @@ function updateFlames(flames, dt) {
 }
 function drawFlames(ctx, flames) {
   for (const f of flames) {
+    const colors = f.colors || ['#ffffeb', '#ffb840', '#ff3000'];
+    const light = colors[0] || '#ffffeb';
+    const mid   = colors[1] || light;
+    const dark  = colors[2] || mid;
     const t=f.life/f.maxLife;
     const fk=0.7+0.3*Math.sin(f.flicker*40+Date.now()*0.03);
     ctx.save(); ctx.globalAlpha=Math.min(1,t*1.3)*fk;
@@ -202,7 +246,7 @@ function drawFlames(ctx, flames) {
       const len=f.size*3*t+2;
       ctx.translate(f.x,f.y); ctx.rotate(f.angle);
       const g=ctx.createLinearGradient(0,0,-len,0);
-      g.addColorStop(0,'rgba(255,255,210,0.95)'); g.addColorStop(1,'rgba(255,140,20,0)');
+      g.addColorStop(0,colorWithAlpha(light,0.95)); g.addColorStop(1,colorWithAlpha(dark,0));
       ctx.strokeStyle=g; ctx.lineWidth=f.size*t+0.6; ctx.lineCap='round';
       ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-len,0); ctx.stroke();
     } else {
@@ -210,10 +254,10 @@ function drawFlames(ctx, flames) {
       const len=f.size*(1.8+t), wid=f.size*t*0.85;
       ctx.translate(f.x,f.y); ctx.rotate(f.angle);
       const g=ctx.createLinearGradient(0,0,-len,0);
-      g.addColorStop(0,'rgba(255,255,235,1)');
-      g.addColorStop(0.28,'rgba(255,200,80,0.95)');
-      g.addColorStop(0.6,'rgba(255,110,20,0.8)');
-      g.addColorStop(1,'rgba(255,30,0,0)');
+      g.addColorStop(0,colorWithAlpha(light,1));
+      g.addColorStop(0.28,colorWithAlpha(light,0.95));
+      g.addColorStop(0.6,colorWithAlpha(mid,0.8));
+      g.addColorStop(1,colorWithAlpha(dark,0));
       ctx.fillStyle=g;
       ctx.beginPath();
       ctx.ellipse(-len*0.5,0,len*0.5,wid,0,0,Math.PI*2);
@@ -387,6 +431,8 @@ export class Player {
 
     this.flames=[]; this._alienAngle=0; this._age=0; this._aimAngle=-Math.PI/2;
     this.trail=[]; this._trailTimer=0; this.equippedTrailId=0;
+    this.dashGhosts=[]; this._dashGhostTimer=0;
+    this._recoil=0; this._recoilDx=0; this._recoilDy=0;
 
     // Sistema de descarte por inatividade de inventário
     // 90s sem usar item → descarta 1; 60s de intervalo entre descartes
@@ -448,6 +494,45 @@ export class Player {
 
   moveTo(wx,wy) { this._targetX=wx; this._targetY=wy; this._moving=true; }
 
+  _currentDrawAngle() {
+    if (this.skin.spinsOnAxis) return this._alienAngle * 2.5;
+    if (this.isAlien) return this.angle + this._alienAngle;
+    return this.angle;
+  }
+
+  _pushDashGhost() {
+    this.dashGhosts.push({
+      x:this.x, y:this.y,
+      angle:this._currentDrawAngle(),
+      life:0.18, maxLife:0.18,
+    });
+    if (this.dashGhosts.length > 8) this.dashGhosts.shift();
+  }
+
+  _updateDashGhosts(dt) {
+    for (const g of this.dashGhosts) g.life -= dt;
+    this.dashGhosts = this.dashGhosts.filter(g => g.life > 0);
+  }
+
+  _drawDashGhosts(ctx) {
+    if (!this.dashGhosts.length) return;
+    const color = this.skin.dashColor || this.skin.color || '#ffffff';
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const g of this.dashGhosts) {
+      const t = g.life / g.maxLife;
+      ctx.save();
+      ctx.globalAlpha = t * 0.32;
+      ctx.translate(g.x, g.y);
+      ctx.rotate(g.angle);
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 18 * t;
+      drawTintedSkin(ctx, this.skin, 1.76, color);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
   // Chamado pelo combat: player perde vida
   startRebuild(x, y) {
     const ox = x||this.x, oy = y||this.y;
@@ -456,6 +541,7 @@ export class Player {
     this.rebuildTimer=REBUILD_DUR;
     this._explodeAge=0;
     this.shards=createShards(this.skin, ox, oy);
+    this.dashGhosts=[];
     this.vx=0; this.vy=0;
     this.invincible=REBUILD_DUR+1;
     // Nave reposicionada — shards vão voar e voltar para cá
@@ -652,6 +738,7 @@ export class Player {
 
     if (this.invincible>0)      this.invincible-=dt;
     if (this.shootCd>0)         this.shootCd-=dt;
+    if (this._recoil>0)         this._recoil=Math.max(0,this._recoil-dt*12);
     if (this.dashCd>0)          this.dashCd-=dt;
     if (this.magnetTimer>0)     this.magnetTimer-=dt;
     if (this.rapidTimer>0)      this.rapidTimer-=dt;
@@ -706,6 +793,11 @@ export class Player {
       this.dashTimer-=dt;
       this.x+=this.dashDx*DASH_SPEED*dt; this.y+=this.dashDy*DASH_SPEED*dt;
       this.mana=Math.max(0,this.mana-MANA_DASH*dt*3);
+      this._dashGhostTimer-=dt;
+      if (this._dashGhostTimer<=0) {
+        this._dashGhostTimer=0.025;
+        this._pushDashGhost();
+      }
       if (this.dashTimer<=0) this.dashing=false;
     } else if (input.dash && this.dashCd<=0 && this._moving && this.mana>=MANA_DASH) {
       const ddx=this._targetX-this.x, ddy=this._targetY-this.y;
@@ -714,6 +806,8 @@ export class Player {
       this.dashing=true; this.dashTimer=DASH_DUR;
       this.dashCd=DASH_CD*(this.hasDashBoost?0.4:1); this.invincible=DASH_DUR+0.08;
       this.mana=Math.max(0,this.mana-MANA_DASH);
+      this._dashGhostTimer=0;
+      this._pushDashGhost();
     } else {
       if (this._moving && canMove) {
         const ddx=this._targetX-this.x, ddy=this._targetY-this.y;
@@ -736,6 +830,7 @@ export class Player {
       }
       this.x+=this.vx*dt; this.y+=this.vy*dt;
     }
+    this._updateDashGhosts(dt);
 
     // Regen extra quando completamente parado
     if (Math.hypot(this.vx,this.vy)<5) {
@@ -753,7 +848,7 @@ export class Player {
       const visualAngle = this.skin.spinsOnAxis ? (this._alienAngle * 2.5) : this.angle;
       const engPoints=this.skin.getEngines(this.x,this.y,visualAngle,1.76);
       const intensity=this.skin.spinsOnAxis ? 0.8 : this.mana/this.maxMana;
-      for (const ep of engPoints) spawnFlameAt(this.flames,ep.x,ep.y,visualAngle,intensity);
+      for (const ep of engPoints) spawnFlameAt(this.flames,ep.x,ep.y,visualAngle,intensity,this.skin.flameColors);
     }
     if (!this._isCardsMode) this.flames=updateFlames(this.flames,dt);
 
@@ -864,6 +959,10 @@ export class Player {
   _shoot(tx, ty, bullets, combat) {
     const shootAngle = this._aimAngle ?? this.angle;
     const nozzle = this.skin.getNozzle(this.x, this.y, shootAngle, 1.76);
+    const recoilAngle = Math.atan2(ty - nozzle.y, tx - nozzle.x);
+    this._recoil = 1;
+    this._recoilDx = -Math.cos(recoilAngle) * 3;
+    this._recoilDy = -Math.sin(recoilAngle) * 3;
     const rawDmg = (38 + (this.level-1)*5) * (this.hasOverclock ? 2 : 1);
     const baseDmg = rawDmg * this._cardDmgMult * this._cardSkinDmgBonus
                   * (this._cardBerserker && this.hp < this.maxHp * 0.30 ? 1.50 : 1);
@@ -966,6 +1065,7 @@ export class Player {
 
     // Rastro cosmético — desenhado antes das chamas e da nave
     drawTrail(ctx, this.trail, TRAILS[this.equippedTrailId]);
+    this._drawDashGhosts(ctx);
 
     // Chamas — discos "UFO" totalmente blindados (noThruster) não emitem
     // nenhum rastro de propulsão, nem o clássico nem o thruster alienígena.
@@ -982,7 +1082,7 @@ export class Player {
 
     // Nave
     ctx.save();
-    ctx.translate(this.x,this.y);
+    ctx.translate(this.x + this._recoilDx*this._recoil, this.y + this._recoilDy*this._recoil);
     if (this.rebuilding) {
       // Fase 2: nave aparece gradualmente conforme reconstrói
       const assemblyPct = Math.max(0,(this._explodeAge-5)/(REBUILD_DUR-5));
@@ -1023,6 +1123,7 @@ export class Player {
     const shRatio   = Math.max(0, this.shield / this.maxShield);
     const manaRatio = Math.max(0, this.mana / this.maxMana);
     const hasShield = this.shield > 0;
+    const shieldColor = this.skin.shieldColor || '#00c8f0';
 
     // ── Layout: duas linhas acima da nave ────────────────────
     // Linha de baixo (mais próxima da nave): MANA (azul) — largura total
@@ -1069,12 +1170,12 @@ export class Player {
       // Fundo
       ctx.fillStyle = '#08101ecc';
       ctx.fillRect(shX, yHp - bh, shW, bh);
-      // Preenchimento ciano
-      ctx.fillStyle = '#00c8f0cc';
-      ctx.shadowColor = '#00c8f0'; ctx.shadowBlur = 7;
+      // Preenchimento na cor de escudo da skin
+      ctx.fillStyle = colorWithAlpha(shieldColor, 0.8);
+      ctx.shadowColor = shieldColor; ctx.shadowBlur = 7;
       ctx.fillRect(shX, yHp - bh, shW * shRatio, bh);
       ctx.shadowBlur = 0;
-      ctx.strokeStyle = '#00c8f044'; ctx.lineWidth = 0.5;
+      ctx.strokeStyle = colorWithAlpha(shieldColor, 0.28); ctx.lineWidth = 0.5;
       ctx.strokeRect(shX, yHp - bh, shW, bh);
     }
 
@@ -1083,16 +1184,16 @@ export class Player {
       const shieldR = this.r + 5;
       ctx.save();
       ctx.translate(this.x, this.y);
-      ctx.strokeStyle = '#4488aa22'; ctx.lineWidth = 4;
+      ctx.strokeStyle = colorWithAlpha(shieldColor, 0.13); ctx.lineWidth = 4;
       ctx.beginPath(); ctx.arc(0, 0, shieldR, 0, Math.PI*2); ctx.stroke();
-      ctx.strokeStyle = '#00c8f0cc'; ctx.lineWidth = 4;
-      ctx.shadowColor = '#00c8f0'; ctx.shadowBlur = 12;
+      ctx.strokeStyle = colorWithAlpha(shieldColor, 0.8); ctx.lineWidth = 4;
+      ctx.shadowColor = shieldColor; ctx.shadowBlur = 12;
       ctx.beginPath();
       ctx.arc(0, 0, shieldR, -Math.PI/2, -Math.PI/2 + Math.PI*2*shRatio);
       ctx.stroke();
       ctx.shadowBlur = 0;
       if (shRatio > 0.9) {
-        ctx.strokeStyle = '#00c8f044'; ctx.lineWidth = 9;
+        ctx.strokeStyle = colorWithAlpha(shieldColor, 0.28); ctx.lineWidth = 9;
         ctx.beginPath(); ctx.arc(0, 0, shieldR, 0, Math.PI*2); ctx.stroke();
       }
       ctx.restore();
@@ -1260,41 +1361,14 @@ export class Player {
     const engPoints   = this.skin.getEngines(this.x, this.y, visualAngle, 1.76);
     const intensity   = Math.max(0.4, this.mana / this.maxMana);
     for (const ep of engPoints) {
-      spawnFlameAt(this._cardFlames, ep.x, ep.y, visualAngle, intensity);
+      spawnFlameAt(this._cardFlames, ep.x, ep.y, visualAngle, intensity, this.skin.flameColors);
     }
     this._cardFlames = updateFlames(this._cardFlames, dt);
   }
 
   _drawCardsThrust(ctx) {
     if (!this._cardFlames.length) return;
-    for (const f of this._cardFlames) {
-      const t  = f.life / f.maxLife;
-      const fk = 0.7 + 0.3 * Math.sin(f.flicker * 40 + Date.now() * 0.03);
-      ctx.save();
-      ctx.globalAlpha = Math.min(1, t * 1.3) * fk;
-      if (f.kind === 'spark') {
-        const len = f.size * 3 * t + 2;
-        ctx.translate(f.x, f.y); ctx.rotate(f.angle);
-        const g = ctx.createLinearGradient(0, 0, -len, 0);
-        g.addColorStop(0, 'rgba(0,255,180,0.95)');
-        g.addColorStop(1, 'rgba(0,180,100,0)');
-        ctx.strokeStyle = g; ctx.lineWidth = f.size * t + 0.6; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-len, 0); ctx.stroke();
-      } else {
-        const len = f.size * (1.8 + t), wid = f.size * t * 0.85;
-        ctx.translate(f.x, f.y); ctx.rotate(f.angle);
-        const g = ctx.createLinearGradient(0, 0, -len, 0);
-        g.addColorStop(0,    'rgba(180,255,255,1)');
-        g.addColorStop(0.28, 'rgba(0,255,140,0.95)');
-        g.addColorStop(0.6,  'rgba(0,200,80,0.8)');
-        g.addColorStop(1,    'rgba(0,100,40,0)');
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.ellipse(-len * 0.5, 0, len * 0.5, wid, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-    }
+    drawFlames(ctx, this._cardFlames);
   }
 
   _drawRebuild(ctx) {
@@ -1304,6 +1378,7 @@ export class Player {
     if (!img.complete || !img.naturalWidth) return;
 
     const sz  = this.skin._size ?? 72;
+    const rebuildColor = this.skin.deathColor || this.skin.color || '#00c8f0';
 
     const assemblyPct = !exploding
       ? Math.max(0, (progress - 5/REBUILD_DUR) / (1 - 5/REBUILD_DUR))
@@ -1326,11 +1401,11 @@ export class Player {
 
       ctx.drawImage(img, s.sx, s.sy, s.sw, s.sh, -hw, -hh, hw*2, hh*2);
 
-      // Brilho ciano na fase de reconstrução
+      // Brilho da paleta da skin na fase de reconstrução
       if (!exploding && assemblyPct > 0.05) {
-        ctx.strokeStyle = `rgba(0,200,240,${assemblyPct * 0.7})`;
+        ctx.strokeStyle = colorWithAlpha(rebuildColor, assemblyPct * 0.7);
         ctx.lineWidth = 1.5;
-        ctx.shadowColor = '#00c8f0';
+        ctx.shadowColor = rebuildColor;
         ctx.shadowBlur = 6 * assemblyPct;
         ctx.strokeRect(-hw, -hh, hw*2, hh*2);
         ctx.shadowBlur = 0;
@@ -1342,7 +1417,7 @@ export class Player {
     // Contador simples acima da nave
     ctx.save();
     const secs = Math.ceil(this.rebuildTimer);
-    ctx.fillStyle = secs <= 10 ? '#ff4466' : '#00d4ff';
+    ctx.fillStyle = secs <= 10 ? rebuildColor : '#00d4ff';
     ctx.font = 'bold 14px monospace';
     ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
     ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 10;

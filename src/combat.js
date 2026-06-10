@@ -422,8 +422,9 @@ export class CombatSystem {
   }
 
   _triggerPlayerRebuild(player, isContra1) {
-    this.arena.spawnParticles(player.x,player.y,'#ff4466',20,200);
-    this.spawnExplosion(player.x,player.y,60,'#ff4466');
+    const deathColor = player.skin?.deathColor || player.skin?.color || '#ff4466';
+    this.arena.spawnParticles(player.x,player.y,deathColor,20,200);
+    this.spawnExplosion(player.x,player.y,60,deathColor);
     this._shake?.(10);
     if (isContra1) {
       this._enemyMgr?.playerLostLife();
