@@ -1009,7 +1009,8 @@ export class Game {
 
     const handleHit=(hit)=>{
       if (!hit) return;
-      this.arena.spawnParticles(tower.x,tower.y,tower.color,20,200);
+      const shielded = hit.damageScale != null && hit.damageScale < 0.99;
+      this.arena.spawnParticles(tower.x,tower.y,shielded ? '#a98cff' : tower.color, shielded ? 8 : 20, shielded ? 120 : 200);
       this._audio.playExplosion(2);
       if (hit.destroyed) {
         this._audio.playExplosion(3);
