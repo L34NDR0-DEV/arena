@@ -1,8 +1,8 @@
 // Service Worker — Tower Defense Space
 // Estratégia: network-first para o jogo (sempre atualizado), cache para assets estáticos
 
-const CACHE_NAME = 'arena-space-v3';
-const CACHE_STATIC = 'arena-static-v3';
+const CACHE_NAME = 'arena-space-v4';
+const CACHE_STATIC = 'arena-static-v4';
 
 // Assets que podem ser servidos do cache quando offline
 const PRECACHE = [
@@ -64,7 +64,7 @@ self.addEventListener('fetch', evt => {
   // JS, HTML, CSS: network-first — garante que o jogo está sempre atualizado
   evt.respondWith(
     fetch(evt.request).then(res => {
-      if (res.ok) {
+      if (res.ok && evt.request.method === 'GET') {
         const clone = res.clone();
         caches.open(CACHE_NAME).then(c => c.put(evt.request, clone));
       }
