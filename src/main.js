@@ -1148,7 +1148,7 @@ function _buildShotText(container, text, startIndex){
 }
 
 // ── Copa do Mundo — constantes (precisam vir antes de resizeLoginBg) ──
-const COPA_END_TS = new Date('2026-06-14T00:00:00Z').getTime();
+const COPA_END_TS = new Date('2026-06-10T00:00:00Z').getTime(); // desativado
 function _isCopaModeActive() { return Date.now() < COPA_END_TS; }
 
 // ── Fundo arcade animado na tela de login ─────────────────────
