@@ -2,6 +2,27 @@
 // Para lançar uma atualização: adicione uma nova entrada no TOPO da lista.
 export const CHANGELOG = [
   {
+    version: 'v2.2',
+    date: '2026-06-11',
+    changes: [
+      'Narradora: voz feminina narra os momentos da partida (boas-vindas, kills, morte, vitória, derrota, buraco negro, paredes elétricas, disconnects e manutenção)',
+      'Fila de voz: narração nunca se sobrepõe — cada fala espera a anterior terminar',
+      'Aviso de manutenção do servidor em tempo real: painel aparece no topo da tela sem interromper o jogo (amarelo = aviso, vermelho = bloqueado)',
+      '20 novos itens de tiro com temática arcade: LASER, PLASMA, SHOTGUN, SNIPER, ROCKET, FREEZE, CHAIN, HOMING, BOUNCE, TOXIC, DRAIN, GRAVITY, QUANTUM, PIERCING, RAPID, NOVA, SHIELD, REGEN, BURST e NUKE',
+      'Sistema de troca de arma base: o primeiro item de tiro coletado torna-se a arma padrão da nave',
+      '7 novos inimigos: Disco Alienígena, Berserker, Fantasma, Juggernaut, Sniper, Bombardeiro, Ceifador, Demônio da Velocidade e Tanque',
+      'Inimigos com mais vida em todos os modos; inimigos ganham poderes especiais conforme a onda avança',
+      'Torres com escudo regenerativo, reflexo de dano (25%), ondas de choque que atordoam inimigos por 90s',
+      'Atirar em parede recupera vida e XP, com chance de dropar item aleatório',
+      'Buracos negros refletem balas dos inimigos de volta',
+      'Paredes elétricas nos últimos 30s da partida: aviso por voz e visual pulsante no canvas',
+      'Dash aprimorado: mais rápido e longo; com vida cheia é gratuito, abaixo de 90% consome vida convertida em mana',
+      'Tempo de partida: 15 min no modo normal, 20 min no modo online',
+      'Modos online com menos obstáculos para combate mais aberto',
+      'Itens ficam mais tempo na arena e surgem com maior frequência',
+    ],
+  },
+  {
     version: 'v2.1',
     date: '2026-06-08',
     changes: [
