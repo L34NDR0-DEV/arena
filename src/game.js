@@ -180,10 +180,17 @@ export class Game {
     // Zona segura: 20s de proteção no início — parede central bloqueia os times
     // Só ativo nos modos online com times (equipe_online, tower_defense)
     this._safezone = (mode==='equipe_online'||mode==='tower_defense') ? {
-      timer: 20,      // segundos restantes
-      active: true,   // parede ativa
-      wallX: ARENA_W/2, // posição X da parede divisória
+      timer: 20,
+      active: true,
+      bubbleRed:  null,
+      bubbleBlue: null,
     } : null;
+
+    // Spawn inicial de itens (30 armas + 40 aleatórios) para modos sem lobby
+    // Modos com lobby fazem isso em _onMatchStart/_onTdMatchStart
+    if (!this._lobby) {
+      this.itemMgr.spawnInitial(this.arena);
+    }
 
     this._pendingDeploy = null; // 'tower' | 'trap' | null
     this._keys={}; this._mouse={wx:ARENA_W/2,wy:ARENA_H/2,left:false,right:false};
@@ -458,6 +465,13 @@ export class Game {
 
     this._refreshMatchLoading(matchPeers);
     this._loadingHideAt = performance.now() + 7000;
+    // Preenche a arena com itens iniciais (30 armas + 40 aleatórios)
+    this.itemMgr.spawnInitial(this.arena);
+    // Inicializa bolhas logo ao receber a partida
+    if (this._safezone) {
+      this._safezone.bubbleRed  = this._calcSafeBubble('red');
+      this._safezone.bubbleBlue = this._calcSafeBubble('blue');
+    }
   }
 
   // Aliado desistiu durante uma partida do Equipe Online (ou Tower Defense):
@@ -568,6 +582,13 @@ export class Game {
 
     this._refreshMatchLoading(matchPeers);
     this._loadingHideAt = performance.now() + 7000;
+    // Preenche a arena com itens iniciais (30 armas + 40 aleatórios)
+    this.itemMgr.spawnInitial(this.arena);
+    // Inicializa bolhas
+    if (this._safezone) {
+      this._safezone.bubbleRed  = this._calcSafeBubble('red');
+      this._safezone.bubbleBlue = this._calcSafeBubble('blue');
+    }
   }
 
   _spawnPosFor(team) {
@@ -577,6 +598,30 @@ export class Game {
     const jitter=()=> (Math.random()-0.5)*140;
     if (team==='red')  return { x: cx-off+jitter(), y: cy+jitter() };
     return                   { x: cx+off+jitter(), y: cy+jitter() };
+  }
+
+  // Calcula centro e raio mínimo da bolha segura que envolve todas as naves de um time
+  _calcSafeBubble(team) {
+    const members = [];
+    if (this.player.team === team && !this.player.dead) members.push(this.player);
+    for (const rp of Object.values(this.peers)) {
+      if (rp.team === team && !rp.dead) members.push(rp);
+    }
+    if (this.isHost) {
+      for (const bot of this.bots) {
+        if (bot.team === team && !bot.dead) members.push(bot);
+      }
+    }
+    if (members.length === 0) return null;
+    // Centro = média das posições
+    let cx = 0, cy = 0;
+    for (const m of members) { cx += m.x; cy += m.y; }
+    cx /= members.length; cy /= members.length;
+    // Raio = máxima distância + margem confortável
+    let maxDist = 0;
+    for (const m of members) maxDist = Math.max(maxDist, Math.hypot(m.x - cx, m.y - cy));
+    const r = Math.max(260, maxDist + 140);
+    return { cx, cy, r };
   }
 
   _registerTeamKill(team) {
@@ -702,24 +747,50 @@ export class Game {
         this.ui.notify('A BATALHA COMEÇOU!', '#ff8c00');
         this._playVoice('bemvindoaarena');
       } else {
-        // Bloqueia o player de cruzar a parede central
-        const wall = this._safezone.wallX;
-        const pr = this.player.r + 4;
-        if (this.team === 'red' && this.player.x > wall - pr) {
-          this.player.x = wall - pr;
-          this.player.vx = Math.min(0, this.player.vx ?? 0);
-        } else if (this.team === 'blue' && this.player.x < wall + pr) {
-          this.player.x = wall + pr;
-          this.player.vx = Math.max(0, this.player.vx ?? 0);
-        }
-        // Bloqueia balas de cruzar a parede
-        for (const b of this.combat.bullets) {
-          if (b.owner === 'player') {
-            if (this.team === 'red' && b.x > wall) { b.life = 0; }
-            else if (this.team === 'blue' && b.x < wall) { b.life = 0; }
+        // Calcula raio da bolha de cada time (cobre todas as naves do time)
+        const szRed  = this._calcSafeBubble('red');
+        const szBlue = this._calcSafeBubble('blue');
+        this._safezone.bubbleRed  = szRed;
+        this._safezone.bubbleBlue = szBlue;
+
+        // Mantém o player dentro da bolha do seu time
+        const myBubble = this.team === 'red' ? szRed : szBlue;
+        if (myBubble) {
+          const dx = this.player.x - myBubble.cx;
+          const dy = this.player.y - myBubble.cy;
+          const dist = Math.hypot(dx, dy);
+          const maxR  = myBubble.r - this.player.r - 4;
+          if (dist > maxR && maxR > 0) {
+            const nx = dx / dist, ny = dy / dist;
+            this.player.x = myBubble.cx + nx * maxR;
+            this.player.y = myBubble.cy + ny * maxR;
           }
         }
-        // Inimigos não aparecem durante zona segura
+
+        // Mantém bots locais dentro da bolha do time deles
+        if (this.isHost) {
+          for (const bot of this.bots) {
+            const bubble = bot.team === 'red' ? szRed : szBlue;
+            if (!bubble) continue;
+            const dx = bot.x - bubble.cx, dy = bot.y - bubble.cy;
+            const dist = Math.hypot(dx, dy);
+            const maxR  = bubble.r - bot.r - 4;
+            if (dist > maxR && maxR > 0) {
+              const nx = dx/dist, ny = dy/dist;
+              bot.x = bubble.cx + nx * maxR;
+              bot.y = bubble.cy + ny * maxR;
+            }
+          }
+        }
+
+        // Destrói balas que saem da bolha do time dono
+        for (const b of this.combat.bullets) {
+          const bTeam = b.team || (b.owner === 'player' ? this.team : null);
+          if (!bTeam) continue;
+          const bubble = bTeam === 'red' ? szRed : szBlue;
+          if (!bubble) continue;
+          if (Math.hypot(b.x - bubble.cx, b.y - bubble.cy) > bubble.r) b.life = 0;
+        }
       }
     }
 
@@ -1231,8 +1302,8 @@ export class Game {
     this.itemMgr.draw(ctx);
     if (this._isCardsMode && this._cardsMgr) this._cardsMgr.draw(ctx);
     else this.enemyMgr.draw(ctx);
-    for (const id in this.peers) this.peers[id].draw(ctx);
-    if (this.isHost) for (const bot of this.bots) bot.draw(ctx);
+    for (const id in this.peers) this.peers[id].draw(ctx, this.team);
+    if (this.isHost) for (const bot of this.bots) bot.draw(ctx, this.team);
     this.combat.draw(ctx);
     this.player.draw(ctx);
     this.arena.drawParticles(ctx);
@@ -1243,45 +1314,42 @@ export class Game {
       drawCrosshair(ctx,this._mouse.wx,this._mouse.wy,this.player._age);
     }
 
-    // ── Zona Segura — parede central divisória ───────────────
+    // ── Zona Segura — bolhas por time ──────────────────────────
     if (this._safezone?.active) {
-      const wall = this._safezone.wallX;
       const t = performance.now() * 0.003;
-      const pulse = 0.55 + 0.45 * Math.abs(Math.sin(t * 2.5));
+      const pulse = 0.5 + 0.5 * Math.abs(Math.sin(t * 2.2));
       ctx.save();
-      // Zona colorida de cada time (fill suave)
-      ctx.fillStyle = `rgba(255,60,80,${0.04 + 0.02*Math.sin(t)})`;
-      ctx.fillRect(0, 0, wall, ARENA_H);
-      ctx.fillStyle = `rgba(60,140,255,${0.04 + 0.02*Math.sin(t+1)})`;
-      ctx.fillRect(wall, 0, ARENA_W - wall, ARENA_H);
-      // Parede central pulsante
-      const grad = ctx.createLinearGradient(wall-12, 0, wall+12, 0);
-      grad.addColorStop(0, `rgba(255,60,80,${pulse})`);
-      grad.addColorStop(0.5, `rgba(255,255,255,${pulse*0.9})`);
-      grad.addColorStop(1, `rgba(60,140,255,${pulse})`);
-      ctx.fillStyle = grad;
-      ctx.fillRect(wall - 4, 0, 8, ARENA_H);
-      // Bordas brilhantes
-      ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 20 * pulse;
-      ctx.strokeStyle = `rgba(255,255,255,${pulse * 0.7})`;
-      ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(wall, 0); ctx.lineTo(wall, ARENA_H); ctx.stroke();
-      // Texto "ZONA SEGURA" ao longo da parede (no mundo)
-      ctx.shadowBlur = 0;
-      ctx.font = 'bold 22px "Press Start 2P", monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      const spacing = 420;
-      const count = Math.floor(ARENA_H / spacing);
-      for (let i = 0; i <= count; i++) {
-        const wy = i * spacing + spacing/2;
-        ctx.fillStyle = `rgba(255,60,80,${0.3 + 0.15*Math.sin(t + i)})`;
-        ctx.save(); ctx.translate(wall - 60, wy); ctx.rotate(-Math.PI/2);
-        ctx.fillText('ZONA SEGURA', 0, 0); ctx.restore();
-        ctx.fillStyle = `rgba(60,140,255,${0.3 + 0.15*Math.sin(t + i)})`;
-        ctx.save(); ctx.translate(wall + 60, wy); ctx.rotate(Math.PI/2);
-        ctx.fillText('ZONA SEGURA', 0, 0); ctx.restore();
-      }
+      const drawBubble = (bubble, r, g, b) => {
+        if (!bubble) return;
+        const { cx, cy } = bubble;
+        const rad = bubble.r;
+        // Preenchimento suave
+        const fillGrad = ctx.createRadialGradient(cx, cy, rad * 0.3, cx, cy, rad);
+        fillGrad.addColorStop(0, `rgba(${r},${g},${b},${0.06 + 0.03*Math.sin(t)})`);
+        fillGrad.addColorStop(1, `rgba(${r},${g},${b},0.15)`);
+        ctx.fillStyle = fillGrad;
+        ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI*2); ctx.fill();
+        // Anel pulsante externo
+        ctx.shadowColor = `rgb(${r},${g},${b})`;
+        ctx.shadowBlur = 20 * pulse;
+        ctx.strokeStyle = `rgba(${r},${g},${b},${0.5 + 0.4*pulse})`;
+        ctx.lineWidth = 3 + pulse * 2;
+        ctx.beginPath(); ctx.arc(cx, cy, rad, 0, Math.PI*2); ctx.stroke();
+        // Anel interno tracejado
+        ctx.shadowBlur = 0;
+        ctx.setLineDash([18, 10]);
+        ctx.strokeStyle = `rgba(${r},${g},${b},${0.25 + 0.15*Math.sin(t*3)})`;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(cx, cy, rad - 10, 0, Math.PI*2); ctx.stroke();
+        ctx.setLineDash([]);
+        // Texto no topo da bolha
+        ctx.font = 'bold 14px "Press Start 2P", monospace';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillStyle = `rgba(${r},${g},${b},${0.55 + 0.25*Math.sin(t*2)})`;
+        ctx.fillText('ZONA SEGURA', cx, cy - rad + 24);
+      };
+      drawBubble(this._safezone.bubbleRed,  255, 60, 80);
+      drawBubble(this._safezone.bubbleBlue, 60, 140, 255);
       ctx.restore();
     }
 

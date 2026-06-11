@@ -807,12 +807,38 @@ export class BorderEffect {
   }
 }
 
+const WEAPON_TYPES = [
+  'LASER','SHOTGUN','SNIPER','BOUNCER','FLAMETHROWER','PLASMA','RAILGUN',
+  'HOMING','BURST','BOOMERANG','GRAVITY','EXPLOSIVE','CHAIN','STORM',
+  'VOID_SHOT','PHOTON','DUAL','SPREAD','TOXIC','QUANTUM',
+];
+
 // ── Gerenciador de itens ──────────────────────────────────────
 export class ItemManager {
   constructor() {
     this.items      = [];
     this.spawnTimer = 2;
-    this.maxItems   = 35; // mais itens na arena para ritmo mais arcade
+    this.maxItems   = 90; // suporta os itens iniciais + spawn contínuo
+  }
+
+  // Spawna o lote inicial: 30 armas + 40 itens aleatórios, espaçados pela arena
+  spawnInitial(arena) {
+    const pad = 120;
+    const W = ARENA_W, H = ARENA_H;
+    const place = (type) => {
+      let x, y, tries = 0;
+      do {
+        x = pad + Math.random() * (W - pad*2);
+        y = pad + Math.random() * (H - pad*2);
+        tries++;
+      } while (arena?.checkObstacleCollision(x, y, 14) && tries < 12);
+      this.items.push(new Item(x, y, type));
+    };
+    // 30 armas espalhadas (cicla as 20 types + mais 10 repetidos dos mais comuns)
+    const weaponPool = [...WEAPON_TYPES, ...WEAPON_TYPES.slice(0, 10)];
+    for (let i = 0; i < 30; i++) place(weaponPool[i % weaponPool.length]);
+    // 40 itens aleatórios (sem armas para não repetir demais)
+    for (let i = 0; i < 40; i++) place(randomType(false));
   }
 
   spawnAt(x, y, count=1, arena=null) {

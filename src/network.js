@@ -208,46 +208,49 @@ export class RemotePlayer {
     this.y += (this._ty - this.y) * Math.min(1, 12 * dt);
   }
 
-  draw(ctx) {
+  draw(ctx, viewerTeam) {
     if (this.dead) return;
-    // Sem time = modo cooperativo = aliado (verde); com time = PvP (cor do time)
     const teamColor = this.team ? (TEAM_COLORS[this.team] || '#aaccff') : '#44dd88';
+    const isAlly = viewerTeam ? (this.team === viewerTeam) : !this.team;
+    const hpBarColor = isAlly ? '#00e87a' : '#ff2244';
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
     this.skin.draw(ctx, 1.35);
     ctx.restore();
     drawHitFlash(ctx, this, 32);
-    // Anel de identificação: verde pulsante para aliados sem time, cor do time para PvP
+    // Anel de identificação: cor do time
     ctx.save();
     ctx.strokeStyle = teamColor;
     ctx.globalAlpha = this.team ? 0.55 : 0.40;
     ctx.lineWidth = this.team ? 2 : 1.5;
-    ctx.setLineDash(this.team ? [] : [4, 4]); // tracejado = aliado cooperativo
+    ctx.setLineDash(this.team ? [] : [4, 4]);
     ctx.beginPath();
     ctx.arc(this.x, this.y, 30, 0, Math.PI * 2);
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.restore();
-    // Nome e label de aliado
+    // Nome
     ctx.fillStyle = teamColor;
     ctx.font = '11px system-ui';
     ctx.textAlign = 'center';
     const label = this.isBot ? `[BOT] ${this.name}` : this.name;
-    ctx.fillText(label, this.x, this.y - 28);
+    ctx.fillText(label, this.x, this.y - 42);
     if (!this.team) {
       ctx.font = '9px system-ui';
       ctx.globalAlpha = 0.75;
-      ctx.fillText('aliado', this.x, this.y - 18);
+      ctx.fillText('aliado', this.x, this.y - 30);
       ctx.globalAlpha = 1;
     }
-    // HP bar
-    const bw = 30;
-    ctx.fillStyle = '#0d1e32';
-    ctx.fillRect(this.x - bw/2, this.y - 28, bw, 4);
-    ctx.fillStyle = teamColor;
-    ctx.fillRect(this.x - bw/2, this.y - 28, bw * (this.hp / this.maxHp), 4);
+    // HP bar colorida por aliado/inimigo
+    const bw = 60, bh = 6, bx = this.x - bw/2, by = this.y - 34;
+    ctx.fillStyle = '#08101ecc'; ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = hpBarColor;
+    ctx.shadowColor = hpBarColor; ctx.shadowBlur = 6;
+    ctx.fillRect(bx, by, bw * Math.max(0, this.hp / this.maxHp), bh);
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = '#ffffff22'; ctx.lineWidth = 0.5; ctx.strokeRect(bx, by, bw, bh);
 
-    drawStatusIcons(ctx, this.x, this.y - 44, this);
+    drawStatusIcons(ctx, this.x, this.y - 52, this);
   }
 }

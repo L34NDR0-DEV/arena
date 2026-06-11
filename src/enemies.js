@@ -669,17 +669,27 @@ export class TeamBot {
     }
   }
 
-  draw(ctx) {
+  draw(ctx, viewerTeam) {
     if (this.dead) return;
     this._brain.draw(ctx);
     drawHitFlash(ctx, this, this.r);
-    const teamColor=TEAM_COLORS[this.team]||'#aaccff';
+    const teamColor = TEAM_COLORS[this.team]||'#aaccff';
+    const isAlly = viewerTeam ? (this.team === viewerTeam) : false;
+    const hpBarColor = isAlly ? '#00e87a' : '#ff2244';
     ctx.save();
     ctx.strokeStyle=teamColor; ctx.globalAlpha=0.55; ctx.lineWidth=2;
     ctx.beginPath(); ctx.arc(this.x,this.y,this.r+14,0,Math.PI*2); ctx.stroke();
     ctx.restore();
+    // Barra de HP colorida (verde=aliado, vermelho=inimigo)
+    const bw=60, bh=6, bx=this.x-bw/2, by=this.y-this.r-20;
+    ctx.fillStyle='#08101ecc'; ctx.fillRect(bx,by,bw,bh);
+    ctx.fillStyle=hpBarColor;
+    ctx.shadowColor=hpBarColor; ctx.shadowBlur=6;
+    ctx.fillRect(bx,by,bw*Math.max(0,this._brain.hp/this._brain.maxHp),bh);
+    ctx.shadowBlur=0;
+    ctx.strokeStyle='#ffffff22'; ctx.lineWidth=0.5; ctx.strokeRect(bx,by,bw,bh);
     ctx.fillStyle=teamColor; ctx.font='11px system-ui'; ctx.textAlign='center';
-    ctx.fillText(`[BOT] ${this.name}`, this.x, this.y-this.r-46);
+    ctx.fillText(`[BOT] ${this.name}`, this.x, this.y-this.r-26);
   }
 }
 
