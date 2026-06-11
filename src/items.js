@@ -792,8 +792,8 @@ export class BorderEffect {
 export class ItemManager {
   constructor() {
     this.items      = [];
-    this.spawnTimer = 4;
-    this.maxItems   = 22; // arena maior precisa de mais itens espalhados
+    this.spawnTimer = 2;
+    this.maxItems   = 35; // mais itens na arena para ritmo mais arcade
   }
 
   spawnAt(x, y, count=1, arena=null) {
@@ -823,8 +823,8 @@ export class ItemManager {
   update(dt, px, py, hasMagnet, hasExtraSlot=false, arena=null) {
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0 && this.items.length < this.maxItems) {
-      this.spawnTimer = 5 + Math.random()*4;
-      const n = 1 + Math.floor(Math.random()*2);
+      this.spawnTimer = 2.5 + Math.random()*2;
+      const n = 1 + Math.floor(Math.random()*3);
       for (let i=0;i<n;i++) {
         let x, y, tries=0;
         do {

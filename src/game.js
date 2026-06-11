@@ -13,8 +13,13 @@ import { RechargeManager }                       from './recharge.js';
 import { CardDefenseManager }                    from './enemies.js';
 import * as SkinsModule                          from './skins.js';
 
-const MATCH_DURATION = 300;
+const MATCH_DURATION_NORMAL = 900;  // 15 min
+const MATCH_DURATION_ONLINE = 1200; // 20 min
+const MATCH_DURATION = 900; // alias para compatibilidade (não usado diretamente)
 const CONTRA1_LIVES  = 5;
+// Paredes elétricas: aparecem quando timeLeft cai abaixo deste threshold
+const ELECTRIC_WALLS_WARN_AT = 30; // anuncia 30s antes
+const ELECTRIC_WALLS_AT = 0;       // ativas quando timer chega a 0
 const TEAM_KILL_TARGET = 200;
 const TEAM_SIZE        = 3;
 
@@ -45,6 +50,7 @@ export class Game {
     this.combat.setEnemyManager(this.enemyMgr);
     this.combat.setShakeCallback((i) => this.addShake(i));
     this.combat.setHitStopCallback((duration) => this.hitStop(duration));
+    this.combat.setWallDropCallback((x,y) => this.itemMgr.spawnAt(x,y,1,this.arena));
     this.ui       = new UI();
     this.player   = new Player({ x:ARENA_W/2, y:ARENA_H/2, skinIndex, name:playerName });
     this.player.equippedTrailId = opts.equippedTrail || 0;
@@ -107,7 +113,12 @@ export class Game {
     this.peers={}; this.net=null; this._netT=0;
     this.borderEffect=new BorderEffect();
 
-    this.timeLeft=MATCH_DURATION;
+    const isOnline = mode==='equipe_online'||mode==='tower_defense';
+    this.timeLeft = isOnline ? MATCH_DURATION_ONLINE : MATCH_DURATION_NORMAL;
+    this._electricWallsActive = false;
+    this._electricWallsWarned = false;
+    this._electricWallTimer = 0; // acumula dano
+    this._electricWallMargin = 0; // pixels de "borda elétrica" que avança
     this.over=false; this.paused=false;
     this._rafId=null; this._last=0;
 
@@ -698,7 +709,43 @@ export class Game {
       if (res==='enemy_win'||this.enemyMgr.playerLives<=0) { this._endGame(false); return; }
     } else if (this.mode!=='equipe_online' && this.mode!=='tower_defense' && this.mode!=='cards') {
       this.timeLeft-=dt;
-      if (this.timeLeft<=0) { this._endGame(true); return; }
+      // ── Anúncio de paredes elétricas ────────────────────────
+      if (!this._electricWallsWarned && this.timeLeft<=ELECTRIC_WALLS_WARN_AT) {
+        this._electricWallsWarned=true;
+        this.ui.notify('Em 30 segundos paredes elétricas surgirão!','#ffff00');
+        // Toca o arquivo de áudio de anúncio se existir
+        this._playElectricWallsAudio?.();
+        // Avisa inimigos
+        for(const e of this.enemyMgr.enemies) e._awareof_walls=true;
+      }
+      // ── Ativa paredes elétricas ──────────────────────────────
+      if (this.timeLeft<=0) {
+        if (!this._electricWallsActive) {
+          this._electricWallsActive=true;
+          this._electricWallMargin=0;
+          this.ui.notify('PAREDES ELÉTRICAS ATIVAS!','#ff0');
+          // Destrói torres antes das paredes (se existirem)
+          if (this.towerMgr) this.towerMgr.towers=[];
+        }
+        // Paredes avançam progressivamente
+        this._electricWallTimer+=dt;
+        this._electricWallMargin = Math.min(ARENA_W/2-40, this._electricWallTimer*18);
+        // Dano em player e inimigos que estiverem na zona elétrica
+        const m=this._electricWallMargin;
+        const inWall=(x,y)=>x<m||x>ARENA_W-m||y<m||y>ARENA_H-m;
+        if (inWall(this.player.x,this.player.y)) {
+          const died=this.player.takeDamage(60*dt);
+          this.player.mana=Math.max(0,this.player.mana-20*dt);
+          if (died) this.player.startRebuild();
+        }
+        for(const e of this.enemyMgr.enemies) {
+          if(e.dead||e.isRespawning)continue;
+          if(inWall(e.x,e.y)){e.hp-=80*dt;if(e.hp<=0&&!e.dead){e.dead=true;this.player.kills++;this.player.score+=e.score;this.player.addXP(e.score);}}
+        }
+        // Termina o jogo quando as paredes ficam pequenas demais
+        if (this._electricWallMargin>=ARENA_W/2-50) { this._endGame(this.player.hp>0); return; }
+        return; // não encerra por timeLeft normalmente — é as paredes que terminam
+      }
     }
     if (this.player.dead&&this.player.deathTimer<=0&&this.mode!=='contra1'&&this.mode!=='equipe_online'&&this.mode!=='tower_defense'&&this.mode!=='cards') { this._endGame(false); return; }
 
@@ -818,7 +865,10 @@ export class Game {
       const sp=this.player.collectItem(it);
       this.arena.spawnParticles(it.x,it.y,it.def.color,7,90);
       if (!sp) continue;
-      if (sp.type==='stored') {
+      if (sp.type==='weapon') {
+        this.ui.notify('ARMA: '+it.def.label, it.def.color);
+        this.borderEffect.trigger(it.def.color,1.2);
+      } else if (sp.type==='stored') {
         const label = sp.extra ? '[X] '+it.def.label+' (bônus!)' : '['+it.def.label+'] slot '+(sp.slot+1);
         this.ui.notify(label, it.def.color);
       } else if (sp.type==='harmful') {
@@ -1105,6 +1155,25 @@ export class Game {
     // segue a direção do movimento (sem ponteiro de mouse para indicar)
     if (!this.player.dead&&!this.paused&&!this._touchActive) {
       drawCrosshair(ctx,this._mouse.wx,this._mouse.wy,this.player._age);
+    }
+
+    // ── Paredes elétricas ─────────────────────────────────────
+    if (this._electricWallsActive && this._electricWallMargin>0) {
+      const m=this._electricWallMargin;
+      const t=performance.now()*0.004;
+      ctx.save();
+      // Efeito de faísca pulsante — amarelo/azul alternando
+      const g1=ctx.createLinearGradient(0,0,ARENA_W,0);
+      g1.addColorStop(0,'rgba(255,255,0,0.7)');g1.addColorStop(0.5,'rgba(0,200,255,0.9)');g1.addColorStop(1,'rgba(255,255,0,0.7)');
+      ctx.strokeStyle=g1; ctx.lineWidth=4+Math.sin(t*8)*2;
+      ctx.shadowColor='#ffff00'; ctx.shadowBlur=16+Math.sin(t*12)*8;
+      // Retângulo interno (borda da zona segura)
+      ctx.strokeRect(m,m,ARENA_W-m*2,ARENA_H-m*2);
+      // Zona elétrica semi-transparente
+      ctx.fillStyle='rgba(255,255,0,0.06)';
+      ctx.fillRect(0,0,ARENA_W,m);ctx.fillRect(0,ARENA_H-m,ARENA_W,m);
+      ctx.fillRect(0,m,m,ARENA_H-m*2);ctx.fillRect(ARENA_W-m,m,m,ARENA_H-m*2);
+      ctx.restore();
     }
     ctx.restore();
 
@@ -1537,6 +1606,15 @@ export class Game {
         mode:'cards',
       });
     }, 700);
+  }
+
+  _playElectricWallsAudio() {
+    // Toca o arquivo público de voz feminina anunciando as paredes elétricas
+    try {
+      const audio = new Audio('./public/audio/electric_walls.mp3');
+      audio.volume = 0.85;
+      audio.play().catch(()=>{});
+    } catch(e) {}
   }
 
   _endGame(survived) {

@@ -19,6 +19,7 @@ export class CombatSystem {
   setAudio(audio) { this._audio=audio; }
   setShakeCallback(fn) { this._shake=fn; }
   setHitStopCallback(fn) { this._hitStop=fn; }
+  setWallDropCallback(fn) { this._wallDropCallback=fn; }
 
   // Contexto do modo "Equipe Online" (PvP): jogadores remotos, bots locais,
   // time do jogador local e referência de rede para reportar abates.
@@ -422,10 +423,20 @@ export class CombatSystem {
     // ── Colisões com obstáculos fixos (pilares/rochas/ruínas) ────────────────
     // Mesmo padrão dos asteroides, mas obstáculos são indestrutíveis (sem HP).
     if (this.arena?.obstacles) {
-      // Projéteis → obstáculos (destruído ao colidir)
+      // Projéteis → obstáculos (destruído ao colidir; projétil do player recompensa HP/XP)
       this.bullets=this.bullets.filter(b=>{
         const o=this.arena.checkObstacleCollision(b.x,b.y,4);
-        if (o) { this._impactSpark(b,b.x,b.y,'#4488aa'); this.spawnExplosion(b.x,b.y,8,'#4488aa'); return false; }
+        if (o) {
+          this._impactSpark(b,b.x,b.y,'#4488aa'); this.spawnExplosion(b.x,b.y,8,'#4488aa');
+          if (b.owner==='player' && b._player) {
+            // +HP e +XP por acertar parede
+            b._player.heal(4);
+            b._player.addXP(2);
+            // 20% de chance de dropar item aleatório
+            if (Math.random()<0.20) this._wallDropCallback?.(b.x,b.y);
+          }
+          return false;
+        }
         return true;
       });
 

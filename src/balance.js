@@ -87,10 +87,10 @@ export const ITEM_DEFS = {
 
 // Tempo de vida na arena por raridade (segundos)
 export const ITEM_LIFE = {
-  common:    { min:14, max:20 },
-  rare:      { min:12, max:18 },
-  epic:      { min:10, max:15 },
-  legendary: { min:5,  max:7  },
+  common:    { min:22, max:32 },
+  rare:      { min:18, max:28 },
+  epic:      { min:15, max:24 },
+  legendary: { min:10, max:16 },
 };
 
 // ── Pesos de sorteio ──────────────────────────────────────────
