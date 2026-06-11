@@ -845,6 +845,7 @@ const ROUTES = [
         maintenance.lockedAt    = null;
         maintenance.activeSessions.clear();
         console.log('[MANUTENÇÃO] Fase 1: aviso ativado — 60 minutos para trancar');
+        _broadcastAll({ type: 'server_notice', level: 'warning', text: `MANUTENCAO EM ${maintenance.warningMinutes} MIN`, subtext: 'Termine sua partida. O servidor sera reiniciado em breve.' });
 
         // Avança automaticamente para 'locked' após warningMinutes
         setTimeout(() => {
@@ -852,6 +853,7 @@ const ROUTES = [
             maintenance.phase    = 'locked';
             maintenance.lockedAt = Date.now();
             console.log('[MANUTENÇÃO] Fase 2: novas partidas bloqueadas — aguardando partidas ativas');
+            _broadcastAll({ type: 'server_notice', level: 'locked', text: 'SERVIDOR EM MANUTENCAO', subtext: 'Novas partidas bloqueadas. Finalize e volte em breve.' });
           }
         }, maintenance.warningMinutes * 60 * 1000);
 
@@ -861,6 +863,7 @@ const ROUTES = [
         maintenance.phase    = 'locked';
         maintenance.lockedAt = Date.now();
         console.log('[MANUTENÇÃO] Fase 2 (manual): novas partidas bloqueadas');
+        _broadcastAll({ type: 'server_notice', level: 'locked', text: 'SERVIDOR EM MANUTENCAO', subtext: 'Novas partidas bloqueadas. Finalize e volte em breve.' });
 
       } else if (action === 'off') {
         maintenance.phase       = 'off';
@@ -868,6 +871,7 @@ const ROUTES = [
         maintenance.lockedAt    = null;
         maintenance.activeSessions.clear();
         console.log('[MANUTENÇÃO] Sistema reaberto — manutenção encerrada');
+        _broadcastAll({ type: 'server_notice', level: 'off', text: '', subtext: '' });
 
       } else {
         return sendJson(res, 400, { error: 'invalid_action' });

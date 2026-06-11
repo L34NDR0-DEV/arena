@@ -82,6 +82,7 @@ export class NetworkClient {
       case 'cards_queue_state':      h.onCardsQueueState?.(msg);                                        break;
       case 'cards_unavailable':      h.onCardsUnavailable?.(msg);                                       break;
       case 'pong':        this._onPong(msg);                    break;
+      case 'server_notice':   h.onServerNotice?.(msg);                                    break;
       case 'maintenance_locked':
         if (typeof window._handleMaintenanceLocked === 'function')
           window._handleMaintenanceLocked(msg.status || {});

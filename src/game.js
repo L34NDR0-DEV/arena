@@ -144,6 +144,10 @@ export class Game {
     this._idleTime   = 0;   // segundos sem ação do jogador
     this._idleWarned = false;
 
+    // Legenda de aviso do servidor (manutenção) — não interrompe o jogo
+    // { level: 'warning'|'locked'|'off', text: string, subtext: string, since: number }
+    this._serverNotice = null;
+
     // ── Modo "Equipe Online" — PvP em times (até 6, 2 times de 3) ──
     this.team=null;          // 'red' | 'blue' — atribuído pelo servidor
     this.isHost=false;       // anfitrião simula bots locais
@@ -352,6 +356,11 @@ export class Game {
             this.ui.killFeed(`${msg.data.killerName} eliminou ${msg.data.victimName}`);
             if (isTeamMode && msg.data.killerTeam) this._registerTeamKill(msg.data.killerTeam);
           }
+        },
+        onServerNotice: msg=>{
+          if (msg.level==='off') { this._serverNotice=null; return; }
+          this._serverNotice = { level: msg.level, text: msg.text, subtext: msg.subtext, since: performance.now() };
+          if (msg.level==='warning') this._playVoice('inatividade', 0.8);
         },
         onPlayerReplacedByBot: msg=>this._onPlayerReplacedByBot(msg),
         onMatchStart: msg=>this._onMatchStart(msg),
@@ -1221,6 +1230,57 @@ export class Game {
     if (this._audio._muted) {
       ctx.save(); ctx.fillStyle='rgba(255,255,255,0.18)'; ctx.font='10px system-ui'; ctx.textAlign='right';
       ctx.fillText('SOM MUDO — M',W-10,H-10); ctx.restore();
+    }
+
+    // ── Legenda de manutenção do servidor (topo da tela) ─────────
+    if (this._serverNotice) {
+      const sn = this._serverNotice;
+      const isLocked = sn.level === 'locked';
+      const col = isLocked ? '#ff2255' : '#ffcc00';
+      const t = (performance.now() - sn.since) / 1000;
+      // Pulsa suavemente — urgência maior quando locked
+      const pulse = isLocked
+        ? (Math.floor(t * 2) % 2 === 0 ? 1 : 0.6)
+        : (0.85 + 0.15 * Math.sin(t * 1.8));
+
+      const bw = Math.min(480, W - 32);
+      const bh = 52;
+      const bx = W/2 - bw/2;
+      const by = 8;
+
+      ctx.save();
+      ctx.globalAlpha = pulse;
+
+      // Fundo do painel — mesmo estilo da tela de inatividade
+      ctx.fillStyle = 'rgba(2,4,10,0.94)';
+      ctx.fillRect(bx, by, bw, bh);
+
+      // Linha colorida no topo do painel
+      const tg = ctx.createLinearGradient(bx, 0, bx+bw, 0);
+      tg.addColorStop(0, 'transparent');
+      tg.addColorStop(0.5, col);
+      tg.addColorStop(1, 'transparent');
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = tg;
+      ctx.fillRect(bx, by, bw, 2);
+
+      ctx.globalAlpha = pulse;
+      ctx.textAlign = 'center';
+
+      // Texto principal — mesmo estilo do label de inatividade
+      ctx.font = `7px 'Press Start 2P', monospace`;
+      ctx.fillStyle = col;
+      ctx.shadowColor = col; ctx.shadowBlur = 10;
+      ctx.fillText(sn.text, W/2, by + 18);
+      ctx.shadowBlur = 0;
+
+      // Subtexto — mesmo estilo do subtítulo de inatividade
+      ctx.font = `6px 'Press Start 2P', monospace`;
+      ctx.fillStyle = '#6a8a9a';
+      ctx.fillText(sn.subtext, W/2, by + 36);
+
+      ctx.globalAlpha = 1;
+      ctx.restore();
     }
 
     // ── Overlay de inatividade ────────────────────────────────
