@@ -1,75 +1,164 @@
-// Roda uma vez no servidor: node generate-icons.js
-// Gera os ícones PWA a partir do favicon.svg usando canvas nativo do Node (via @napi-rs/canvas)
-// Se não tiver a lib, usa sharp ou apenas copia o SVG como fallback.
+// node generate-icons.js
+// Gera ícones PNG para PWA sem nenhuma dependência npm — usa apenas Node.js built-in.
+// Técnica: escreve PNG raw (IHDR + IDAT com zlib.deflateRawSync + IEND).
 
+'use strict';
 const fs   = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 
 const SIZES = [72, 96, 128, 144, 152, 192, 384, 512];
 const OUT   = path.join(__dirname, 'icons');
-
 if (!fs.existsSync(OUT)) fs.mkdirSync(OUT);
 
-// SVG do ícone — nave espacial estilo arcade com fundo roxo/violeta
-const makeSvg = (size) => {
+// ── Paleta de cores (fundo roxo escuro + nave laranja) ──
+const BG   = [4,   8,  15, 255]; // #04080f
+const C1   = [155, 92, 255, 255]; // #9b5cff violeta
+const C2   = [255, 140,  0, 255]; // #ff8c00 laranja
+const WHT  = [255, 255, 255, 200]; // branco semi
+
+function lerp(a, b, t) { return Math.round(a + (b - a) * t); }
+function lerpC(ca, cb, t) { return [lerp(ca[0],cb[0],t), lerp(ca[1],cb[1],t), lerp(ca[2],cb[2],t), lerp(ca[3],cb[3],t)]; }
+
+// Desenha pixels RGBA num array flat [r,g,b,a, r,g,b,a ...]
+function renderIcon(size) {
+  const px = new Uint8Array(size * size * 4);
+  const set = (x, y, c) => {
+    if (x < 0 || x >= size || y < 0 || y >= size) return;
+    const i = (y * size + x) * 4;
+    // alpha blend sobre o que já existe
+    const a = c[3] / 255;
+    px[i]   = lerp(px[i],   c[0], a);
+    px[i+1] = lerp(px[i+1], c[1], a);
+    px[i+2] = lerp(px[i+2], c[2], a);
+    px[i+3] = Math.min(255, px[i+3] + c[3]);
+  };
+  const fillRect = (x, y, w, h, c) => {
+    for (let dy = 0; dy < h; dy++) for (let dx = 0; dx < w; dx++) set(x+dx, y+dy, c);
+  };
+  const fillCircle = (cx, cy, r, c) => {
+    for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++)
+      if (dx*dx + dy*dy <= r*r) set(cx+dx, cy+dy, c);
+  };
+  const fillTri = (pts, c) => {
+    // scanline
+    const ys = pts.map(p=>p[1]);
+    const y0 = Math.max(0, Math.floor(Math.min(...ys)));
+    const y1 = Math.min(size-1, Math.ceil(Math.max(...ys)));
+    for (let y = y0; y <= y1; y++) {
+      let xs = [];
+      for (let i = 0; i < pts.length; i++) {
+        const [ax,ay] = pts[i], [bx,by] = pts[(i+1)%pts.length];
+        if ((ay <= y && by > y) || (by <= y && ay > y)) {
+          xs.push(ax + (y - ay) / (by - ay) * (bx - ax));
+        }
+      }
+      xs.sort((a,b)=>a-b);
+      for (let j = 0; j < xs.length - 1; j += 2)
+        for (let x = Math.ceil(xs[j]); x <= Math.floor(xs[j+1]); x++) set(x, y, c);
+    }
+  };
+
   const s = size;
-  const r = Math.round(s * 0.22); // border-radius
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}">
-  <defs>
-    <radialGradient id="bg" cx="50%" cy="40%" r="70%">
-      <stop offset="0%" stop-color="#1a0840"/>
-      <stop offset="100%" stop-color="#04080f"/>
-    </radialGradient>
-    <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#cc88ff"/>
-      <stop offset="100%" stop-color="#7722cc"/>
-    </linearGradient>
-    <linearGradient id="hull" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#ff9922"/>
-      <stop offset="100%" stop-color="#cc5500"/>
-    </linearGradient>
-  </defs>
-  <!-- Fundo roxo escuro -->
-  <rect width="${s}" height="${s}" rx="${r}" fill="url(#bg)"/>
-  <!-- Halo atrás da nave -->
-  <ellipse cx="${s*0.5}" cy="${s*0.52}" rx="${s*0.30}" ry="${s*0.30}" fill="#9b5cff" opacity="0.18"/>
-  <!-- Estrelas -->
-  <circle cx="${s*0.18}" cy="${s*0.22}" r="${s*0.025}" fill="#ffffff" opacity="0.7"/>
-  <circle cx="${s*0.78}" cy="${s*0.18}" r="${s*0.018}" fill="#ffcc44" opacity="0.9"/>
-  <circle cx="${s*0.85}" cy="${s*0.70}" r="${s*0.015}" fill="#ffffff" opacity="0.5"/>
-  <circle cx="${s*0.12}" cy="${s*0.75}" r="${s*0.020}" fill="#aaddff" opacity="0.6"/>
-  <!-- Nave (triângulo com casco laranja) -->
-  <polygon
-    points="${s*0.50},${s*0.16} ${s*0.72},${s*0.72} ${s*0.50},${s*0.60} ${s*0.28},${s*0.72}"
-    fill="url(#hull)" stroke="#ffdd88" stroke-width="${s*0.018}"/>
-  <!-- Interior da nave (mais escuro) -->
-  <polygon
-    points="${s*0.50},${s*0.30} ${s*0.60},${s*0.64} ${s*0.50},${s*0.56} ${s*0.40},${s*0.64}"
-    fill="#1a0420"/>
-  <!-- Motor / propulsão (violeta neon) -->
-  <ellipse cx="${s*0.50}" cy="${s*0.76}" rx="${s*0.11}" ry="${s*0.065}" fill="#ff8c00" opacity="0.9"/>
-  <ellipse cx="${s*0.50}" cy="${s*0.78}" rx="${s*0.07}" ry="${s*0.05}" fill="#ffffff" opacity="0.55"/>
-</svg>`;
-};
+  const r = Math.round(s * 0.18); // border-radius
 
-// Tenta usar sharp (mais comum em servidores Node) para converter SVG → PNG
-async function run() {
-  let sharp;
-  try { sharp = require('sharp'); } catch { sharp = null; }
-
-  for (const size of SIZES) {
-    const svgBuf = Buffer.from(makeSvg(size));
-    const outFile = path.join(OUT, `icon-${size}.png`);
-    if (sharp) {
-      await sharp(svgBuf).png().toFile(outFile);
-      console.log(`  gerado: icon-${size}.png`);
-    } else {
-      // Fallback: salva o SVG renomeado (PWABuilder aceita SVG como PNG se declarado)
-      fs.writeFileSync(outFile.replace('.png', '.svg'), svgBuf);
-      console.log(`  (sharp não encontrado) SVG salvo: icon-${size}.svg`);
+  // Fundo com rounded rect
+  fillRect(0, 0, s, s, BG);
+  // Cantos arredondados (apaga)
+  for (let dy = 0; dy < r; dy++) for (let dx = 0; dx < r; dx++) {
+    const dist = Math.sqrt((r-dx-1)**2 + (r-dy-1)**2);
+    if (dist > r) {
+      set(dx, dy, [0,0,0,0]);             // top-left
+      set(s-1-dx, dy, [0,0,0,0]);         // top-right
+      set(dx, s-1-dy, [0,0,0,0]);         // bot-left
+      set(s-1-dx, s-1-dy, [0,0,0,0]);     // bot-right
     }
   }
-  console.log('Ícones gerados em /icons/');
+
+  // Halo violeta central
+  const hR = Math.round(s * 0.30);
+  for (let dy = -hR; dy <= hR; dy++) for (let dx = -hR; dx <= hR; dx++) {
+    const d = Math.sqrt(dx*dx+dy*dy);
+    if (d < hR) {
+      const a = Math.round(55 * (1 - d/hR));
+      set(s/2+dx, s/2+dy, [155,92,255,a]);
+    }
+  }
+
+  // Estrelas
+  fillCircle(Math.round(s*0.18), Math.round(s*0.20), Math.max(1,Math.round(s*0.022)), WHT);
+  fillCircle(Math.round(s*0.80), Math.round(s*0.16), Math.max(1,Math.round(s*0.016)), [255,200,60,180]);
+  fillCircle(Math.round(s*0.84), Math.round(s*0.72), Math.max(1,Math.round(s*0.013)), WHT);
+
+  // Nave (triângulo laranja)
+  const tx = s/2, ty0 = s*0.15, ty1 = s*0.74, tw = s*0.26;
+  fillTri([[tx, ty0],[tx+tw, ty1],[tx-tw, ty1]], C2);
+  // Interior escuro
+  fillTri([[tx, ty0+s*0.14],[tx+tw*0.55, ty1-s*0.06],[tx-tw*0.55, ty1-s*0.06]], [10,4,20,230]);
+  // Motor (elipse laranja brilhante na base)
+  const ey = Math.round(s*0.76), er = Math.round(s*0.09);
+  fillCircle(s/2, ey, er, C2);
+  fillCircle(s/2, ey, Math.round(er*0.55), [255,240,200,200]);
+
+  return px;
 }
 
-run().catch(console.error);
+// ── Encoder PNG mínimo (sem libs) ──
+function u32be(n) { return [(n>>24)&0xff,(n>>16)&0xff,(n>>8)&0xff,n&0xff]; }
+
+function crc32(buf) {
+  let c = 0xffffffff;
+  for (const b of buf) {
+    c ^= b;
+    for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+  }
+  return (c ^ 0xffffffff) >>> 0;
+}
+
+function chunk(type, data) {
+  const t = Buffer.from(type, 'ascii');
+  const d = Buffer.from(data);
+  const len = u32be(d.length);
+  const crcBuf = Buffer.concat([t, d]);
+  const crc = u32be(crc32(crcBuf));
+  return Buffer.concat([Buffer.from(len), t, d, Buffer.from(crc)]);
+}
+
+function encodePNG(pixels, width, height) {
+  const sig = Buffer.from([137,80,78,71,13,10,26,10]);
+
+  // IHDR
+  const ihdr = Buffer.from([
+    ...u32be(width), ...u32be(height),
+    8, 6,  // bit depth=8, colorType=6 (RGBA)
+    0, 0, 0
+  ]);
+
+  // IDAT: filtro tipo 0 (None) por linha
+  const raw = [];
+  for (let y = 0; y < height; y++) {
+    raw.push(0); // filter byte
+    for (let x = 0; x < width; x++) {
+      const i = (y * width + x) * 4;
+      raw.push(pixels[i], pixels[i+1], pixels[i+2], pixels[i+3]);
+    }
+  }
+  const compressed = zlib.deflateSync(Buffer.from(raw), { level: 6 });
+
+  return Buffer.concat([
+    sig,
+    chunk('IHDR', ihdr),
+    chunk('IDAT', compressed),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+
+// Gera todos os tamanhos
+for (const size of SIZES) {
+  const pixels = renderIcon(size);
+  const png    = encodePNG(pixels, size, size);
+  const file   = path.join(OUT, `icon-${size}.png`);
+  fs.writeFileSync(file, png);
+  console.log(`  gerado: icons/icon-${size}.png (${png.length} bytes)`);
+}
+console.log('\nIcones PWA gerados com sucesso!');
