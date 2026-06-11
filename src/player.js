@@ -422,6 +422,9 @@ export class Player {
     this.team=null; // atribuído no modo "Equipe Online" (PvP em times)
     this.itemTypeCounts={}; // { 'HEALTH': 3, 'MINE': 1, ... }
 
+    this.activeWeaponType = null; // tipo de arma equipada ('LASER', 'SHOTGUN', etc.)
+    this._weaponCooldowns = {}; // cooldowns por tipo de arma (boomerang, quantum etc.)
+
     this.shootCd=0; this.dashCd=0; this.dashTimer=0;
     this.dashDx=0; this.dashDy=0; this.dashing=false; this.invincible=0;
     this.magnetTimer=0; this.rapidTimer=0;
@@ -602,6 +605,12 @@ export class Player {
 
     // Malefício — efeito imediato negativo (não vai para slot)
     if (def.harmful) { this.applyHarmful(it.type); return { type:'harmful', item:it }; }
+
+    // Arma — equipa diretamente (primeiro coletado = padrão; não vai para inventário)
+    if (def.weaponType) {
+      this.equipWeapon(it.type);
+      return { type:'weapon', item:it };
+    }
 
     // Todos os outros itens vão para o inventário (slot 1-5 ou extra X)
     const result = this.inventory.add(it.type);
@@ -985,6 +994,14 @@ export class Player {
     return it;
   }
 
+  equipWeapon(type) {
+    // Equipa arma — se já tem uma, a anterior é descartada (sem reembolso)
+    if (!this.activeWeaponType) {
+      this.activeWeaponType = type;
+    }
+    // "Primeiro coletado = padrão": só substitui se não tiver nenhuma
+  }
+
   _shoot(tx, ty, bullets, combat) {
     const shootAngle = this._aimAngle ?? this.angle;
     const nozzle = this.skin.getNozzle(this.x, this.y, shootAngle, 1.76);
@@ -995,23 +1012,173 @@ export class Player {
     const rawDmg = (38 + (this.level-1)*5) * (this.hasOverclock ? 2 : 1);
     const baseDmg = rawDmg * this._cardDmgMult * this._cardSkinDmgBonus
                   * (this._cardBerserker && this.hp < this.maxHp * 0.30 ? 1.50 : 1);
-    const sp = 600;
 
-    // Buff de míssil ativo: cada tiro vira um míssil teleguiado (reusa o array
-    // missiles[] do CombatSystem — zero duplicação de física/draw/colisão).
+    // Buff de míssil ativo: cada tiro vira um míssil teleguiado
     if (this.hasMissileMode && combat) {
       const mx = tx - nozzle.x, my = ty - nozzle.y;
       combat.launchPlayerMissile(nozzle.x, nozzle.y, mx, my, this);
       return;
     }
 
-    const _spawnBullet = (dx, dy, dmg=baseDmg, angleOffset=0) => {
+    const mx = tx - nozzle.x, my = ty - nozzle.y;
+    const baseAngle = Math.atan2(my, mx);
+
+    const _spawnBullet = (dx, dy, dmg=baseDmg, angleOffset=0, extraProps={}) => {
       let adx = dx, ady = dy;
       if (angleOffset !== 0) {
         const c = Math.cos(angleOffset), s2 = Math.sin(angleOffset);
         adx = dx*c - dy*s2; ady = dx*s2 + dy*c;
       }
-      // Blind fire: dispersão extra de projéteis
+      if (this._cardBlindFire) {
+        const jitter = (Math.random() - 0.5) * 2 * this._cardBlindFire;
+        const cj = Math.cos(jitter), sj = Math.sin(jitter);
+        adx = adx*cj - ady*sj; ady = adx*sj + ady*cj;
+      }
+      const d = Math.hypot(adx, ady) || 1;
+      const sp = extraProps.speed || 600;
+      bullets.push({
+        x: nozzle.x, y: nozzle.y,
+        vx:(adx/d)*sp, vy:(ady/d)*sp,
+        damage: dmg, owner:'player', life: extraProps.life || 1.5,
+        owner_color: extraProps.color || (this.hasOverclock ? '#ffdd00' : (this.isVampire ? '#cc0044' : this.skin.color)),
+        piercing:     extraProps.piercing ?? this.hasPiercing,
+        vampire:      this.isVampire,
+        _player:      this,
+        dirX: adx/d, dirY: ady/d,
+        size:         extraProps.size,
+        explosive:    extraProps.explosive,
+        bounces:      extraProps.bounces,
+        homing:       extraProps.homing,
+        toxicDot:     extraProps.toxicDot,
+        chainTarget:  extraProps.chainTarget,
+        drainMana:    extraProps.drainMana,
+        gravityPull:  extraProps.gravityPull,
+        quantumSplit: extraProps.quantumSplit,
+        weaponType:   this.activeWeaponType,
+      });
+    };
+
+    // ── Despacha por tipo de arma equipada ──────────────────────
+    const wt = this.activeWeaponType;
+
+    if (wt === 'LASER') {
+      // Raio contínuo: bala rápida, fina, que perfura
+      _spawnBullet(mx,my, baseDmg*0.7, 0, {speed:1200, life:0.9, color:'#ff0088', piercing:true, size:3});
+      return;
+    }
+    if (wt === 'SHOTGUN') {
+      // 5 projéteis em leque, dano menor
+      for (let i=-2;i<=2;i++) _spawnBullet(mx,my, baseDmg*0.55, i*0.18, {speed:580, life:0.8, color:'#ff5500'});
+      return;
+    }
+    if (wt === 'SNIPER') {
+      // 1 projétil enorme, lento de recarga, muito dano
+      _spawnBullet(mx,my, baseDmg*3.5, 0, {speed:900, life:2.2, color:'#00ffcc', size:9, piercing:true});
+      return;
+    }
+    if (wt === 'BOUNCER') {
+      // Bala que quica nas paredes (lógica em combat.js via bounces)
+      _spawnBullet(mx,my, baseDmg*1.1, 0, {speed:500, life:3, color:'#ffee00', bounces:5});
+      return;
+    }
+    if (wt === 'FLAMETHROWER') {
+      // Rajada de 4 projéteis em cone de fogo
+      for (let i=-1;i<=2;i++) {
+        const off=(Math.random()-0.5)*0.4;
+        _spawnBullet(mx,my, baseDmg*0.45, off, {speed:400+Math.random()*100, life:0.65, color:'#ff3300', size:7+Math.random()*5});
+      }
+      return;
+    }
+    if (wt === 'PLASMA') {
+      // Bola lenta e pesada com área de explosão
+      _spawnBullet(mx,my, baseDmg*1.8, 0, {speed:340, life:2.5, color:'#aa00ff', size:14, explosive:true});
+      return;
+    }
+    if (wt === 'RAILGUN') {
+      // Penetração total, muito rápido
+      _spawnBullet(mx,my, baseDmg*2.2, 0, {speed:1400, life:1.2, color:'#00ff88', size:5, piercing:true});
+      return;
+    }
+    if (wt === 'HOMING') {
+      // Projétil teleguiado
+      _spawnBullet(mx,my, baseDmg*0.9, 0, {speed:380, life:3.5, color:'#ff44aa', homing:true});
+      return;
+    }
+    if (wt === 'BURST') {
+      // 3 rajadas rápidas (implementadas via redução temporária do shootCd)
+      _spawnBullet(mx,my, baseDmg*0.75, 0, {color:'#ffbb00'});
+      _spawnBullet(mx,my, baseDmg*0.75, 0.06, {color:'#ffbb00', speed:560});
+      _spawnBullet(mx,my, baseDmg*0.75,-0.06, {color:'#ffbb00', speed:560});
+      return;
+    }
+    if (wt === 'BOOMERANG') {
+      // Volta para o dono (lógica em combat.js via bounces+return)
+      _spawnBullet(mx,my, baseDmg*1.3, 0, {speed:440, life:2, color:'#00eeff', bounces:1});
+      return;
+    }
+    if (wt === 'GRAVITY') {
+      // Puxa inimigos ao acertar
+      _spawnBullet(mx,my, baseDmg*0.8, 0, {speed:420, life:2, color:'#8844ff', gravityPull:200, size:10});
+      return;
+    }
+    if (wt === 'EXPLOSIVE') {
+      // Explosão em área ao contato
+      _spawnBullet(mx,my, baseDmg*1.5, 0, {speed:460, life:2, color:'#ff6600', size:10, explosive:true});
+      return;
+    }
+    if (wt === 'CHAIN') {
+      // Raio que salta para inimigos próximos (lógica em combat.js via chainTarget)
+      _spawnBullet(mx,my, baseDmg*0.85, 0, {speed:650, life:1.2, color:'#55aaff', chainTarget:3});
+      return;
+    }
+    if (wt === 'STORM') {
+      // Barreira de 5 projéteis em leque amplo
+      for (let i=-2;i<=2;i++) _spawnBullet(mx,my, baseDmg*0.5, i*0.3, {speed:520, color:'#ccaaff'});
+      return;
+    }
+    if (wt === 'VOID_SHOT') {
+      // Bala que drena mana
+      _spawnBullet(mx,my, baseDmg*1.4, 0, {speed:520, life:2, color:'#220044', size:12, drainMana:40, piercing:true});
+      return;
+    }
+    if (wt === 'PHOTON') {
+      // 4 projéteis em X (diagonais)
+      for (let i=0;i<4;i++) _spawnBullet(mx,my, baseDmg*0.7, i*Math.PI/2, {speed:700, life:1, color:'#ffffff', size:4});
+      return;
+    }
+    if (wt === 'DUAL') {
+      // Dois canos paralelos
+      const perp = baseAngle + Math.PI/2;
+      const off = 10;
+      const ox = Math.cos(perp)*off, oy = Math.sin(perp)*off;
+      bullets.push({ x:nozzle.x+ox, y:nozzle.y+oy, vx:(mx/Math.hypot(mx,my)||0)*600, vy:(my/Math.hypot(mx,my)||0)*600, damage:baseDmg*0.9, owner:'player', life:1.5, owner_color:'#ff8844', _player:this, dirX:mx/(Math.hypot(mx,my)||1), dirY:my/(Math.hypot(mx,my)||1) });
+      bullets.push({ x:nozzle.x-ox, y:nozzle.y-oy, vx:(mx/Math.hypot(mx,my)||0)*600, vy:(my/Math.hypot(mx,my)||0)*600, damage:baseDmg*0.9, owner:'player', life:1.5, owner_color:'#ff8844', _player:this, dirX:mx/(Math.hypot(mx,my)||1), dirY:my/(Math.hypot(mx,my)||1) });
+      return;
+    }
+    if (wt === 'SPREAD') {
+      // 7 projéteis em leque largo
+      for (let i=-3;i<=3;i++) _spawnBullet(mx,my, baseDmg*0.42, i*0.22, {speed:540, color:'#ffcc44'});
+      return;
+    }
+    if (wt === 'TOXIC') {
+      // Projétil venenoso com DoT
+      _spawnBullet(mx,my, baseDmg*0.65, 0, {speed:380, life:2.5, color:'#66ff00', size:11, toxicDot:true});
+      return;
+    }
+    if (wt === 'QUANTUM') {
+      // Projétil que se divide em 3 ao acertar
+      _spawnBullet(mx,my, baseDmg*1.1, 0, {speed:500, life:2, color:'#ff00ff', quantumSplit:true});
+      return;
+    }
+
+    // ── Tiro padrão (sem arma especial) ──────────────────────────
+    const sp = 600;
+    const _spawnDefault = (dx, dy, dmg=baseDmg, angleOffset=0) => {
+      let adx = dx, ady = dy;
+      if (angleOffset !== 0) {
+        const c = Math.cos(angleOffset), s2 = Math.sin(angleOffset);
+        adx = dx*c - dy*s2; ady = dx*s2 + dy*c;
+      }
       if (this._cardBlindFire) {
         const jitter = (Math.random() - 0.5) * 2 * this._cardBlindFire;
         const cj = Math.cos(jitter), sj = Math.sin(jitter);
@@ -1030,22 +1197,18 @@ export class Player {
       });
     };
 
-    const mx = tx - nozzle.x, my = ty - nozzle.y;
-
-    // Cards: multi_barrel determina quantidade de canos (1=duplo 2=triplo 3=quádruplo)
     const extraBarrels = this._cardMultiBarrel || 0;
-
     if (this.hasMultishot || extraBarrels >= 2) {
       const spread = 0.26;
-      _spawnBullet(mx, my);
-      _spawnBullet(mx, my,  baseDmg * 0.8,  spread);
-      _spawnBullet(mx, my,  baseDmg * 0.8, -spread);
-      if (extraBarrels >= 3) _spawnBullet(mx, my, baseDmg * 0.7,  spread * 2);
+      _spawnDefault(mx, my);
+      _spawnDefault(mx, my, baseDmg * 0.8,  spread);
+      _spawnDefault(mx, my, baseDmg * 0.8, -spread);
+      if (extraBarrels >= 3) _spawnDefault(mx, my, baseDmg * 0.7, spread * 2);
     } else if (extraBarrels === 1) {
-      _spawnBullet(mx, my);
-      _spawnBullet(mx, my, baseDmg * 0.85, 0.18);
+      _spawnDefault(mx, my);
+      _spawnDefault(mx, my, baseDmg * 0.85, 0.18);
     } else {
-      _spawnBullet(mx, my);
+      _spawnDefault(mx, my);
     }
   }
 

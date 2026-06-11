@@ -307,6 +307,213 @@ function _drawItemIcon(ctx, type, s) {
       break;
     }
 
+    // ── Itens de tiro arcade ──────────────────────────────────
+    case 'LASER': {
+      ctx.lineWidth=s*0.12; ctx.strokeStyle=ctx.fillStyle;
+      ctx.shadowBlur=8; ctx.shadowColor=ctx.fillStyle;
+      ctx.beginPath(); ctx.moveTo(0,-s); ctx.lineTo(0,s); ctx.stroke();
+      ctx.lineWidth=s*0.05;
+      ctx.beginPath(); ctx.moveTo(-s*0.2,-s); ctx.lineTo(-s*0.2,s); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(s*0.2,-s); ctx.lineTo(s*0.2,s); ctx.stroke();
+      break;
+    }
+    case 'SHOTGUN': {
+      const sang=[-0.5,-0.25,0,0.25,0.5];
+      ctx.lineWidth=s*0.14; ctx.strokeStyle=ctx.fillStyle; ctx.lineCap='round';
+      for (const a of sang) {
+        ctx.beginPath(); ctx.moveTo(0,s*0.2);
+        ctx.lineTo(Math.sin(a)*s*0.9,-Math.cos(a)*s*0.9); ctx.stroke();
+      }
+      ctx.fillStyle=ctx.strokeStyle;
+      ctx.beginPath(); ctx.rect(-s*0.3,s*0.1,s*0.6,s*0.4); ctx.fill();
+      break;
+    }
+    case 'SNIPER': {
+      ctx.lineWidth=s*0.12; ctx.strokeStyle=ctx.fillStyle;
+      ctx.beginPath(); ctx.arc(0,0,s*0.6,0,Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,-s); ctx.lineTo(0,s); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-s,0); ctx.lineTo(s,0); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0,0,s*0.15,0,Math.PI*2); ctx.fill();
+      break;
+    }
+    case 'BOUNCER': {
+      ctx.beginPath(); ctx.arc(0,0,s*0.4,0,Math.PI*2); ctx.fill();
+      ctx.lineWidth=s*0.12; ctx.strokeStyle=ctx.fillStyle;
+      ctx.beginPath(); ctx.moveTo(-s,-s*0.5); ctx.lineTo(-s*0.5,-s); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-s*0.5,-s); ctx.lineTo(-s*0.3,-s*0.7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(s,-s*0.5); ctx.lineTo(s*0.5,-s); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(s*0.5,-s); ctx.lineTo(s*0.3,-s*0.7); ctx.stroke();
+      break;
+    }
+    case 'FLAMETHROWER': {
+      for (let i=0;i<5;i++) {
+        const a=-0.5+i*0.25;
+        ctx.globalAlpha*=0.75+i*0.05;
+        ctx.beginPath(); ctx.moveTo(0,s*0.3);
+        ctx.bezierCurveTo(Math.sin(a)*s*0.4,-s*0.2,Math.sin(a)*s*0.8,-s*0.6,Math.sin(a)*s,-s);
+        ctx.lineWidth=s*(0.18-i*0.02); ctx.strokeStyle=ctx.fillStyle; ctx.stroke();
+      }
+      break;
+    }
+    case 'PLASMA': {
+      ctx.beginPath(); ctx.arc(0,0,s*0.55,0,Math.PI*2); ctx.fill();
+      ctx.globalAlpha*=0.5;
+      ctx.beginPath(); ctx.arc(0,0,s*0.8,0,Math.PI*2);
+      ctx.lineWidth=s*0.1; ctx.strokeStyle=ctx.fillStyle; ctx.stroke();
+      ctx.globalAlpha=1;
+      ctx.fillStyle='#ffffff66'; ctx.beginPath(); ctx.arc(-s*0.18,-s*0.18,s*0.16,0,Math.PI*2); ctx.fill();
+      break;
+    }
+    case 'RAILGUN': {
+      ctx.lineWidth=s*0.22; ctx.strokeStyle=ctx.fillStyle; ctx.lineCap='butt';
+      ctx.beginPath(); ctx.moveTo(-s*0.3,-s); ctx.lineTo(-s*0.3,s); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(s*0.3,-s); ctx.lineTo(s*0.3,s); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(0,0,s*0.15,s*0.4,0,0,Math.PI*2); ctx.fill();
+      break;
+    }
+    case 'HOMING': {
+      ctx.lineWidth=s*0.13; ctx.strokeStyle=ctx.fillStyle;
+      ctx.beginPath(); ctx.arc(s*0.3,0,s*0.5,-Math.PI*0.9,Math.PI*0.1); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,-s*0.55); ctx.lineTo(s*0.2,-s*0.85); ctx.lineTo(s*0.4,-s*0.55); ctx.stroke();
+      break;
+    }
+    case 'BURST': {
+      for (let i=0;i<3;i++) {
+        const off=(i-1)*s*0.28;
+        ctx.beginPath(); ctx.moveTo(off,-s*0.8); ctx.lineTo(off+s*0.1,-s*0.1); ctx.lineTo(off-s*0.1,-s*0.1); ctx.closePath(); ctx.fill();
+      }
+      break;
+    }
+    case 'BOOMERANG': {
+      ctx.lineWidth=s*0.2; ctx.strokeStyle=ctx.fillStyle; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(-s,-s*0.3); ctx.quadraticCurveTo(0,-s*0.8,s,-s*0.3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(s,-s*0.3); ctx.quadraticCurveTo(s*0.2,s*0.5,-s*0.3,s*0.7); ctx.stroke();
+      break;
+    }
+    case 'GRAVITY': {
+      ctx.lineWidth=s*0.1; ctx.strokeStyle=ctx.fillStyle;
+      ctx.beginPath(); ctx.arc(0,0,s*0.3,0,Math.PI*2); ctx.fill();
+      for (let i=0;i<4;i++) {
+        ctx.save(); ctx.rotate(i*Math.PI/2);
+        ctx.beginPath(); ctx.moveTo(0,-s); ctx.lineTo(0,-s*0.4); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-s*0.15,-s*0.55); ctx.lineTo(0,-s*0.4); ctx.lineTo(s*0.15,-s*0.55); ctx.stroke();
+        ctx.restore();
+      }
+      break;
+    }
+    case 'EXPLOSIVE': {
+      ctx.beginPath(); ctx.arc(0,s*0.1,s*0.55,0,Math.PI*2); ctx.fill();
+      ctx.lineWidth=s*0.15; ctx.strokeStyle=ctx.fillStyle;
+      ctx.beginPath(); ctx.moveTo(0,-s*0.45); ctx.quadraticCurveTo(s*0.4,-s*0.9,s*0.2,-s); ctx.stroke();
+      ctx.fillStyle='#ffffff88';
+      ctx.beginPath(); ctx.arc(-s*0.18,-s*0.05,s*0.14,0,Math.PI*2); ctx.fill();
+      break;
+    }
+    case 'CHAIN': {
+      ctx.lineWidth=s*0.14; ctx.strokeStyle=ctx.fillStyle;
+      ctx.beginPath();
+      ctx.moveTo(0,-s); ctx.lineTo(s*0.3,-s*0.4);
+      ctx.lineTo(-s*0.3,-s*0.1); ctx.lineTo(s*0.3,s*0.3);
+      ctx.lineTo(-s*0.1,s*0.8); ctx.stroke();
+      ctx.beginPath(); ctx.arc(-s*0.1,s*0.8,s*0.1,0,Math.PI*2); ctx.fill();
+      break;
+    }
+    case 'STORM': {
+      for (let i=-2;i<=2;i++) {
+        const ox=i*s*0.3;
+        ctx.beginPath(); ctx.moveTo(ox,-s*0.9); ctx.lineTo(ox+s*0.07,s*0.9);
+        ctx.strokeStyle=ctx.fillStyle; ctx.lineWidth=s*0.1; ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(ox-s*0.12,-s*0.6); ctx.lineTo(ox,-s*0.9); ctx.lineTo(ox+s*0.12,-s*0.6); ctx.stroke();
+      }
+      break;
+    }
+    case 'DUAL': {
+      for (const ox of [-s*0.35, s*0.35]) {
+        ctx.beginPath(); ctx.moveTo(ox,-s*0.9); ctx.lineTo(ox+s*0.15,-s*0.1); ctx.lineTo(ox-s*0.15,-s*0.1); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.rect(ox-s*0.12,-s*0.1,s*0.24,s*0.4); ctx.fill();
+      }
+      break;
+    }
+    case 'SPREAD': {
+      for (let i=0;i<7;i++) {
+        const a=-0.75+i*0.25;
+        ctx.save(); ctx.rotate(a);
+        ctx.beginPath(); ctx.moveTo(0,s*0.3); ctx.lineTo(0,-s*0.9);
+        ctx.lineWidth=s*0.1; ctx.strokeStyle=ctx.fillStyle; ctx.stroke();
+        ctx.restore();
+      }
+      break;
+    }
+    case 'TOXIC': {
+      const tpos=[[0,-s*0.3],[s*0.4,-s*0.1],[-s*0.4,-s*0.1],[0,s*0.35],[s*0.35,s*0.3],[-s*0.35,s*0.3]];
+      for (const [tx,ty] of tpos) { ctx.beginPath(); ctx.arc(tx,ty,s*0.32,0,Math.PI*2); ctx.fill(); }
+      break;
+    }
+    case 'VOID_SHOT': {
+      ctx.beginPath(); ctx.arc(0,0,s*0.45,0,Math.PI*2); ctx.fill();
+      for (let i=2;i<=4;i++) {
+        ctx.globalAlpha*=0.5;
+        ctx.beginPath(); ctx.arc(0,0,s*i*0.22,0,Math.PI*2);
+        ctx.lineWidth=s*0.08; ctx.strokeStyle=ctx.fillStyle; ctx.stroke();
+      }
+      break;
+    }
+    case 'PHOTON': {
+      for (let i=0;i<4;i++) {
+        ctx.save(); ctx.rotate(i*Math.PI/2);
+        ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(s*0.2,s*0.2); ctx.lineTo(0,s*1.05); ctx.lineTo(-s*0.2,s*0.2); ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
+      ctx.beginPath(); ctx.arc(0,0,s*0.2,0,Math.PI*2); ctx.fill();
+      break;
+    }
+    case 'QUANTUM': {
+      for (let i=0;i<3;i++) {
+        const a=i*Math.PI*2/3-Math.PI/2, r=s*0.6;
+        ctx.globalAlpha=0.3+i*0.35;
+        ctx.beginPath(); ctx.arc(Math.cos(a)*r,Math.sin(a)*r,s*0.25,0,Math.PI*2); ctx.fill();
+      }
+      ctx.globalAlpha=1;
+      ctx.lineWidth=s*0.08; ctx.strokeStyle=ctx.fillStyle; ctx.setLineDash([s*0.1,s*0.08]);
+      for (let i=0;i<3;i++) {
+        const a1=i*Math.PI*2/3-Math.PI/2, a2=(i+1)*Math.PI*2/3-Math.PI/2, r=s*0.6;
+        ctx.beginPath(); ctx.moveTo(Math.cos(a1)*r,Math.sin(a1)*r); ctx.lineTo(Math.cos(a2)*r,Math.sin(a2)*r); ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      break;
+    }
+
+    // ── Malefícios ────────────────────────────────────────────
+    case 'SLOW': {
+      ctx.beginPath(); ctx.arc(0,0,s*0.7,0,Math.PI*2);
+      ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = s*0.2; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0,-s*0.5); ctx.lineTo(0,0); ctx.lineTo(s*0.35,s*0.35); ctx.stroke();
+      break;
+    }
+    case 'DRAIN': {
+      ctx.beginPath();
+      ctx.moveTo(0,-s); ctx.lineTo(s*0.3,-s*0.2); ctx.lineTo(s*0.15,-s*0.2);
+      ctx.lineTo(s*0.15,s); ctx.lineTo(-s*0.15,s); ctx.lineTo(-s*0.15,-s*0.2);
+      ctx.lineTo(-s*0.3,-s*0.2); ctx.closePath(); ctx.fill();
+      break;
+    }
+    case 'BLIND': {
+      ctx.beginPath(); ctx.ellipse(0,0,s*0.9,s*0.5,0,0,Math.PI*2);
+      ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = s*0.18; ctx.stroke();
+      ctx.beginPath(); ctx.arc(0,0,s*0.22,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle = '#000'; ctx.lineWidth = s*0.22;
+      ctx.beginPath(); ctx.moveTo(-s*0.7,-s*0.7); ctx.lineTo(s*0.7,s*0.7); ctx.stroke();
+      break;
+    }
+    case 'POISON': {
+      ctx.beginPath(); ctx.arc(0,s*0.15,s*0.55,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle = ctx.fillStyle; ctx.lineWidth = s*0.18;
+      ctx.beginPath(); ctx.moveTo(-s*0.3,-s*0.3); ctx.quadraticCurveTo(0,-s,s*0.3,-s*0.3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-s*0.3,-s*0.3); ctx.lineTo(-s*0.3,s*0.25); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(s*0.3,-s*0.3); ctx.lineTo(s*0.3,s*0.25); ctx.stroke();
+      break;
+    }
+
     default: {
       ctx.beginPath(); ctx.arc(0,0,s*0.55,0,Math.PI*2); ctx.fill();
     }

@@ -163,14 +163,39 @@ export class CombatSystem {
     const isContra1=this._enemyMgr?.mode==='contra1';
     if (this._collisionCd>0) this._collisionCd-=dt;
 
+    // Balas a spawnar por efeitos especiais (quantum split, chain) — processado fora do filter
+    const _newBullets = [];
+
     this.bullets=this.bullets.filter(b=>{
       b.x+=b.vx*dt; b.y+=b.vy*dt; b.life-=dt;
+
+      // ── Homing: curva em direção ao inimigo mais próximo ──────
+      if (b.homing) {
+        const alive = enemies.filter(e=>!e.dead&&!e.isRespawning);
+        let closest=null, bestD=Infinity;
+        for (const e of alive) { const d=Math.hypot(b.x-e.x,b.y-e.y); if(d<bestD){bestD=d;closest=e;} }
+        if (closest) {
+          const ex=closest.x-b.x, ey=closest.y-b.y;
+          const d=Math.hypot(ex,ey)||1;
+          const turn=3.8*dt;
+          b.vx+=(ex/d)*600*turn; b.vy+=(ey/d)*600*turn;
+          const spd=Math.hypot(b.vx,b.vy)||1;
+          b.vx=b.vx/spd*380; b.vy=b.vy/spd*380;
+        }
+      }
+
+      // ── Bounce: quica nas paredes da arena ───────────────────
+      if (b.bounces != null && b.bounces > 0) {
+        if (b.x <= 0 || b.x >= ARENA_W) { b.vx *= -1; b.bounces--; b.x = Math.max(0, Math.min(ARENA_W, b.x)); }
+        if (b.y <= 0 || b.y >= ARENA_H) { b.vy *= -1; b.bounces--; b.y = Math.max(0, Math.min(ARENA_H, b.y)); }
+      }
+
       if (!b.trail) b.trail=[];
       b.trail.push({x:b.x,y:b.y});
       if (b.trail.length>6) b.trail.shift();
       if (b.life<=0||b.x<-80||b.x>ARENA_W+80||b.y<-80||b.y>ARENA_H+80) return false;
 
-      const r=b.r??5;
+      const r = b.size ?? b.r ?? 5;
 
       if (b.owner==='player') {
         let hitAny = false;
@@ -183,6 +208,56 @@ export class CombatSystem {
             this._impactSpark(b, b.x, b.y, b.owner_color||e.color||'#ffffff');
             spawnDamageNumber(e.x + (Math.random()-0.5)*e.r, e.y - e.r, b.damage);
             if (b.vampire && b._player) b._player.heal(Math.round(b.damage*0.3));
+
+            // ── Efeitos especiais ao acertar ──────────────────────
+            if (b.toxicDot) e._poisonTimer = (e._poisonTimer||0) + 4; // veneno 4s
+            if (b.drainMana && b._player) { b._player.addMana(b.drainMana*0.5); e.mana=Math.max(0,(e.mana||0)-b.drainMana); }
+            if (b.gravityPull) {
+              // Atrai inimigos próximos para o ponto de impacto
+              for (const e2 of enemies) {
+                if (e2.dead||e2.isRespawning) continue;
+                const gd=Math.hypot(e2.x-b.x,e2.y-b.y);
+                if (gd<b.gravityPull) {
+                  const gf=(1-gd/b.gravityPull)*500;
+                  e2.vx+=(b.x-e2.x)/gd*gf*dt; e2.vy+=(b.y-e2.y)/gd*gf*dt;
+                }
+              }
+            }
+            if (b.chainTarget && (b.chainTarget>0) && !b._chaining) {
+              // Raio de corrente: pula para próximo inimigo ainda não atingido
+              const hit = new Set(b._chainHit||[e]);
+              let nearest=null, bestDC=Infinity;
+              for (const e2 of enemies) {
+                if (e2.dead||e2.isRespawning||hit.has(e2)) continue;
+                const dc=Math.hypot(e2.x-b.x,e2.y-b.y);
+                if (dc<320 && dc<bestDC) { bestDC=dc; nearest=e2; }
+              }
+              if (nearest) {
+                hit.add(nearest);
+                const dx=nearest.x-b.x, dy=nearest.y-b.y, d2=Math.hypot(dx,dy)||1;
+                _newBullets.push({ x:b.x, y:b.y, vx:dx/d2*700, vy:dy/d2*700, damage:b.damage*0.7, owner:'player', life:0.8, owner_color:b.owner_color||'#55aaff', chainTarget:b.chainTarget-1, _chainHit:hit, _chaining:true, _player:b._player, dirX:dx/d2, dirY:dy/d2, size:r, trail:[] });
+              }
+            }
+            if (b.explosive) {
+              this.spawnExplosion(b.x,b.y,(b.size||5)*8,b.owner_color||'#ff6600');
+              for (const e2 of enemies) {
+                if (e2.dead||e2.isRespawning) continue;
+                const ed=Math.hypot(e2.x-b.x,e2.y-b.y);
+                const blastR=(b.size||5)*8;
+                if (ed<blastR) { e2.hp-=b.damage*(1-ed/blastR); if(e2.hp<=0&&!e2.dead){e2.dead=true;player.kills++;player.score+=e2.score;player.addXP(e2.score);this._enemyKilled();} }
+              }
+              return false;
+            }
+            if (b.quantumSplit && !b._split) {
+              const angles=[-0.7,0,0.7];
+              for (const off of angles) {
+                const ca=Math.cos(off),sa=Math.sin(off);
+                const ndx=b.vx/Math.hypot(b.vx,b.vy||1), ndy=b.vy/Math.hypot(b.vx||1,b.vy);
+                _newBullets.push({ x:b.x,y:b.y, vx:(ndx*ca-ndy*sa)*550, vy:(ndx*sa+ndy*ca)*550, damage:b.damage*0.5, owner:'player', life:0.8, owner_color:b.owner_color||'#ff00ff', _split:true, _player:b._player, dirX:ndx*ca-ndy*sa, dirY:ndx*sa+ndy*ca, size:r*0.7, trail:[] });
+              }
+              return false;
+            }
+
             if (e.hp<=0) {
               if (isContra1) {
                 this._enemyMgr.enemyLostLife(e,this.arena,{spawnAt:()=>{}});
@@ -384,6 +459,9 @@ export class CombatSystem {
         }
       }
     }
+
+    // Adiciona balas geradas por efeitos especiais (chain, quantum)
+    if (_newBullets.length) this.bullets.push(..._newBullets);
 
     this.explosions=this.explosions.filter(ex=>{ex.life-=dt*2.8;return ex.life>0;});
 

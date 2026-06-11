@@ -36,6 +36,30 @@ export const ITEM_DEFS = {
   // ── ESPECIAL ─────────────────────────────────────────────────
   MISSILE:    { color:'#ff6600', glow:'#ff660077', rarity:'epic',      label:'MÍSSIL',  desc:'Tiro teleguiado 8s',     usable:true,  harmful:false, legendary:false },
 
+  // ── ITENS DE TIRO — temática arcade ──────────────────────────
+  // Cada um altera o comportamento do tiro base da nave por N segundos.
+  // Se o jogador pega mais de um, o primeiro coletado é o "padrão ativo".
+  LASER:        { color:'#ff0088', glow:'#ff008877', rarity:'rare',      label:'LASER',    desc:'Tiro laser contínuo 7s',        usable:true, harmful:false, legendary:false, weaponType:true },
+  SHOTGUN:      { color:'#ff5500', glow:'#ff550077', rarity:'rare',      label:'ESCOPETA', desc:'5 projéteis em cone 7s',         usable:true, harmful:false, legendary:false, weaponType:true },
+  SNIPER:       { color:'#00ffcc', glow:'#00ffcc77', rarity:'rare',      label:'SNIPER',   desc:'Tiro único longo alcance 8s',    usable:true, harmful:false, legendary:false, weaponType:true },
+  BOUNCER:      { color:'#ffee00', glow:'#ffee0077', rarity:'epic',      label:'RICOCHET', desc:'Balas ricocheteiam 3x — 8s',     usable:true, harmful:false, legendary:false, weaponType:true },
+  FLAMETHROWER: { color:'#ff3300', glow:'#ff330077', rarity:'epic',      label:'CHAMAS',   desc:'Cone de fogo contínuo 6s',       usable:true, harmful:false, legendary:false, weaponType:true },
+  PLASMA:       { color:'#aa00ff', glow:'#aa00ff77', rarity:'epic',      label:'PLASMA',   desc:'Bola lenta de alta energia 7s',  usable:true, harmful:false, legendary:false, weaponType:true },
+  RAILGUN:      { color:'#00ff88', glow:'#00ff8877', rarity:'epic',      label:'RAILGUN',  desc:'Raio atravessa tudo 6s',         usable:true, harmful:false, legendary:false, weaponType:true },
+  HOMING:       { color:'#ff44aa', glow:'#ff44aa77', rarity:'epic',      label:'CAÇA',     desc:'Míssil teleguiado múltiplo 8s',  usable:true, harmful:false, legendary:false, weaponType:true },
+  BURST:        { color:'#ffbb00', glow:'#ffbb0077', rarity:'rare',      label:'RAJADA',   desc:'3 tiros em rajada 7s',           usable:true, harmful:false, legendary:false, weaponType:true },
+  BOOMERANG:    { color:'#00eeff', glow:'#00eeff77', rarity:'epic',      label:'BUMERANG', desc:'Projétil volta para origem 8s',  usable:true, harmful:false, legendary:false, weaponType:true },
+  GRAVITY:      { color:'#8844ff', glow:'#8844ff77', rarity:'epic',      label:'GRAVIDADE',desc:'Puxa inimigos ao acertar 7s',    usable:true, harmful:false, legendary:false, weaponType:true },
+  EXPLOSIVE:    { color:'#ff6600', glow:'#ff660077', rarity:'rare',      label:'EXPLOSÃO', desc:'Projétil explode ao impacto 7s', usable:true, harmful:false, legendary:false, weaponType:true },
+  CHAIN:        { color:'#55aaff', glow:'#55aaff77', rarity:'epic',      label:'CORRENTE', desc:'Raio salta entre inimigos 7s',   usable:true, harmful:false, legendary:false, weaponType:true },
+  STORM:        { color:'#ccaaff', glow:'#ccaaff77', rarity:'epic',      label:'TEMPEST',  desc:'Chuva de projéteis 6s',          usable:true, harmful:false, legendary:false, weaponType:true },
+  VOID_SHOT:    { color:'#220044', glow:'#44009988', rarity:'legendary', label:'VAZIO',    desc:'Projétil drena vida e mana 5s',  usable:true, harmful:false, legendary:true,  weaponType:true },
+  PHOTON:       { color:'#ffffff', glow:'#aaddff88', rarity:'legendary', label:'FÓTON',   desc:'Velocidade da luz, atravessa 5s', usable:true, harmful:false, legendary:true,  weaponType:true },
+  DUAL:         { color:'#ff8844', glow:'#ff884477', rarity:'rare',      label:'DUPLO',    desc:'Dois canhões simultâneos 8s',    usable:true, harmful:false, legendary:false, weaponType:true },
+  SPREAD:       { color:'#ffcc44', glow:'#ffcc4477', rarity:'rare',      label:'SPREAD',   desc:'7 projéteis em leque 7s',        usable:true, harmful:false, legendary:false, weaponType:true },
+  TOXIC:        { color:'#66ff00', glow:'#66ff0077', rarity:'epic',      label:'TÓXICO',   desc:'Nuvem venenosa ao impacto 7s',   usable:true, harmful:false, legendary:false, weaponType:true },
+  QUANTUM:      { color:'#ff00ff', glow:'#ff00ff88', rarity:'legendary', label:'QUANTUM',  desc:'Teletransporta bala 3x 6s',      usable:true, harmful:false, legendary:true,  weaponType:true },
+
   // ── OFENSIVOS — afetam adversários mais próximos ao coletar ──
   // harmful:false pois "quem sofre" é o adversário, não o coletor.
   // DEEP_FREEZE usa nome diferente de FREEZE (que existe como item de área PvE)
@@ -100,6 +124,29 @@ const SPAWN_TABLE = [
   ['SHIELD_AURA',  2,  5],
   ['OVERCLOCK',    2,  4],
   ['INVISIBLE',    2,  4],
+  // ── Itens de tiro (weapon types) ─────────────────────────────
+  ['LASER',        5,  8],
+  ['SHOTGUN',      5,  7],
+  ['SNIPER',       4,  6],
+  ['BURST',        5,  8],
+  ['DUAL',         5,  8],
+  ['SPREAD',       5,  7],
+  ['BOUNCER',      3,  5],
+  ['FLAMETHROWER', 3,  5],
+  ['PLASMA',       3,  5],
+  ['RAILGUN',      3,  5],
+  ['HOMING',       3,  6],
+  ['BOOMERANG',    3,  5],
+  ['GRAVITY',      2,  4],
+  ['EXPLOSIVE',    4,  6],
+  ['CHAIN',        2,  4],
+  ['STORM',        2,  4],
+  ['TOXIC',        2,  4],
+  // legendários de tiro
+  ['VOID_SHOT',    1,  1],
+  ['PHOTON',       1,  1],
+  ['QUANTUM',      1,  1],
+
   // legendarios (raros, nunca boosted)
   ['GODMODE',      1,  1],
   ['NOVA',         1,  1],

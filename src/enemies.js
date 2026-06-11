@@ -243,7 +243,7 @@ export class SmartEnemy {
     const m=DIFF[difficulty]||1;
     this.x=x; this.y=y; this.vx=0; this.vy=0; this.angle=0;
     this.r=46;
-    this.maxHp=120+40*m; this.hp=this.maxHp;
+    this.maxHp=200+70*m; this.hp=this.maxHp; // HP aumentado
     this.lives=lives; this.maxLives=lives;
     this.speed=160+40*m;
     this.damage=22*m;
@@ -689,7 +689,7 @@ export class DroneEnemy {
     const m = DIFF[difficulty]||1;
     this.x=x; this.y=y; this.vx=0; this.vy=0;
     this.r=22; this.angle=0; this._age=0;
-    this.maxHp=40+14*m; this.hp=this.maxHp;
+    this.maxHp=70+22*m; this.hp=this.maxHp; // HP aumentado
     this.lives=1; this.maxLives=1;
     this.speed=240+60*m;
     this.damage=12*m;
@@ -823,7 +823,7 @@ export class GuardianEnemy {
     const m=DIFF[difficulty]||1;
     this.x=x; this.y=y; this.vx=0; this.vy=0; this.angle=0;
     this.r=43;
-    this.maxHp=140+40*m; this.hp=this.maxHp;
+    this.maxHp=240+70*m; this.hp=this.maxHp; // HP aumentado
     this.lives=1; this.maxLives=1;
     this.speed=170+35*m;
     this.damage=20*m;
@@ -1003,6 +1003,651 @@ export class GuardianEnemy {
   }
 }
 
+// ── Disco Alienígena (skininimigas.png) ───────────────────────
+export class DiscEnemy {
+  constructor(x, y, difficulty) {
+    const m=DIFF[difficulty]||1;
+    this.x=x; this.y=y; this.vx=0; this.vy=0;
+    this.r=50; this.angle=0; this._age=0; this._spinAngle=0;
+    this.maxHp=280+90*m; this.hp=this.maxHp;
+    this.lives=2; this.maxLives=2;
+    this.speed=130+30*m; this.damage=28*m;
+    this.score=25; this.color='#aa44ff';
+    this.dead=false; this._dying=false; this._dyingAge=0; this.shards=[];
+    this._shootTimer=0.8+Math.random()*0.6; this._shootCd=1.0-m*0.12;
+    this._orbitAngle=Math.random()*Math.PI*2; this._orbitRadius=160+Math.random()*80;
+    this._state='orbit'; this._stateTimer=2+Math.random()*2;
+    this._respawnTimer=0; this._respawnDuration=1.2;
+    this._respawnX=x; this._respawnY=y;
+    this.isAlien=true; this._audio=null;
+  }
+  setAudio(a){this._audio=a;}
+  get isRespawning(){return this._respawnTimer>0;}
+  loseLife(){
+    this.hp=this.maxHp; this.lives--;
+    this._respawnTimer=this._respawnDuration;
+    const margin=80, side=Math.floor(Math.random()*4);
+    if(side===0){this._respawnX=margin+Math.random()*(ARENA_W-margin*2);this._respawnY=margin;}
+    else if(side===1){this._respawnX=ARENA_W-margin;this._respawnY=margin+Math.random()*(ARENA_H-margin*2);}
+    else if(side===2){this._respawnX=margin+Math.random()*(ARENA_W-margin*2);this._respawnY=ARENA_H-margin;}
+    else{this._respawnX=margin;this._respawnY=margin+Math.random()*(ARENA_H-margin*2);}
+    if(this.lives<=0){this.dead=true;return false;}
+    return true;
+  }
+  startDeath(){this._dying=true;this._dyingAge=0;this.shards=createEnemyShards(this.x,this.y);}
+  update(dt, player, bullets){
+    if(this._dying){this._dyingAge+=dt;for(const s of this.shards){s.age+=dt;s.x+=s.vx*dt;s.y+=s.vy*dt;s.vx*=(1-4*dt);s.vy*=(1-4*dt);s.rot+=s.vr*dt;}if(this._dyingAge>2.2)this.dead=true;return;}
+    if(this.dead)return;
+    this._age+=dt; this._spinAngle+=dt*1.2;
+    tickHitFlash(this,dt); tickStatus(this,dt);
+    if(this._respawnTimer>0){this._respawnTimer-=dt;const p=1-(this._respawnTimer/this._respawnDuration);this.x+=(this._respawnX-this.x)*Math.min(1,p*3);this.y+=(this._respawnY-this.y)*Math.min(1,p*3);this.vx=0;this.vy=0;return;}
+    if(isFrozen(this)){this.vx=0;this.vy=0;return;}
+    const px=isStunned(this)?this.x+9999:player.x, py=isStunned(this)?this.y+9999:player.y;
+    this._stateTimer-=dt;
+    if(this._stateTimer<=0){
+      this._state=this._state==='orbit'?'charge':'orbit';
+      this._stateTimer=this._state==='orbit'?1.5+Math.random()*1.5:0.8+Math.random()*0.5;
+    }
+    if(this._state==='orbit'){
+      this._orbitAngle+=dt*1.1;
+      const tx=px+Math.cos(this._orbitAngle)*this._orbitRadius;
+      const ty=py+Math.sin(this._orbitAngle)*this._orbitRadius;
+      const ddx=tx-this.x,ddy=ty-this.y,d=Math.hypot(ddx,ddy)||1;
+      this.vx+=(ddx/d)*this.speed*6*dt-this.vx*4*dt;
+      this.vy+=(ddy/d)*this.speed*6*dt-this.vy*4*dt;
+    } else {
+      const ddx=px-this.x,ddy=py-this.y,d=Math.hypot(ddx,ddy)||1;
+      this.vx+=(ddx/d)*this.speed*8*dt-this.vx*3*dt;
+      this.vy+=(ddy/d)*this.speed*8*dt-this.vy*3*dt;
+    }
+    const spd=Math.hypot(this.vx,this.vy);
+    if(spd>this.speed*1.4){this.vx=this.vx/spd*this.speed*1.4;this.vy=this.vy/spd*this.speed*1.4;}
+    this.x+=this.vx*dt; this.y+=this.vy*dt;
+    this.x=Math.max(this.r,Math.min(ARENA_W-this.r,this.x));
+    this.y=Math.max(this.r,Math.min(ARENA_H-this.r,this.y));
+    this._shootTimer-=dt;
+    if(this._shootTimer<=0){
+      this._shootTimer=this._shootCd;
+      // Dispara 3 projéteis em leque
+      const ba=Math.atan2(py-this.y,px-this.x);
+      for(let i=-1;i<=1;i++){
+        const a=ba+i*0.35;
+        bullets.push({x:this.x,y:this.y,vx:Math.cos(a)*480,vy:Math.sin(a)*480,damage:this.damage,owner:'enemy',life:1.8,owner_color:'#aa44ff',dirX:Math.cos(a),dirY:Math.sin(a)});
+      }
+      this._audio?.playShoot?.();
+    }
+  }
+  draw(ctx){
+    drawHitFlash(ctx,this);
+    ctx.save(); ctx.translate(this.x,this.y);
+    const drawn=drawEnemySprite(ctx,ENEMY_DISC_IMG,this.r*2,this._spinAngle);
+    if(!drawn){
+      ctx.fillStyle=this.color; ctx.beginPath(); ctx.ellipse(0,0,this.r,this.r*0.35,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#220044'; ctx.beginPath(); ctx.arc(0,0,this.r*0.28,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+    // Barra de HP
+    const bw=60,bh=5,bx=this.x-bw/2,by=this.y-this.r-12;
+    ctx.fillStyle='#220044'; ctx.fillRect(bx,by,bw,bh);
+    ctx.fillStyle='#aa44ff'; ctx.fillRect(bx,by,bw*(this.hp/this.maxHp),bh);
+    drawStatusIcons(ctx,this.x,this.y-this.r-22,this);
+  }
+}
+
+// ── Berserker: agressivo, fica mais rápido ao perder HP ─────
+export class BerserkerEnemy {
+  constructor(x, y, difficulty){
+    const m=DIFF[difficulty]||1;
+    this.x=x;this.y=y;this.vx=0;this.vy=0;this.angle=0;this._age=0;
+    this.r=36; this.maxHp=180+55*m; this.hp=this.maxHp;
+    this.lives=1; this.maxLives=1; this.speed=200+60*m; this.damage=30*m;
+    this.score=18; this.color='#ff2200';
+    this.dead=false;this._dying=false;this._dyingAge=0;this.shards=[];
+    this._shootTimer=0.7+Math.random()*0.5; this._shootCd=0.9-m*0.1;
+    this._respawnTimer=0;this._respawnDuration=0;this._respawnX=x;this._respawnY=y;
+    this.isAlien=false;this._audio=null;
+    this.flames=[];
+  }
+  setAudio(a){this._audio=a;}
+  get isRespawning(){return false;}
+  loseLife(){this.dead=true;return false;}
+  startDeath(){this._dying=true;this._dyingAge=0;this.shards=createEnemyShards(this.x,this.y);}
+  _getNozzle(){return{x:this.x+Math.sin(this.angle)*(-40),y:this.y-Math.cos(this.angle)*(-40)};}
+  _getEngine(){return{x:this.x-Math.sin(this.angle)*(-36),y:this.y+Math.cos(this.angle)*(-36)};}
+  update(dt,player,bullets){
+    if(this._dying){this._dyingAge+=dt;for(const s of this.shards){s.age+=dt;s.x+=s.vx*dt;s.y+=s.vy*dt;s.vx*=(1-4*dt);s.vy*=(1-4*dt);s.rot+=s.vr*dt;}if(this._dyingAge>1.8)this.dead=true;return;}
+    if(this.dead)return;
+    this._age+=dt; tickHitFlash(this,dt); tickStatus(this,dt);
+    if(isFrozen(this)){this.vx=0;this.vy=0;return;}
+    // Fica mais rápido quanto menos HP tem (berserk)
+    const rage=1+(1-this.hp/this.maxHp)*1.5;
+    const px=isStunned(this)?this.x:player.x, py=isStunned(this)?this.y:player.y;
+    const ddx=px-this.x,ddy=py-this.y,d=Math.hypot(ddx,ddy)||1;
+    this.angle=Math.atan2(ddx,-ddy)+Math.PI;
+    this.vx+=(ddx/d)*this.speed*rage*8*dt-this.vx*4*dt;
+    this.vy+=(ddy/d)*this.speed*rage*8*dt-this.vy*4*dt;
+    this.x+=this.vx*dt;this.y+=this.vy*dt;
+    this.x=Math.max(this.r,Math.min(ARENA_W-this.r,this.x));
+    this.y=Math.max(this.r,Math.min(ARENA_H-this.r,this.y));
+    this._shootTimer-=dt;
+    if(this._shootTimer<=0){
+      this._shootTimer=this._shootCd/rage;
+      const nz=this._getNozzle();
+      const ba=Math.atan2(py-this.y,px-this.x);
+      bullets.push({x:nz.x,y:nz.y,vx:Math.cos(ba)*520,vy:Math.sin(ba)*520,damage:this.damage*rage,owner:'enemy',life:1.4,owner_color:'#ff2200',dirX:Math.cos(ba),dirY:Math.sin(ba)});
+    }
+    const eng=this._getEngine();
+    spawnFlame(this.flames,eng.x,eng.y,this.angle,false);
+    this.flames=updateFlames(this.flames,dt);
+  }
+  draw(ctx){
+    drawHitFlash(ctx,this);
+    ctx.save();ctx.translate(this.x,this.y);ctx.rotate(this.angle);
+    // Desenha como nave triangular vermelha
+    ctx.fillStyle=this.color;ctx.strokeStyle='#ff6600';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(0,-this.r);ctx.lineTo(this.r*0.65,this.r*0.8);ctx.lineTo(-this.r*0.65,this.r*0.8);ctx.closePath();ctx.fill();ctx.stroke();
+    // Núcleo brilhante (aumenta com raiva)
+    const rage=1+(1-this.hp/this.maxHp);
+    ctx.globalAlpha=0.5*rage;ctx.fillStyle='#ffaa00';ctx.shadowColor='#ff4400';ctx.shadowBlur=12*rage;
+    ctx.beginPath();ctx.arc(0,0,this.r*0.3,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+    for(const f of this.flames) drawFlameParticle(ctx,f,'#ff3300');
+    const bw=56,bh=5,bx=this.x-bw/2,by=this.y-this.r-12;
+    ctx.fillStyle='#440000';ctx.fillRect(bx,by,bw,bh);
+    ctx.fillStyle='#ff2200';ctx.fillRect(bx,by,bw*(this.hp/this.maxHp),bh);
+    drawStatusIcons(ctx,this.x,this.y-this.r-22,this);
+  }
+}
+
+// ── Phantom: fica invisível e reaparece atrás do player ─────
+export class PhantomEnemy {
+  constructor(x, y, difficulty){
+    const m=DIFF[difficulty]||1;
+    this.x=x;this.y=y;this.vx=0;this.vy=0;this.angle=0;this._age=0;
+    this.r=32; this.maxHp=150+45*m; this.hp=this.maxHp;
+    this.lives=1;this.maxLives=1; this.speed=180+50*m; this.damage=25*m;
+    this.score=20; this.color='#8800cc';
+    this.dead=false;this._dying=false;this._dyingAge=0;this.shards=[];
+    this._shootTimer=1+Math.random(); this._shootCd=1.1-m*0.1;
+    this._respawnTimer=0;this._respawnDuration=0;this._respawnX=x;this._respawnY=y;
+    this.isAlien=false;this._audio=null;
+    this._invisTimer=0; this._teleportCd=3+Math.random()*2;
+    this.flames=[];
+  }
+  setAudio(a){this._audio=a;}
+  get isRespawning(){return false;}
+  loseLife(){this.dead=true;return false;}
+  startDeath(){this._dying=true;this._dyingAge=0;this.shards=createEnemyShards(this.x,this.y);}
+  _getNozzle(){return{x:this.x+Math.sin(this.angle)*(-36),y:this.y-Math.cos(this.angle)*(-36)};}
+  _getEngine(){return{x:this.x-Math.sin(this.angle)*(-32),y:this.y+Math.cos(this.angle)*(-32)};}
+  update(dt,player,bullets){
+    if(this._dying){this._dyingAge+=dt;for(const s of this.shards){s.age+=dt;s.x+=s.vx*dt;s.y+=s.vy*dt;s.vx*=(1-4*dt);s.vy*=(1-4*dt);s.rot+=s.vr*dt;}if(this._dyingAge>2.0)this.dead=true;return;}
+    if(this.dead)return;
+    this._age+=dt; tickHitFlash(this,dt); tickStatus(this,dt);
+    if(isFrozen(this)){this.vx=0;this.vy=0;return;}
+    this._teleportCd-=dt;
+    if(this._teleportCd<=0){
+      // Teleporta para atrás do player
+      const ba=Math.atan2(player.vy||0,player.vx||0);
+      this.x=player.x+Math.cos(ba+Math.PI)*120;this.y=player.y+Math.sin(ba+Math.PI)*120;
+      this._invisTimer=0.6; this._teleportCd=3+Math.random()*2;
+    }
+    if(this._invisTimer>0)this._invisTimer-=dt;
+    const px=isStunned(this)?this.x:player.x, py=isStunned(this)?this.y:player.y;
+    const ddx=px-this.x,ddy=py-this.y,d=Math.hypot(ddx,ddy)||1;
+    this.angle=Math.atan2(ddx,-ddy)+Math.PI;
+    this.vx+=(ddx/d)*this.speed*8*dt-this.vx*4*dt;
+    this.vy+=(ddy/d)*this.speed*8*dt-this.vy*4*dt;
+    this.x+=this.vx*dt;this.y+=this.vy*dt;
+    this.x=Math.max(this.r,Math.min(ARENA_W-this.r,this.x));
+    this.y=Math.max(this.r,Math.min(ARENA_H-this.r,this.y));
+    this._shootTimer-=dt;
+    if(this._shootTimer<=0){
+      this._shootTimer=this._shootCd;
+      const nz=this._getNozzle();
+      const ba=Math.atan2(py-this.y,px-this.x);
+      bullets.push({x:nz.x,y:nz.y,vx:Math.cos(ba)*500,vy:Math.sin(ba)*500,damage:this.damage,owner:'enemy',life:1.5,owner_color:'#8800cc',dirX:Math.cos(ba),dirY:Math.sin(ba)});
+    }
+    const eng=this._getEngine();
+    spawnFlame(this.flames,eng.x,eng.y,this.angle,false);
+    this.flames=updateFlames(this.flames,dt);
+  }
+  draw(ctx){
+    if(this._invisTimer>0.2)return; // invisível após teleporte
+    drawHitFlash(ctx,this);
+    const alpha=this._invisTimer>0?this._invisTimer/0.2:1;
+    ctx.save();ctx.translate(this.x,this.y);ctx.globalAlpha*=alpha;ctx.rotate(this.angle);
+    ctx.fillStyle=this.color;ctx.strokeStyle='#cc44ff';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(0,-this.r*0.9);ctx.lineTo(this.r*0.55,this.r*0.9);ctx.lineTo(-this.r*0.55,this.r*0.9);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.fillStyle='#cc88ff44';ctx.beginPath();ctx.arc(0,0,this.r*1.1,0,Math.PI*2);ctx.fill();
+    ctx.restore();ctx.globalAlpha=1;
+    for(const f of this.flames) drawFlameParticle(ctx,f,'#8800cc');
+    if(alpha>=1){const bw=52,bh=5,bx=this.x-bw/2,by=this.y-this.r-12;ctx.fillStyle='#220044';ctx.fillRect(bx,by,bw,bh);ctx.fillStyle='#8800cc';ctx.fillRect(bx,by,bw*(this.hp/this.maxHp),bh);}
+    drawStatusIcons(ctx,this.x,this.y-this.r-22,this);
+  }
+}
+
+// ── Juggernaut: enorme e lento, muito HP, projéteis gigantes ─
+export class JuggernautEnemy {
+  constructor(x, y, difficulty){
+    const m=DIFF[difficulty]||1;
+    this.x=x;this.y=y;this.vx=0;this.vy=0;this.angle=0;this._age=0;
+    this.r=62; this.maxHp=600+200*m; this.hp=this.maxHp;
+    this.lives=3;this.maxLives=3; this.speed=70+20*m; this.damage=40*m;
+    this.score=50; this.color='#885500';
+    this.dead=false;this._dying=false;this._dyingAge=0;this.shards=[];
+    this._shootTimer=1.5+Math.random(); this._shootCd=2.0-m*0.2;
+    this._respawnTimer=0;this._respawnDuration=1.5;this._respawnX=x;this._respawnY=y;
+    this.isAlien=false;this._audio=null;this.flames=[];
+  }
+  setAudio(a){this._audio=a;}
+  get isRespawning(){return this._respawnTimer>0;}
+  loseLife(){
+    this.hp=this.maxHp;this.lives--;
+    this._respawnTimer=this._respawnDuration;
+    const margin=80,side=Math.floor(Math.random()*4);
+    if(side===0){this._respawnX=margin+Math.random()*(ARENA_W-margin*2);this._respawnY=margin;}
+    else if(side===1){this._respawnX=ARENA_W-margin;this._respawnY=margin+Math.random()*(ARENA_H-margin*2);}
+    else if(side===2){this._respawnX=margin+Math.random()*(ARENA_W-margin*2);this._respawnY=ARENA_H-margin;}
+    else{this._respawnX=margin;this._respawnY=margin+Math.random()*(ARENA_H-margin*2);}
+    if(this.lives<=0){this.dead=true;return false;}
+    return true;
+  }
+  startDeath(){this._dying=true;this._dyingAge=0;this.shards=createEnemyShards(this.x,this.y);}
+  _getNozzle(){return{x:this.x+Math.sin(this.angle)*(-55),y:this.y-Math.cos(this.angle)*(-55)};}
+  _getEngine(){return{x:this.x-Math.sin(this.angle)*(-55),y:this.y+Math.cos(this.angle)*(-55)};}
+  update(dt,player,bullets){
+    if(this._dying){this._dyingAge+=dt;for(const s of this.shards){s.age+=dt;s.x+=s.vx*dt;s.y+=s.vy*dt;s.vx*=(1-4*dt);s.vy*=(1-4*dt);s.rot+=s.vr*dt;}if(this._dyingAge>3.0)this.dead=true;return;}
+    if(this.dead)return;
+    this._age+=dt;
+    if(this._respawnTimer>0){this._respawnTimer-=dt;const p=1-(this._respawnTimer/this._respawnDuration);this.x+=(this._respawnX-this.x)*Math.min(1,p*3);this.y+=(this._respawnY-this.y)*Math.min(1,p*3);this.vx=0;this.vy=0;return;}
+    tickHitFlash(this,dt);tickStatus(this,dt);
+    if(isFrozen(this)){this.vx=0;this.vy=0;return;}
+    const px=isStunned(this)?this.x:player.x, py=isStunned(this)?this.y:player.y;
+    const ddx=px-this.x,ddy=py-this.y,d=Math.hypot(ddx,ddy)||1;
+    this.angle=Math.atan2(ddx,-ddy)+Math.PI;
+    this.vx+=(ddx/d)*this.speed*5*dt-this.vx*3*dt;
+    this.vy+=(ddy/d)*this.speed*5*dt-this.vy*3*dt;
+    this.x+=this.vx*dt;this.y+=this.vy*dt;
+    this.x=Math.max(this.r,Math.min(ARENA_W-this.r,this.x));
+    this.y=Math.max(this.r,Math.min(ARENA_H-this.r,this.y));
+    this._shootTimer-=dt;
+    if(this._shootTimer<=0){
+      this._shootTimer=this._shootCd;
+      const nz=this._getNozzle();
+      const ba=Math.atan2(py-this.y,px-this.x);
+      // Dispara projétil gigante + 2 laterais
+      for(let i=-1;i<=1;i++){
+        const a=ba+i*0.28;
+        bullets.push({x:nz.x,y:nz.y,vx:Math.cos(a)*360,vy:Math.sin(a)*360,damage:this.damage*(i===0?1.5:0.8),owner:'enemy',life:2,owner_color:'#cc8800',r:i===0?14:8,dirX:Math.cos(a),dirY:Math.sin(a)});
+      }
+    }
+    const eng=this._getEngine();
+    spawnFlame(this.flames,eng.x,eng.y,this.angle,false);
+    this.flames=updateFlames(this.flames,dt);
+  }
+  draw(ctx){
+    drawHitFlash(ctx,this);
+    ctx.save();ctx.translate(this.x,this.y);ctx.rotate(this.angle);
+    ctx.fillStyle=this.color;ctx.strokeStyle='#ffaa00';ctx.lineWidth=3;
+    ctx.beginPath();ctx.rect(-this.r*0.7,-this.r,this.r*1.4,this.r*2);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#ffcc4433';ctx.beginPath();ctx.arc(0,0,this.r*0.55,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+    for(const f of this.flames) drawFlameParticle(ctx,f,'#cc8800');
+    const bw=80,bh=7,bx=this.x-bw/2,by=this.y-this.r-16;
+    ctx.fillStyle='#332200';ctx.fillRect(bx,by,bw,bh);
+    ctx.fillStyle='#ff8800';ctx.fillRect(bx,by,bw*(this.hp/this.maxHp),bh);
+    drawStatusIcons(ctx,this.x,this.y-this.r-28,this);
+  }
+}
+
+// ── SniperEnemy: fica longe e atira balas precisas e rápidas ─
+export class SniperEnemy {
+  constructor(x, y, difficulty){
+    const m=DIFF[difficulty]||1;
+    this.x=x;this.y=y;this.vx=0;this.vy=0;this.angle=0;this._age=0;
+    this.r=28; this.maxHp=120+38*m; this.hp=this.maxHp;
+    this.lives=1;this.maxLives=1; this.speed=110+25*m; this.damage=50*m;
+    this.score=22; this.color='#00ccff';
+    this.dead=false;this._dying=false;this._dyingAge=0;this.shards=[];
+    this._shootTimer=1.8+Math.random(); this._shootCd=2.2-m*0.2;
+    this._respawnTimer=0;this._respawnDuration=0;this._respawnX=x;this._respawnY=y;
+    this.isAlien=false;this._audio=null;this.flames=[];
+    this._preferDist=320+Math.random()*80;
+  }
+  setAudio(a){this._audio=a;}
+  get isRespawning(){return false;}
+  loseLife(){this.dead=true;return false;}
+  startDeath(){this._dying=true;this._dyingAge=0;this.shards=createEnemyShards(this.x,this.y);}
+  _getNozzle(){return{x:this.x+Math.sin(this.angle)*(-32),y:this.y-Math.cos(this.angle)*(-32)};}
+  _getEngine(){return{x:this.x-Math.sin(this.angle)*(-28),y:this.y+Math.cos(this.angle)*(-28)};}
+  update(dt,player,bullets){
+    if(this._dying){this._dyingAge+=dt;for(const s of this.shards){s.age+=dt;s.x+=s.vx*dt;s.y+=s.vy*dt;s.vx*=(1-4*dt);s.vy*=(1-4*dt);s.rot+=s.vr*dt;}if(this._dyingAge>1.8)this.dead=true;return;}
+    if(this.dead)return;
+    this._age+=dt; tickHitFlash(this,dt); tickStatus(this,dt);
+    if(isFrozen(this)){this.vx=0;this.vy=0;return;}
+    const px=isStunned(this)?this.x:player.x, py=isStunned(this)?this.y:player.y;
+    const ddx=px-this.x,ddy=py-this.y,d=Math.hypot(ddx,ddy)||1;
+    this.angle=Math.atan2(ddx,-ddy)+Math.PI;
+    // Mantém distância preferida
+    const diff=d-this._preferDist;
+    const moveDir=diff>0?1:-1;
+    this.vx+=(ddx/d)*this.speed*moveDir*5*dt-this.vx*3*dt;
+    this.vy+=(ddy/d)*this.speed*moveDir*5*dt-this.vy*3*dt;
+    this.x+=this.vx*dt;this.y+=this.vy*dt;
+    this.x=Math.max(this.r,Math.min(ARENA_W-this.r,this.x));
+    this.y=Math.max(this.r,Math.min(ARENA_H-this.r,this.y));
+    this._shootTimer-=dt;
+    if(this._shootTimer<=0){
+      this._shootTimer=this._shootCd;
+      const nz=this._getNozzle();
+      // Prediz posição do player
+      const dist=Math.hypot(px-this.x,py-this.y);
+      const tof=dist/900;
+      const predX=px+(player.vx||0)*tof,predY=py+(player.vy||0)*tof;
+      const ba=Math.atan2(predY-this.y,predX-this.x);
+      bullets.push({x:nz.x,y:nz.y,vx:Math.cos(ba)*900,vy:Math.sin(ba)*900,damage:this.damage,owner:'enemy',life:1.6,owner_color:'#00ccff',r:4,dirX:Math.cos(ba),dirY:Math.sin(ba)});
+    }
+    const eng=this._getEngine();
+    spawnFlame(this.flames,eng.x,eng.y,this.angle,false);
+    this.flames=updateFlames(this.flames,dt);
+  }
+  draw(ctx){
+    drawHitFlash(ctx,this);
+    ctx.save();ctx.translate(this.x,this.y);ctx.rotate(this.angle);
+    ctx.fillStyle=this.color;ctx.strokeStyle='#88eeff';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(0,-this.r*1.2);ctx.lineTo(this.r*0.4,this.r*0.6);ctx.lineTo(-this.r*0.4,this.r*0.6);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.restore();
+    for(const f of this.flames) drawFlameParticle(ctx,f,'#00ccff');
+    const bw=48,bh=5,bx=this.x-bw/2,by=this.y-this.r-14;
+    ctx.fillStyle='#002244';ctx.fillRect(bx,by,bw,bh);
+    ctx.fillStyle='#00ccff';ctx.fillRect(bx,by,bw*(this.hp/this.maxHp),bh);
+    drawStatusIcons(ctx,this.x,this.y-this.r-22,this);
+  }
+}
+
+// ── BomberEnemy: planta minas ao se mover ────────────────────
+export class BomberEnemy {
+  constructor(x, y, difficulty){
+    const m=DIFF[difficulty]||1;
+    this.x=x;this.y=y;this.vx=0;this.vy=0;this.angle=0;this._age=0;
+    this.r=34; this.maxHp=160+50*m; this.hp=this.maxHp;
+    this.lives=1;this.maxLives=1; this.speed=140+40*m; this.damage=60*m;
+    this.score=24; this.color='#ff6600';
+    this.dead=false;this._dying=false;this._dyingAge=0;this.shards=[];
+    this._shootTimer=0; this._shootCd=0; // não atira — planta minas
+    this._respawnTimer=0;this._respawnDuration=0;this._respawnX=x;this._respawnY=y;
+    this.isAlien=false;this._audio=null;this.flames=[];
+    this._mineCd=1.5+Math.random(); this._pendingMines=[]; // game.js coleta
+  }
+  setAudio(a){this._audio=a;}
+  get isRespawning(){return false;}
+  loseLife(){this.dead=true;return false;}
+  startDeath(){this._dying=true;this._dyingAge=0;this.shards=createEnemyShards(this.x,this.y);}
+  _getEngine(){return{x:this.x,y:this.y+this.r*0.8};}
+  consumePendingMines(){const m=this._pendingMines.slice();this._pendingMines=[];return m;}
+  update(dt,player,bullets){
+    if(this._dying){this._dyingAge+=dt;for(const s of this.shards){s.age+=dt;s.x+=s.vx*dt;s.y+=s.vy*dt;s.vx*=(1-4*dt);s.vy*=(1-4*dt);s.rot+=s.vr*dt;}if(this._dyingAge>1.8)this.dead=true;return;}
+    if(this.dead)return;
+    this._age+=dt; tickHitFlash(this,dt); tickStatus(this,dt);
+    if(isFrozen(this)){this.vx=0;this.vy=0;return;}
+    const px=isStunned(this)?this.x:player.x, py=isStunned(this)?this.y:player.y;
+    const ddx=px-this.x,ddy=py-this.y,d=Math.hypot(ddx,ddy)||1;
+    this.angle=Math.atan2(ddx,-ddy)+Math.PI;
+    // Oscila levemente ao redor do player
+    const perp=Math.atan2(ddy,ddx)+Math.PI/2;
+    const wobble=Math.sin(this._age*1.4)*80;
+    const tx=px+Math.cos(perp)*wobble-ddx*0.3, ty=py+Math.sin(perp)*wobble-ddy*0.3;
+    const tdx=tx-this.x,tdy=ty-this.y,td=Math.hypot(tdx,tdy)||1;
+    this.vx+=(tdx/td)*this.speed*6*dt-this.vx*4*dt;
+    this.vy+=(tdy/td)*this.speed*6*dt-this.vy*4*dt;
+    this.x+=this.vx*dt;this.y+=this.vy*dt;
+    this.x=Math.max(this.r,Math.min(ARENA_W-this.r,this.x));
+    this.y=Math.max(this.r,Math.min(ARENA_H-this.r,this.y));
+    this._mineCd-=dt;
+    if(this._mineCd<=0){
+      this._mineCd=1.5+Math.random();
+      this._pendingMines.push({x:this.x+(Math.random()-0.5)*30,y:this.y+(Math.random()-0.5)*30});
+    }
+    const eng=this._getEngine();
+    spawnFlame(this.flames,eng.x,eng.y,this.angle,false);
+    this.flames=updateFlames(this.flames,dt);
+  }
+  draw(ctx){
+    drawHitFlash(ctx,this);
+    ctx.save();ctx.translate(this.x,this.y);ctx.rotate(this.angle);
+    ctx.fillStyle=this.color;ctx.strokeStyle='#ffaa22';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(0,0,this.r,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#222';ctx.font='bold 14px system-ui';ctx.textAlign='center';
+    ctx.fillText('!',0,5);
+    ctx.restore();
+    for(const f of this.flames) drawFlameParticle(ctx,f,'#ff6600');
+    const bw=52,bh=5,bx=this.x-bw/2,by=this.y-this.r-14;
+    ctx.fillStyle='#331100';ctx.fillRect(bx,by,bw,bh);
+    ctx.fillStyle='#ff6600';ctx.fillRect(bx,by,bw*(this.hp/this.maxHp),bh);
+    drawStatusIcons(ctx,this.x,this.y-this.r-22,this);
+  }
+}
+
+// ── Reaper: drena HP ao acertar, regenera vida própria ──────
+export class ReaperEnemy {
+  constructor(x, y, difficulty){
+    const m=DIFF[difficulty]||1;
+    this.x=x;this.y=y;this.vx=0;this.vy=0;this.angle=0;this._age=0;
+    this.r=40; this.maxHp=260+80*m; this.hp=this.maxHp;
+    this.lives=1;this.maxLives=1; this.speed=150+40*m; this.damage=18*m;
+    this.score=28; this.color='#440088';
+    this.dead=false;this._dying=false;this._dyingAge=0;this.shards=[];
+    this._shootTimer=1+Math.random()*0.5; this._shootCd=1.2-m*0.1;
+    this._respawnTimer=0;this._respawnDuration=0;this._respawnX=x;this._respawnY=y;
+    this.isAlien=false;this._audio=null;this.flames=[];
+    this._regenTick=0;
+  }
+  setAudio(a){this._audio=a;}
+  get isRespawning(){return false;}
+  loseLife(){this.dead=true;return false;}
+  startDeath(){this._dying=true;this._dyingAge=0;this.shards=createEnemyShards(this.x,this.y);}
+  _getNozzle(){return{x:this.x+Math.sin(this.angle)*(-42),y:this.y-Math.cos(this.angle)*(-42)};}
+  _getEngine(){return{x:this.x-Math.sin(this.angle)*(-38),y:this.y+Math.cos(this.angle)*(-38)};}
+  update(dt,player,bullets){
+    if(this._dying){this._dyingAge+=dt;for(const s of this.shards){s.age+=dt;s.x+=s.vx*dt;s.y+=s.vy*dt;s.vx*=(1-4*dt);s.vy*=(1-4*dt);s.rot+=s.vr*dt;}if(this._dyingAge>2.2)this.dead=true;return;}
+    if(this.dead)return;
+    this._age+=dt; tickHitFlash(this,dt); tickStatus(this,dt);
+    if(isFrozen(this)){this.vx=0;this.vy=0;return;}
+    // Regen passiva
+    this._regenTick+=dt;
+    if(this._regenTick>=1){this._regenTick=0;this.hp=Math.min(this.maxHp,this.hp+8);}
+    const px=isStunned(this)?this.x:player.x, py=isStunned(this)?this.y:player.y;
+    const ddx=px-this.x,ddy=py-this.y,d=Math.hypot(ddx,ddy)||1;
+    this.angle=Math.atan2(ddx,-ddy)+Math.PI;
+    this.vx+=(ddx/d)*this.speed*7*dt-this.vx*4*dt;
+    this.vy+=(ddy/d)*this.speed*7*dt-this.vy*4*dt;
+    this.x+=this.vx*dt;this.y+=this.vy*dt;
+    this.x=Math.max(this.r,Math.min(ARENA_W-this.r,this.x));
+    this.y=Math.max(this.r,Math.min(ARENA_H-this.r,this.y));
+    this._shootTimer-=dt;
+    if(this._shootTimer<=0){
+      this._shootTimer=this._shootCd;
+      const nz=this._getNozzle();
+      const ba=Math.atan2(py-this.y,px-this.x);
+      // Tiro drena vida: propriedade lifeSteal para combat.js
+      bullets.push({x:nz.x,y:nz.y,vx:Math.cos(ba)*480,vy:Math.sin(ba)*480,damage:this.damage,owner:'enemy',life:1.5,owner_color:'#8800ff',lifeSteal:this,dirX:Math.cos(ba),dirY:Math.sin(ba)});
+    }
+    const eng=this._getEngine();
+    spawnFlame(this.flames,eng.x,eng.y,this.angle,false);
+    this.flames=updateFlames(this.flames,dt);
+  }
+  draw(ctx){
+    drawHitFlash(ctx,this);
+    ctx.save();ctx.translate(this.x,this.y);ctx.rotate(this.angle);
+    ctx.fillStyle=this.color;ctx.strokeStyle='#aa44ff';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(0,-this.r);ctx.lineTo(this.r*0.5,0);ctx.lineTo(this.r*0.5,this.r*0.8);ctx.lineTo(-this.r*0.5,this.r*0.8);ctx.lineTo(-this.r*0.5,0);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.fillStyle='#aa44ff44';ctx.beginPath();ctx.arc(0,-this.r*0.3,this.r*0.3,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+    for(const f of this.flames) drawFlameParticle(ctx,f,'#440088');
+    const bw=60,bh=5,bx=this.x-bw/2,by=this.y-this.r-14;
+    ctx.fillStyle='#110022';ctx.fillRect(bx,by,bw,bh);
+    ctx.fillStyle='#8800ff';ctx.fillRect(bx,by,bw*(this.hp/this.maxHp),bh);
+    drawStatusIcons(ctx,this.x,this.y-this.r-22,this);
+  }
+}
+
+// ── SpeedDemon: extremamente rápido, zigzague, difícil de acertar ─
+export class SpeedDemonEnemy {
+  constructor(x, y, difficulty){
+    const m=DIFF[difficulty]||1;
+    this.x=x;this.y=y;this.vx=0;this.vy=0;this.angle=0;this._age=0;
+    this.r=20; this.maxHp=90+28*m; this.hp=this.maxHp;
+    this.lives=1;this.maxLives=1; this.speed=380+100*m; this.damage=14*m;
+    this.score=14; this.color='#00ff88';
+    this.dead=false;this._dying=false;this._dyingAge=0;this.shards=[];
+    this._shootTimer=0.5+Math.random()*0.3; this._shootCd=0.7-m*0.08;
+    this._respawnTimer=0;this._respawnDuration=0;this._respawnX=x;this._respawnY=y;
+    this.isAlien=false;this._audio=null;this.flames=[];
+    this._zigzagAngle=Math.random()*Math.PI*2; this._zigzagTimer=0.18+Math.random()*0.12;
+  }
+  setAudio(a){this._audio=a;}
+  get isRespawning(){return false;}
+  loseLife(){this.dead=true;return false;}
+  startDeath(){this._dying=true;this._dyingAge=0;this.shards=createEnemyShards(this.x,this.y);}
+  _getNozzle(){return{x:this.x+Math.sin(this.angle)*(-22),y:this.y-Math.cos(this.angle)*(-22)};}
+  _getEngine(){return{x:this.x-Math.sin(this.angle)*(-20),y:this.y+Math.cos(this.angle)*(-20)};}
+  update(dt,player,bullets){
+    if(this._dying){this._dyingAge+=dt;for(const s of this.shards){s.age+=dt;s.x+=s.vx*dt;s.y+=s.vy*dt;s.vx*=(1-4*dt);s.vy*=(1-4*dt);s.rot+=s.vr*dt;}if(this._dyingAge>1.4)this.dead=true;return;}
+    if(this.dead)return;
+    this._age+=dt; tickHitFlash(this,dt); tickStatus(this,dt);
+    if(isFrozen(this)){this.vx=0;this.vy=0;return;}
+    this._zigzagTimer-=dt;
+    if(this._zigzagTimer<=0){this._zigzagTimer=0.18+Math.random()*0.12;this._zigzagAngle=(Math.random()-0.5)*Math.PI;}
+    const px=isStunned(this)?this.x:player.x, py=isStunned(this)?this.y:player.y;
+    const baseA=Math.atan2(py-this.y,px-this.x);
+    const moveA=baseA+this._zigzagAngle;
+    this.angle=Math.atan2(Math.sin(moveA),-Math.cos(moveA));
+    this.vx+=(Math.cos(moveA)*this.speed*10*dt-this.vx)*0.5;
+    this.vy+=(Math.sin(moveA)*this.speed*10*dt-this.vy)*0.5;
+    this.x+=this.vx*dt;this.y+=this.vy*dt;
+    this.x=Math.max(this.r,Math.min(ARENA_W-this.r,this.x));
+    this.y=Math.max(this.r,Math.min(ARENA_H-this.r,this.y));
+    this._shootTimer-=dt;
+    if(this._shootTimer<=0){
+      this._shootTimer=this._shootCd;
+      const nz=this._getNozzle();
+      const ba=Math.atan2(py-this.y,px-this.x);
+      bullets.push({x:nz.x,y:nz.y,vx:Math.cos(ba)*580,vy:Math.sin(ba)*580,damage:this.damage,owner:'enemy',life:1.2,owner_color:'#00ff88',dirX:Math.cos(ba),dirY:Math.sin(ba)});
+    }
+    const eng=this._getEngine();
+    spawnFlame(this.flames,eng.x,eng.y,this.angle,false);
+    this.flames=updateFlames(this.flames,dt);
+  }
+  draw(ctx){
+    drawHitFlash(ctx,this);
+    ctx.save();ctx.translate(this.x,this.y);ctx.rotate(this.angle);
+    ctx.fillStyle=this.color;ctx.strokeStyle='#88ffcc';ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.moveTo(0,-this.r*1.1);ctx.lineTo(this.r*0.5,this.r);ctx.lineTo(0,this.r*0.4);ctx.lineTo(-this.r*0.5,this.r);ctx.closePath();ctx.fill();ctx.stroke();
+    ctx.restore();
+    for(const f of this.flames) drawFlameParticle(ctx,f,'#00ff88');
+    const bw=42,bh=4,bx=this.x-bw/2,by=this.y-this.r-12;
+    ctx.fillStyle='#002211';ctx.fillRect(bx,by,bw,bh);
+    ctx.fillStyle='#00ff88';ctx.fillRect(bx,by,bw*(this.hp/this.maxHp),bh);
+    drawStatusIcons(ctx,this.x,this.y-this.r-20,this);
+  }
+}
+
+// ── TankEnemy: escudo regenerável, muito resistente ──────────
+export class TankEnemy {
+  constructor(x, y, difficulty){
+    const m=DIFF[difficulty]||1;
+    this.x=x;this.y=y;this.vx=0;this.vy=0;this.angle=0;this._age=0;
+    this.r=48; this.maxHp=400+130*m; this.hp=this.maxHp;
+    this.maxShield=120+40*m; this.shield=this.maxShield;
+    this.lives=2;this.maxLives=2; this.speed=100+25*m; this.damage=25*m;
+    this.score=35; this.color='#336699';
+    this.dead=false;this._dying=false;this._dyingAge=0;this.shards=[];
+    this._shootTimer=1.2+Math.random(); this._shootCd=1.5-m*0.15;
+    this._respawnTimer=0;this._respawnDuration=1.2;this._respawnX=x;this._respawnY=y;
+    this.isAlien=false;this._audio=null;this.flames=[];
+    this._shieldRegenTick=0;
+  }
+  setAudio(a){this._audio=a;}
+  get isRespawning(){return this._respawnTimer>0;}
+  loseLife(){
+    this.hp=this.maxHp;this.shield=this.maxShield;this.lives--;
+    this._respawnTimer=this._respawnDuration;
+    const margin=80,side=Math.floor(Math.random()*4);
+    if(side===0){this._respawnX=margin+Math.random()*(ARENA_W-margin*2);this._respawnY=margin;}
+    else if(side===1){this._respawnX=ARENA_W-margin;this._respawnY=margin+Math.random()*(ARENA_H-margin*2);}
+    else if(side===2){this._respawnX=margin+Math.random()*(ARENA_W-margin*2);this._respawnY=ARENA_H-margin;}
+    else{this._respawnX=margin;this._respawnY=margin+Math.random()*(ARENA_H-margin*2);}
+    if(this.lives<=0){this.dead=true;return false;}
+    return true;
+  }
+  startDeath(){this._dying=true;this._dyingAge=0;this.shards=createEnemyShards(this.x,this.y);}
+  _getNozzle(){return{x:this.x+Math.sin(this.angle)*(-50),y:this.y-Math.cos(this.angle)*(-50)};}
+  _getEngine(){return{x:this.x-Math.sin(this.angle)*(-46),y:this.y+Math.cos(this.angle)*(-46)};}
+  takeDamage(amount){
+    if(this.shield>0){const abs=Math.min(this.shield,amount);this.shield-=abs;amount-=abs;}
+    this.hp-=amount;this._shieldRegenTick=0;
+  }
+  update(dt,player,bullets){
+    if(this._dying){this._dyingAge+=dt;for(const s of this.shards){s.age+=dt;s.x+=s.vx*dt;s.y+=s.vy*dt;s.vx*=(1-4*dt);s.vy*=(1-4*dt);s.rot+=s.vr*dt;}if(this._dyingAge>2.5)this.dead=true;return;}
+    if(this.dead)return;
+    this._age+=dt;
+    if(this._respawnTimer>0){this._respawnTimer-=dt;const p=1-(this._respawnTimer/this._respawnDuration);this.x+=(this._respawnX-this.x)*Math.min(1,p*3);this.y+=(this._respawnY-this.y)*Math.min(1,p*3);this.vx=0;this.vy=0;return;}
+    tickHitFlash(this,dt);tickStatus(this,dt);
+    if(isFrozen(this)){this.vx=0;this.vy=0;return;}
+    this._shieldRegenTick+=dt;
+    if(this._shieldRegenTick>=2)this.shield=Math.min(this.maxShield,this.shield+15*dt);
+    const px=isStunned(this)?this.x:player.x, py=isStunned(this)?this.y:player.y;
+    const ddx=px-this.x,ddy=py-this.y,d=Math.hypot(ddx,ddy)||1;
+    this.angle=Math.atan2(ddx,-ddy)+Math.PI;
+    this.vx+=(ddx/d)*this.speed*5*dt-this.vx*3*dt;
+    this.vy+=(ddy/d)*this.speed*5*dt-this.vy*3*dt;
+    this.x+=this.vx*dt;this.y+=this.vy*dt;
+    this.x=Math.max(this.r,Math.min(ARENA_W-this.r,this.x));
+    this.y=Math.max(this.r,Math.min(ARENA_H-this.r,this.y));
+    this._shootTimer-=dt;
+    if(this._shootTimer<=0){
+      this._shootTimer=this._shootCd;
+      const nz=this._getNozzle();
+      const ba=Math.atan2(py-this.y,px-this.x);
+      bullets.push({x:nz.x,y:nz.y,vx:Math.cos(ba)*400,vy:Math.sin(ba)*400,damage:this.damage,owner:'enemy',life:1.8,owner_color:'#5588bb',r:7,dirX:Math.cos(ba),dirY:Math.sin(ba)});
+    }
+    const eng=this._getEngine();
+    spawnFlame(this.flames,eng.x,eng.y,this.angle,false);
+    this.flames=updateFlames(this.flames,dt);
+  }
+  draw(ctx){
+    drawHitFlash(ctx,this);
+    if(this.shield>0){
+      ctx.save();ctx.translate(this.x,this.y);
+      ctx.strokeStyle='#44aaff';ctx.lineWidth=3;ctx.globalAlpha=0.5*(this.shield/this.maxShield);
+      ctx.shadowColor='#44aaff';ctx.shadowBlur=12;
+      ctx.beginPath();ctx.arc(0,0,this.r+10,0,Math.PI*2);ctx.stroke();
+      ctx.restore();ctx.globalAlpha=1;
+    }
+    ctx.save();ctx.translate(this.x,this.y);ctx.rotate(this.angle);
+    ctx.fillStyle=this.color;ctx.strokeStyle='#8844aa';ctx.lineWidth=3;
+    ctx.beginPath();ctx.rect(-this.r*0.75,-this.r,this.r*1.5,this.r*2);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#aaccff22';ctx.beginPath();ctx.arc(0,0,this.r*0.4,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+    for(const f of this.flames) drawFlameParticle(ctx,f,'#336699');
+    const bw=72,bh=7,bx=this.x-bw/2,by=this.y-this.r-18;
+    ctx.fillStyle='#111122';ctx.fillRect(bx,by,bw,bh);
+    ctx.fillStyle='#336699';ctx.fillRect(bx,by,bw*(this.hp/this.maxHp),bh);
+    if(this.shield>0){ctx.fillStyle='#44aaff';ctx.fillRect(bx,by+bh+2,bw*(this.shield/this.maxShield),4);}
+    drawStatusIcons(ctx,this.x,this.y-this.r-30,this);
+  }
+}
+
+// Auxiliar visual compartilhado pelos novos inimigos
+function drawFlameParticle(ctx, f, fallbackColor) {
+  const t=f.life/f.maxLife;
+  ctx.save();ctx.globalAlpha=Math.min(1,t*1.2);
+  ctx.fillStyle=fallbackColor||'#ff4400';ctx.shadowColor=fallbackColor||'#ff4400';ctx.shadowBlur=8*t;
+  ctx.beginPath();ctx.arc(f.x,f.y,Math.max(0.5,f.size*t),0,Math.PI*2);ctx.fill();
+  ctx.restore();
+}
+
 // ── Gerenciador de inimigos ───────────────────────────────────
 export class EnemyManager {
   constructor(mode='contra1', difficulty='moderado') {
@@ -1045,16 +1690,27 @@ export class EnemyManager {
     if (this.mode==='teste') {
       this.toSpawn=['guardian'];
     } else if (isContra1) {
-      // A partir da onda 2 mistura drones; a partir da onda 4 adiciona guardião
-      if (this.wave >= 4 && Math.random() < 0.3) this.toSpawn=['guardian'];
+      if (this.wave >= 6 && Math.random() < 0.2) this.toSpawn=['juggernaut'];
+      else if (this.wave >= 5 && Math.random() < 0.2) this.toSpawn=['tank'];
+      else if (this.wave >= 4 && Math.random() < 0.3) this.toSpawn=['guardian'];
+      else if (this.wave >= 3 && Math.random() < 0.25) this.toSpawn=['berserker'];
       else if (this.wave >= 2 && Math.random() < 0.4) this.toSpawn=['drone'];
       else this.toSpawn=['smart'];
     } else {
-      const count=Math.min(2+this.wave,6);
+      const count=Math.min(2+this.wave,7);
       this.toSpawn=[];
       for (let i=0;i<count;i++) {
-        // A partir da onda 2, mistura drones (~40%)
-        if (this.wave>=2 && Math.random()<0.4) this.toSpawn.push('drone');
+        const r=Math.random();
+        if (this.wave>=8 && r<0.12) this.toSpawn.push('juggernaut');
+        else if (this.wave>=6 && r<0.15) this.toSpawn.push('tank');
+        else if (this.wave>=5 && r<0.12) this.toSpawn.push('reaper');
+        else if (this.wave>=4 && r<0.14) this.toSpawn.push('sniper_e');
+        else if (this.wave>=4 && r<0.12) this.toSpawn.push('bomber');
+        else if (this.wave>=3 && r<0.12) this.toSpawn.push('disc');
+        else if (this.wave>=3 && r<0.14) this.toSpawn.push('phantom');
+        else if (this.wave>=2 && r<0.18) this.toSpawn.push('berserker');
+        else if (this.wave>=2 && r<0.22) this.toSpawn.push('speed_demon');
+        else if (this.wave>=2 && r<0.40) this.toSpawn.push('drone');
         else this.toSpawn.push('smart');
       }
     }
@@ -1107,6 +1763,33 @@ export class EnemyManager {
       } else if (type==='drone') {
         const {x,y}=this._edge();
         e=new DroneEnemy(x,y,this.difficulty);
+      } else if (type==='disc') {
+        const {x,y}=this._edge();
+        e=new DiscEnemy(x,y,this.difficulty);
+      } else if (type==='berserker') {
+        const {x,y}=this._edge();
+        e=new BerserkerEnemy(x,y,this.difficulty);
+      } else if (type==='phantom') {
+        const {x,y}=this._edge();
+        e=new PhantomEnemy(x,y,this.difficulty);
+      } else if (type==='juggernaut') {
+        const {x,y}=this._edge();
+        e=new JuggernautEnemy(x,y,this.difficulty);
+      } else if (type==='sniper_e') {
+        const {x,y}=this._edge();
+        e=new SniperEnemy(x,y,this.difficulty);
+      } else if (type==='bomber') {
+        const {x,y}=this._edge();
+        e=new BomberEnemy(x,y,this.difficulty);
+      } else if (type==='reaper') {
+        const {x,y}=this._edge();
+        e=new ReaperEnemy(x,y,this.difficulty);
+      } else if (type==='speed_demon') {
+        const {x,y}=this._edge();
+        e=new SpeedDemonEnemy(x,y,this.difficulty);
+      } else if (type==='tank') {
+        const {x,y}=this._edge();
+        e=new TankEnemy(x,y,this.difficulty);
       } else {
         const {x,y}=this._edge();
         const lives=this.mode==='contra1'?this._enemyLives:1;
