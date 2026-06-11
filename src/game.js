@@ -360,7 +360,7 @@ export class Game {
         onServerNotice: msg=>{
           if (msg.level==='off') { this._serverNotice=null; return; }
           this._serverNotice = { level: msg.level, text: msg.text, subtext: msg.subtext, since: performance.now() };
-          if (msg.level==='warning') this._playVoice('inatividade', 0.8);
+          this._playVoice('manuteção', 0.9, /*priority=*/true);
         },
         onPlayerReplacedByBot: msg=>this._onPlayerReplacedByBot(msg),
         onMatchStart: msg=>this._onMatchStart(msg),
@@ -1697,12 +1697,29 @@ export class Game {
     }, 700);
   }
 
-  _playVoice(name, volume=0.85) {
+  // Fila de voz: se uma narração estiver tocando, espera terminar antes de tocar a próxima.
+  // Vozes de prioridade alta (ex: manutenção) pulam para o início da fila.
+  _playVoice(name, volume=0.85, priority=false) {
+    if (!this._voiceQueue) {
+      this._voiceQueue = [];
+      this._voicePlaying = false;
+    }
+    if (priority) this._voiceQueue.unshift({ name, volume });
+    else          this._voiceQueue.push({ name, volume });
+    if (!this._voicePlaying) this._voiceNext();
+  }
+
+  _voiceNext() {
+    if (!this._voiceQueue?.length) { this._voicePlaying = false; return; }
+    this._voicePlaying = true;
+    const { name, volume } = this._voiceQueue.shift();
     try {
       const audio = new Audio(`./sound/voice/${name}.mp3`);
       audio.volume = volume;
-      audio.play().catch(()=>{});
-    } catch(e) {}
+      audio.onended  = () => this._voiceNext();
+      audio.onerror  = () => this._voiceNext();
+      audio.play().catch(() => this._voiceNext());
+    } catch(e) { this._voiceNext(); }
   }
 
   _playElectricWallsAudio() {
