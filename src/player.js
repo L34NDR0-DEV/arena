@@ -422,8 +422,11 @@ export class Player {
     this.team=null; // atribuído no modo "Equipe Online" (PvP em times)
     this.itemTypeCounts={}; // { 'HEALTH': 3, 'MINE': 1, ... }
 
-    this.activeWeaponType = null; // tipo de arma equipada ('LASER', 'SHOTGUN', etc.)
-    this._weaponCooldowns = {}; // cooldowns por tipo de arma (boomerang, quantum etc.)
+    this.activeWeaponType = null;
+    this.weaponSlots = [null,null,null,null,null]; // slots R T Y U I
+    this.extraWeaponSlot = null;                   // slot extra L
+    this.activeWeaponSlot = -1;
+    this._weaponCooldowns = {};
 
     this.shootCd=0; this.dashCd=0; this.dashTimer=0;
     this.dashDx=0; this.dashDy=0; this.dashing=false; this.invincible=0;
@@ -606,10 +609,10 @@ export class Player {
     // Malefício — efeito imediato negativo (não vai para slot)
     if (def.harmful) { this.applyHarmful(it.type); return { type:'harmful', item:it }; }
 
-    // Arma — equipa diretamente (primeiro coletado = padrão; não vai para inventário)
+    // Arma — vai para slot de arma (R T Y U I ou L extra)
     if (def.weaponType) {
-      this.equipWeapon(it.type);
-      return { type:'weapon', item:it };
+      const r = this.equipWeapon(it.type);
+      return { type:'weapon', item:it, slot: r?.slot, extra: r?.extra };
     }
 
     // Todos os outros itens vão para o inventário (slot 1-5 ou extra X)
@@ -1013,11 +1016,44 @@ export class Player {
   }
 
   equipWeapon(type) {
-    // Equipa arma — se já tem uma, a anterior é descartada (sem reembolso)
-    if (!this.activeWeaponType) {
-      this.activeWeaponType = type;
+    // Tenta colocar no primeiro slot de arma vazio (R T Y U I)
+    if (!this.weaponSlots) { this.weaponSlots = [null,null,null,null,null]; this.activeWeaponSlot = -1; this.extraWeaponSlot = null; }
+    const empty = this.weaponSlots.indexOf(null);
+    if (empty !== -1) {
+      this.weaponSlots[empty] = type;
+      if (this.activeWeaponSlot === -1) this.activeWeaponSlot = empty;
+      this.activeWeaponType = this.weaponSlots[this.activeWeaponSlot];
+      return { slot: empty, extra: false };
     }
-    // "Primeiro coletado = padrão": só substitui se não tiver nenhuma
+    // Slots cheios — vai para slot extra L (substitui o anterior)
+    this.extraWeaponSlot = type;
+    return { slot: 5, extra: true };
+  }
+
+  selectWeaponSlot(idx) {
+    if (!this.weaponSlots) return;
+    if (idx === 5) {
+      if (!this.extraWeaponSlot) return;
+      this.activeWeaponSlot = 5;
+      this.activeWeaponType = this.extraWeaponSlot;
+    } else {
+      if (!this.weaponSlots[idx]) return;
+      this.activeWeaponSlot = idx;
+      this.activeWeaponType = this.weaponSlots[idx];
+    }
+  }
+
+  dropExtraWeapon() {
+    if (!this.weaponSlots) return;
+    if (this.activeWeaponSlot === 5) {
+      this.extraWeaponSlot = null;
+      // volta para o primeiro slot com arma
+      const fallback = this.weaponSlots.findIndex(w => w !== null);
+      this.activeWeaponSlot = fallback;
+      this.activeWeaponType = fallback >= 0 ? this.weaponSlots[fallback] : null;
+    } else {
+      this.extraWeaponSlot = null;
+    }
   }
 
   _shoot(tx, ty, bullets, combat) {

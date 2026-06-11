@@ -618,14 +618,28 @@ export class Item {
     ctx.fillStyle = g;
     ctx.beginPath(); ctx.arc(0,0,vr*2.8,0,Math.PI*2); ctx.fill();
 
-    // Círculo base — cor diferente por raridade
+    const isWeapon = this.def.weaponType;
     const bgColor = harmful ? '#1a0420' : (legendary ? '#18120a' : (rarity==='epic' ? '#0a0818' : '#08101e'));
     ctx.fillStyle = bgColor;
     ctx.strokeStyle = color;
     ctx.lineWidth = legendary ? 3 : (rarity==='epic' ? 2.5 : 2);
     ctx.shadowColor = color;
     ctx.shadowBlur = legendary ? 20 : (harmful ? 14 : 8);
-    ctx.beginPath(); ctx.arc(0,0,vr,0,Math.PI*2); ctx.fill(); ctx.stroke();
+
+    if (isWeapon) {
+      // Armas: quadrado com cantos retos (arcade)
+      const r = 3, sz = vr;
+      ctx.beginPath();
+      ctx.moveTo(-sz+r,-sz); ctx.lineTo(sz-r,-sz); ctx.lineTo(sz,-sz+r);
+      ctx.lineTo(sz,sz-r); ctx.lineTo(sz-r,sz); ctx.lineTo(-sz+r,sz);
+      ctx.lineTo(-sz,sz-r); ctx.lineTo(-sz,-sz+r); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      // linha decorativa no topo do quadrado
+      ctx.strokeStyle = color+'66'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(-sz*.5,-sz+2); ctx.lineTo(sz*.5,-sz+2); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.arc(0,0,vr,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    }
     ctx.shadowBlur = 0;
 
     // Caveira em itens maléficos
@@ -640,12 +654,17 @@ export class Item {
     _drawItemIcon(ctx, this.type, vr*0.52);
     ctx.shadowBlur = 0;
 
-    // Anel giratório decorativo
+    // Anel/borda giratória decorativa
     ctx.save(); ctx.rotate(this.age * (harmful?-1.5:1.5));
     ctx.strokeStyle = color+(harmful?'55':(legendary?'88':'33'));
     ctx.lineWidth = legendary ? 2 : 1.2;
     ctx.setLineDash(legendary ? [4,3] : [3,6]);
-    ctx.beginPath(); ctx.arc(0,0,vr+7,0,Math.PI*2); ctx.stroke();
+    if (isWeapon) {
+      const os = vr+7;
+      ctx.beginPath(); ctx.rect(-os,-os,os*2,os*2); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.arc(0,0,vr+7,0,Math.PI*2); ctx.stroke();
+    }
     if (legendary) {
       ctx.save(); ctx.rotate(Math.PI/6);
       ctx.strokeStyle = color+'44'; ctx.lineWidth=1;

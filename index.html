@@ -353,8 +353,18 @@
     <div id="timer"></div>
   </div>
 
-  <!-- Direito: inventário de itens usáveis -->
+  <!-- Direito: slots de arma + inventário de itens -->
   <div id="hud-right">
+    <!-- Slots de arma permanentes (R T Y U I + extra L) -->
+    <div id="weapon-slots">
+      <div class="ws-slot" id="ws0"><canvas class="ws-icon" width="32" height="32"></canvas><span class="ws-key">R</span></div>
+      <div class="ws-slot" id="ws1"><canvas class="ws-icon" width="32" height="32"></canvas><span class="ws-key">T</span></div>
+      <div class="ws-slot" id="ws2"><canvas class="ws-icon" width="32" height="32"></canvas><span class="ws-key">Y</span></div>
+      <div class="ws-slot" id="ws3"><canvas class="ws-icon" width="32" height="32"></canvas><span class="ws-key">U</span></div>
+      <div class="ws-slot" id="ws4"><canvas class="ws-icon" width="32" height="32"></canvas><span class="ws-key">I</span></div>
+      <div class="ws-slot ws-extra" id="ws-extra"><canvas class="ws-icon" width="32" height="32"></canvas><span class="ws-key ws-key-l">L</span><span class="ws-drop-hint">G=jogar fora</span></div>
+    </div>
+    <!-- Inventário de itens usáveis -->
     <div id="powerup-slots">
       <div class="pu-slot" id="pu0"><canvas class="pu-icon" width="28" height="28"></canvas><span class="pu-key">1</span></div>
       <div class="pu-slot" id="pu1"><canvas class="pu-icon" width="28" height="28"></canvas><span class="pu-key">2</span></div>

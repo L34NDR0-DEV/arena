@@ -38,6 +38,63 @@ function _drawItemIconSmall(ctx, type, W, H) {
   ctx.restore();
 }
 
+// Desenha ícone de arma num canvas pequeno (slots de arma)
+function _drawWeaponIconSmall(ctx, type, W, H) {
+  const COLORS = {
+    LASER:'#ff0088',RAILGUN:'#00ff88',PHOTON:'#ffffff',
+    SHOTGUN:'#ff5500',BURST:'#ffbb00',SPREAD:'#ffcc44',DUAL:'#ff8844',
+    SNIPER:'#00ffcc',BOUNCER:'#ffee00',BOOMERANG:'#00eeff',
+    PLASMA:'#aa00ff',VOID_SHOT:'#cc44ff',GRAVITY:'#8844ff',QUANTUM:'#ff00ff',
+    CHAIN:'#55aaff',STORM:'#ccaaff',EXPLOSIVE:'#ff6600',FLAMETHROWER:'#ff3300',
+    HOMING:'#ff44aa',TOXIC:'#66ff00',
+  };
+  const color = COLORS[type] || '#ffffff';
+  const s = Math.min(W,H) * 0.3;
+  ctx.save();
+  ctx.translate(W/2, H/2);
+  ctx.fillStyle = color;
+  ctx.strokeStyle = color;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 5;
+  ctx.lineWidth = s * 0.18;
+  ctx.lineCap = 'round';
+  switch(type) {
+    case 'LASER': case 'RAILGUN': case 'PHOTON':
+      for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(-s,i*s*.35);ctx.lineTo(s,i*s*.35*.3);ctx.stroke();}
+      break;
+    case 'SHOTGUN': case 'SPREAD':
+      ctx.beginPath();ctx.moveTo(-s*.2,-s*.8);ctx.lineTo(s*.2,-s*.8);ctx.lineTo(s*.6,s*.8);ctx.lineTo(-s*.6,s*.8);ctx.closePath();ctx.fill();
+      for(let i=-1;i<=1;i++){ctx.beginPath();ctx.moveTo(i*s*.5,s*.8);ctx.lineTo(i*s,s+s*.6);ctx.stroke();}
+      break;
+    case 'SNIPER':
+      ctx.beginPath();ctx.moveTo(-s*1.1,0);ctx.lineTo(s*1.1,0);ctx.lineWidth=s*.1;ctx.stroke();
+      ctx.beginPath();ctx.arc(0,0,s*.18,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.moveTo(-s*.3,-s*.3);ctx.lineTo(s*.3,s*.3);ctx.moveTo(-s*.3,s*.3);ctx.lineTo(s*.3,-s*.3);ctx.lineWidth=s*.08;ctx.stroke();
+      break;
+    case 'PLASMA': case 'GRAVITY': case 'QUANTUM': case 'VOID_SHOT':
+      ctx.beginPath();ctx.arc(0,0,s*.75,0,Math.PI*2);ctx.fill();
+      ctx.strokeStyle=color+'88';ctx.lineWidth=s*.1;ctx.beginPath();ctx.arc(0,0,s*1.1,0,Math.PI*2);ctx.stroke();
+      break;
+    case 'CHAIN': case 'STORM':
+      for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(-s+i*s*.4,-s+Math.random()*s);ctx.lineTo(-s+i*s*.4+s*.3,Math.random()*s*.5);ctx.lineTo(-s+i*s*.4+s*.15,s);ctx.stroke();}
+      break;
+    case 'EXPLOSIVE': case 'BURST':
+      for(let i=0;i<6;i++){const a=i*Math.PI/3;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(a)*s,Math.sin(a)*s);ctx.stroke();}
+      ctx.beginPath();ctx.arc(0,0,s*.35,0,Math.PI*2);ctx.fill();
+      break;
+    case 'HOMING':
+      ctx.beginPath();ctx.moveTo(0,-s);ctx.lineTo(s*.5,s*.5);ctx.lineTo(0,s*.1);ctx.lineTo(-s*.5,s*.5);ctx.closePath();ctx.fill();
+      ctx.beginPath();ctx.arc(s*.8,-s*.5,s*.3,0,Math.PI*2);ctx.lineWidth=s*.1;ctx.stroke();
+      break;
+    case 'FLAMETHROWER':
+      for(let i=0;i<4;i++){ctx.beginPath();ctx.arc(s*.3*i-s*.4,(Math.random()-.5)*s*.6,s*(0.2+i*.1),0,Math.PI*2);ctx.fill();}
+      break;
+    default:
+      ctx.beginPath();ctx.moveTo(0,-s*.9);ctx.lineTo(s*.7,s*.6);ctx.lineTo(-s*.7,s*.6);ctx.closePath();ctx.fill();
+  }
+  ctx.restore();
+}
+
 export class UI {
   constructor() {
     this._hp     = document.getElementById('hp-fill');
@@ -55,6 +112,8 @@ export class UI {
     this._puSlots      = [0,1,2,3,4].map(i=>document.getElementById('pu'+i));
     this._extraSlot    = document.getElementById('pu-extra');
     this._effectsCanvas= document.getElementById('active-effects-canvas');
+    this._wsSlots      = [0,1,2,3,4].map(i=>document.getElementById('ws'+i));
+    this._wsExtra      = document.getElementById('ws-extra');
     this._notTO  = null;
     this._lastMode = null;
     this._teamLobby   = document.getElementById('team-lobby');
@@ -164,6 +223,45 @@ export class UI {
         const min=Math.floor(timeLeft/60), sec=Math.floor(timeLeft%60);
         this._timer.textContent=`${min}:${sec.toString().padStart(2,'0')}`;
         this._timer.style.color=timeLeft<30?'#ff2255':'#00d4ff';
+      }
+    }
+
+    // Slots de arma (R T Y U I + L)
+    if (this._wsSlots && player.weaponSlots) {
+      this._wsSlots.forEach((slot, i) => {
+        if (!slot) return;
+        const wt = player.weaponSlots[i];
+        const cv = slot.querySelector('.ws-icon');
+        const isActive = player.activeWeaponSlot === i;
+        slot.classList.toggle('ws-has-weapon', !!wt);
+        slot.classList.toggle('ws-active', isActive);
+        if (cv) {
+          const ctx = cv.getContext('2d');
+          ctx.clearRect(0,0,cv.width,cv.height);
+          if (wt) _drawWeaponIconSmall(ctx, wt, cv.width, cv.height);
+        }
+        // label do nome
+        let lbl = slot.querySelector('.ws-weapon-label');
+        if (wt && !lbl) { lbl = document.createElement('span'); lbl.className='ws-weapon-label'; slot.appendChild(lbl); }
+        if (lbl) lbl.textContent = wt ? wt : '';
+        if (!wt && lbl) lbl.textContent = '';
+      });
+      // Slot extra L
+      if (this._wsExtra) {
+        const wt = player.extraWeaponSlot;
+        const cv = this._wsExtra.querySelector('.ws-icon');
+        const isActive = player.activeWeaponSlot === 5;
+        this._wsExtra.classList.toggle('ws-has-weapon', !!wt);
+        this._wsExtra.classList.toggle('ws-active', isActive);
+        if (cv) {
+          const ctx = cv.getContext('2d');
+          ctx.clearRect(0,0,cv.width,cv.height);
+          if (wt) _drawWeaponIconSmall(ctx, wt, cv.width, cv.height);
+        }
+        let lbl = this._wsExtra.querySelector('.ws-weapon-label');
+        if (wt && !lbl) { lbl = document.createElement('span'); lbl.className='ws-weapon-label'; this._wsExtra.appendChild(lbl); }
+        if (lbl) lbl.textContent = wt ? wt : '';
+        if (!wt && lbl) lbl.textContent = '';
       }
     }
 

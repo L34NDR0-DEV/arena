@@ -203,6 +203,16 @@ export class Game {
       if (e.type==='keydown'&&e.code==='Escape') window.togglePause?.();
       if (e.type==='keydown'&&e.code==='KeyM')   this._audio.toggleMute();
       if (e.type==='keydown') {
+        // Slots de arma: R T Y U I = slots 0-4, L = slot extra
+        const weaponSlotMap={'KeyR':0,'KeyT':1,'KeyY':2,'KeyU':3,'KeyI':4,'KeyL':5};
+        const wSlot = weaponSlotMap[e.code];
+        if (wSlot!==undefined && !this.paused && !this.over && !this.player.dead) {
+          this.player.selectWeaponSlot(wSlot);
+        }
+        // Tecla G descarta arma do slot extra L
+        if (e.code==='KeyG' && !this.paused && !this.over && !this.player.dead) {
+          this.player.dropExtraWeapon();
+        }
         const slotMap={'Digit1':0,'Digit2':1,'Digit3':2,'Digit4':3,'Digit5':4,'KeyX':5};
         const slot = slotMap[e.code];
         if (slot!==undefined && !this.paused && !this.over && !this.player.dead) {
