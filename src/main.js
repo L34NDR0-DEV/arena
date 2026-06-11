@@ -1698,32 +1698,51 @@ function _buildCopaShipPaths(flagCx, flagCy, fw, fh) {
       // ── Troféu da Copa — imagem PNG ──────────────────────
       if (!animateLoginBg._trophyImg) {
         const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload  = () => { animateLoginBg._trophyLoaded = true; };
+        img.onerror = () => { animateLoginBg._trophyFailed = true; };
         img.src = './src/sprites/trofy_copa.png';
-        animateLoginBg._trophyImg = img;
+        animateLoginBg._trophyImg    = img;
+        animateLoginBg._trophyLoaded = false;
+        animateLoginBg._trophyFailed = false;
       }
       const timg = animateLoginBg._trophyImg;
-      if (timg.complete && timg.naturalWidth > 0) {
-        // Proporção original da imagem (aprox quadrado, troféu ocupa ~80% da altura)
-        const tH = Math.min(H * 0.72, W * 0.30, 380);
-        const tW = tH * (timg.naturalWidth / timg.naturalHeight);
-        const tx = trophyCx - tW/2;
-        const ty = trophyCy - tH * 0.52;
-        // Brilho dourado pulsante atrás
-        const glowR = tW * 0.7;
-        const gGlow = ctx.createRadialGradient(trophyCx, trophyCy - tH*0.1, 0, trophyCx, trophyCy - tH*0.1, glowR);
+      const tH_base = Math.min(H * 0.72, W * 0.30, 380);
+      // Glow dourado sempre visível
+      {
+        const gGlow = ctx.createRadialGradient(trophyCx, trophyCy, 0, trophyCx, trophyCy, tH_base * 0.65);
         const gp2 = 0.5 + 0.5*Math.sin(t*1.6);
-        gGlow.addColorStop(0,   `rgba(255,200,0,${0.22*gp2})`);
-        gGlow.addColorStop(0.5, `rgba(180,100,0,${0.10*gp2})`);
+        gGlow.addColorStop(0,   `rgba(255,200,0,${0.28*gp2})`);
+        gGlow.addColorStop(0.5, `rgba(180,100,0,${0.12*gp2})`);
         gGlow.addColorStop(1,   'transparent');
         ctx.save();
         ctx.fillStyle = gGlow;
-        ctx.beginPath(); ctx.arc(trophyCx, trophyCy - tH*0.1, glowR, 0, Math.PI*2); ctx.fill();
-        // Imagem com leve sombra dourada
-        ctx.shadowColor = `rgba(255,180,0,${0.55 + 0.2*Math.sin(t*1.8)})`;
-        ctx.shadowBlur = 28;
-        ctx.globalAlpha = 0.90 + 0.06*Math.sin(t*0.9);
+        ctx.beginPath(); ctx.arc(trophyCx, trophyCy, tH_base * 0.65, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+      }
+      if (animateLoginBg._trophyLoaded) {
+        const tH = tH_base;
+        const tW = tH * (timg.naturalWidth / timg.naturalHeight);
+        const tx = trophyCx - tW/2;
+        const ty = trophyCy - tH * 0.52;
+        ctx.save();
+        ctx.shadowColor = `rgba(255,180,0,${0.6 + 0.2*Math.sin(t*1.8)})`;
+        ctx.shadowBlur = 30;
+        ctx.globalAlpha = 0.92 + 0.05*Math.sin(t*0.9);
         ctx.drawImage(timg, tx, ty, tW, tH);
         ctx.restore();
+      } else if (!animateLoginBg._trophyFailed) {
+        // Enquanto carrega: ícone de espera (anel dourado girando)
+        ctx.save();
+        ctx.strokeStyle = '#ffdf00'; ctx.lineWidth = 4;
+        ctx.globalAlpha = 0.6;
+        ctx.beginPath();
+        ctx.arc(trophyCx, trophyCy, 30, t*3, t*3 + Math.PI*1.4);
+        ctx.stroke();
+        ctx.restore();
+      } else {
+        // Fallback: troféu desenhado em canvas
+        _drawFifaTrophy(ctx, trophyCx, trophyCy, trophyScale, t);
       }
 
       // Label abaixo do troféu
