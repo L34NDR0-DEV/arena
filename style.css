@@ -221,7 +221,12 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   opacity:.6;animation:menuHeaderSweep 6s ease-in-out infinite;
 }
 @keyframes menuHeaderSweep{0%,100%{opacity:.35;}50%{opacity:.75;}}
-.menu-logo-small{display:none;}
+.menu-logo-small{
+  font-family:'Press Start 2P',monospace;font-size:clamp(7px,1.1vw,10px);
+  color:var(--orange);letter-spacing:2px;
+  text-shadow:0 0 8px var(--orange);line-height:1.5;
+  flex-shrink:0;
+}
 .mls-line{display:block;}
 .mls-line-sub{color:var(--accent-violet);font-size:0.75em;margin-top:2px;}
 /* Cada letra "atirada" na tela: surge com um lampejo, como um tiro
