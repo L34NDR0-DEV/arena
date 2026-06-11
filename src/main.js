@@ -1147,9 +1147,13 @@ function _buildShotText(container, text, startIndex){
   _buildShotText(document.getElementById('mls-line-sub'), 'ON THE SPACE', next+2);
 }
 
-// ── Copa do Mundo — constantes (precisam vir antes de resizeLoginBg) ──
+// ── Copa do Mundo — constantes ──
 const COPA_END_TS = new Date('2026-06-10T00:00:00Z').getTime(); // desativado
 function _isCopaModeActive() { return Date.now() < COPA_END_TS; }
+
+// Estado compartilhado da animação de fundo (deve vir antes de resizeLoginBg)
+const _loginBgState = { copaShips: null, ships: null, stars: null, starsW: 0,
+  trophyImg: null, trophyLoaded: false, trophyFailed: false };
 
 // ── Fundo arcade animado na tela de login ─────────────────────
 const loginBg=document.getElementById('login-bg-canvas');
@@ -1159,11 +1163,9 @@ function resizeLoginBg(){
   const screen = document.getElementById('login-screen');
   if (copa && isMob) {
     screen.classList.add('copa-mobile');
-    // força reflow para ler offsetHeight já aplicado pelo CSS
     requestAnimationFrame(() => {
       loginBg.width  = loginBg.offsetWidth  || window.innerWidth;
       loginBg.height = loginBg.offsetHeight || Math.round(window.innerWidth * 0.42);
-      // reseta naves para recalcular com novo tamanho
       _loginBgState.copaShips = null;
     });
   } else {
@@ -1174,10 +1176,6 @@ function resizeLoginBg(){
   }
 }
 resizeLoginBg(); window.addEventListener('resize',resizeLoginBg);
-
-// Estado compartilhado da animação de fundo (acessível antes da IIFE)
-const _loginBgState = { copaShips: null, ships: null, stars: null, starsW: 0,
-  trophyImg: null, trophyLoaded: false, trophyFailed: false };
 
 // ── Música da tela inicial: toca 1 vez por sessão/carregamento ─
 (function initLoginMusic(){
