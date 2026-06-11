@@ -21,6 +21,7 @@ export class CombatSystem {
   setHitStopCallback(fn) { this._hitStop=fn; }
   setWallDropCallback(fn) { this._wallDropCallback=fn; }
   setPortalManager(pm) { this._portalMgr=pm; }
+  setVoiceCallbacks(onKill, onPlayerDeath) { this._voiceOnKill=onKill; this._voiceOnPlayerDeath=onPlayerDeath; }
 
   // Contexto do modo "Equipe Online" (PvP): jogadores remotos, bots locais,
   // time do jogador local e referência de rede para reportar abates.
@@ -159,6 +160,7 @@ export class CombatSystem {
 
   _enemyKilled() {
     this._hitStop?.(0.04);
+    this._voiceOnKill?.();
   }
 
   update(dt, player, enemies) {
@@ -304,7 +306,7 @@ export class CombatSystem {
             this._flash(player);
             this._impactSpark(b, b.x, b.y, b.owner_color||'#ff4466');
             if (died) {
-              this._triggerPlayerRebuild(player,isContra1);
+              this._triggerPlayerRebuild(player, isContra1, b.owner==='tower');
               const killerName = b.owner==='tower' ? 'Torre Central' : (b.shooter?.name||'Adversário');
               this._reportPvpKill(killerName, shooterTeam,
                 { name:player.name, team:player.team, isBot:false },
@@ -565,11 +567,12 @@ export class CombatSystem {
     });
   }
 
-  _triggerPlayerRebuild(player, isContra1) {
+  _triggerPlayerRebuild(player, isContra1, killedByTower=false) {
     const deathColor = player.skin?.deathColor || player.skin?.color || '#ff4466';
     this.arena.spawnParticles(player.x,player.y,deathColor,20,200);
     this.spawnExplosion(player.x,player.y,60,deathColor);
     this._shake?.(10);
+    this._voiceOnPlayerDeath?.(killedByTower);
     if (isContra1) {
       this._enemyMgr?.playerLostLife();
       // Iniciar fase de reconstrução (30s)

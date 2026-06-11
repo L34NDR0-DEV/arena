@@ -51,6 +51,10 @@ export class Game {
     this.combat.setShakeCallback((i) => this.addShake(i));
     this.combat.setHitStopCallback((duration) => this.hitStop(duration));
     this.combat.setWallDropCallback((x,y) => this.itemMgr.spawnAt(x,y,1,this.arena));
+    this.combat.setVoiceCallbacks(
+      () => this._playVoice('vceleiminouuminimigo'),
+      (byTower) => this._playVoice(byTower ? 'atorreeeliminouvc' : 'vcfoieliminado')
+    );
     this.ui       = new UI();
     this.player   = new Player({ x:ARENA_W/2, y:ARENA_H/2, skinIndex, name:playerName });
     this.player.equippedTrailId = opts.equippedTrail || 0;
@@ -333,7 +337,15 @@ export class Game {
           }
         },
         onJoin:msg=>{ const rp=new RemotePlayer({id:msg.id,name:msg.name,skinIndex:msg.skinIndex,profileIcon:msg.profileIcon,skins:SkinsModule}); this.peers[msg.id]=rp; this.ui.killFeed(`${msg.name} entrou`); },
-        onLeave:msg=>{ this.ui.killFeed(`${this.peers[msg.id]?.name ?? 'Jogador'} saiu`); delete this.peers[msg.id]; },
+        onLeave:msg=>{
+          const leaverName = this.peers[msg.id]?.name ?? 'Jogador';
+          this.ui.killFeed(`${leaverName} saiu`);
+          // Voz: aliado ou inimigo saiu
+          if (isTeamMode && this.peers[msg.id]?.team === this.team) this._playVoice('umaaliadosedesconectou');
+          else if (isTeamMode) this._playVoice('uminimigosedesconectou');
+          else this._playVoice('saiudapartida');
+          delete this.peers[msg.id];
+        },
         onState:msg=>this.peers[msg.id]?.applyState(msg.data),
         onEvent:msg=>{
           if(msg.data?.type==='kill') {
@@ -610,7 +622,16 @@ export class Game {
     setTimeout(() => window.exitToMenu?.(), 4000);
   }
 
-  start() { this._last=performance.now(); this._audio.startEngine(0.4); this._loop(this._last); }
+  start() {
+    this._last=performance.now();
+    this._audio.startEngine(0.4);
+    // Voz de boas-vindas conforme o modo
+    setTimeout(()=>{
+      if (this.mode==='tower_defense') this._playVoice('bemvindoatowerdefense');
+      else this._playVoice('bemvindoaarena');
+    }, 800);
+    this._loop(this._last);
+  }
   pause()  { this.paused=true; this._audio.setEngineIntensity(0); }
   resume() { this.paused=false; this._last=performance.now(); this._audio.resume(); this._loop(performance.now()); }
   surrender() { this._endGame(false); }
@@ -811,6 +832,7 @@ export class Game {
           this.arena.spawnParticles(this.player.x,this.player.y,'#8844ff',35,320);
           this.ui.notify('Sugado pelo buraco negro!','#8844ff');
           this._audio.playDeath?.();
+          this._playVoice('oburaconegrobateuvc');
           this.combat._triggerPlayerRebuild(this.player, this.mode==='contra1');
         } else if (bh.dmg > 0) {
           const died = this.player.takeDamage(bh.dmg);
@@ -1624,7 +1646,7 @@ export class Game {
   }
 
   _playElectricWallsAudio() {
-    this._playVoice('electric_walls');
+    this._playVoice('paredeseletricas');
   }
 
   _endGame(survived) {
@@ -1632,7 +1654,14 @@ export class Game {
     this.over=true;
     cancelAnimationFrame(this._rafId);
     this._audio.stopEngine();
-    if (!survived) this._audio.playDeath();
+    if (!survived) {
+      this._audio.playDeath();
+      this._playVoice('derrota', 0.9);
+    } else {
+      // Vitória em equipe ou solo
+      if (this.mode==='equipe_online'||this.mode==='tower_defense') this._playVoice('vencaomelhortime', 0.9);
+      else this._playVoice('vitoria', 0.9);
+    }
     const data={
       win:survived,
       kills:this.player.kills,
