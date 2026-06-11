@@ -103,6 +103,9 @@ if (!userColumns.includes('equipped_trail')) {
 if (!userColumns.includes('user_promo')) {
   db.exec(`ALTER TABLE users ADD COLUMN user_promo TEXT`);
 }
+if (!userColumns.includes('last_seen_at')) {
+  db.exec(`ALTER TABLE users ADD COLUMN last_seen_at TEXT`);
+}
 
 // Tabela de rastros possuídos
 db.exec(`
@@ -136,10 +139,6 @@ CREATE INDEX IF NOT EXISTS idx_cards_ranking_score ON cards_ranking(score DESC);
 const matchColumns = db.prepare(`PRAGMA table_info(matches)`).all().map(c => c.name);
 if (!matchColumns.includes('details')) {
   db.exec(`ALTER TABLE matches ADD COLUMN details TEXT`);
-}
-const userColumns = db.prepare(`PRAGMA table_info(users)`).all().map(c => c.name);
-if (!userColumns.includes('last_seen_at')) {
-  db.exec(`ALTER TABLE users ADD COLUMN last_seen_at TEXT`);
 }
 
 const stmts = {
