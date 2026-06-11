@@ -93,6 +93,7 @@ async function refreshProfile(){
   if (!ok || data?.loggedIn === false) return false;
   profile = data;
   currentUser = data.user;
+  selectedSkin = data.equippedSkin ?? economy_FREE_SKIN_ID;
   pilotName = currentUser.displayName.toUpperCase();
   document.getElementById('menu-pilot-name').textContent = pilotName;
   document.getElementById('hud-pname').textContent = pilotName;
@@ -1435,6 +1436,7 @@ window.equipSkin = async function(skinId){
   if (ok && data) {
     profile.equippedSkin = data.equippedSkin;
     currentUser.equippedSkin = data.equippedSkin;
+    selectedSkin = data.equippedSkin;
     renderSkinGrid();
   }
 };
