@@ -1147,6 +1147,10 @@ function _buildShotText(container, text, startIndex){
   _buildShotText(document.getElementById('mls-line-sub'), 'ON THE SPACE', next+2);
 }
 
+// ── Copa do Mundo — constantes (precisam vir antes de resizeLoginBg) ──
+const COPA_END_TS = new Date('2026-06-14T00:00:00Z').getTime();
+function _isCopaModeActive() { return Date.now() < COPA_END_TS; }
+
 // ── Fundo arcade animado na tela de login ─────────────────────
 const loginBg=document.getElementById('login-bg-canvas');
 function resizeLoginBg(){
@@ -1222,10 +1226,6 @@ resizeLoginBg(); window.addEventListener('resize',resizeLoginBg);
     if (el) el.addEventListener('click', tryPlay);
   });
 })();
-
-// ── Modo Copa do Mundo 2026: ativo até 13/06/2026 23:59 UTC ───
-const COPA_END_TS = new Date('2026-06-14T00:00:00Z').getTime();
-function _isCopaModeActive() { return Date.now() < COPA_END_TS; }
 
 // ── Gera pontos precisos dos contornos da bandeira do Brasil ──
 // Retorna 4 arrays de {x,y}: retângulo, losango, círculo, faixa
