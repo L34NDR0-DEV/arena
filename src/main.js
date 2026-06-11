@@ -1149,7 +1149,26 @@ function _buildShotText(container, text, startIndex){
 
 // ── Fundo arcade animado na tela de login ─────────────────────
 const loginBg=document.getElementById('login-bg-canvas');
-function resizeLoginBg(){loginBg.width=window.innerWidth;loginBg.height=window.innerHeight;}
+function resizeLoginBg(){
+  const isMob = window.innerWidth < 760;
+  const copa  = _isCopaModeActive();
+  const screen = document.getElementById('login-screen');
+  if (copa && isMob) {
+    screen.classList.add('copa-mobile');
+    // força reflow para ler offsetHeight já aplicado pelo CSS
+    requestAnimationFrame(() => {
+      loginBg.width  = loginBg.offsetWidth  || window.innerWidth;
+      loginBg.height = loginBg.offsetHeight || Math.round(window.innerWidth * 0.42);
+      // reseta naves para recalcular com novo tamanho
+      animateLoginBg._copaShips = null;
+    });
+  } else {
+    screen.classList.remove('copa-mobile');
+    loginBg.width  = window.innerWidth;
+    loginBg.height = window.innerHeight;
+    animateLoginBg._copaShips = null;
+  }
+}
 resizeLoginBg(); window.addEventListener('resize',resizeLoginBg);
 
 // ── Música da tela inicial: toca 1 vez por sessão/carregamento ─
@@ -1671,16 +1690,18 @@ function _buildCopaShipPaths(flagCx, flagCy, fw, fh) {
 
     if (copaMode) {
       // ── Dimensões dos elementos copa ───────────────────────
-      const isMobile = W < 600;
+      const isMobile = W < 760;
+      // No mobile o canvas tem altura reduzida (~42vw), centraliza verticalmente
+      const centerY = H * 0.50;
       // Bandeira: lado esquerdo
-      const fw = Math.min(W*0.36, H*0.52, 260);
-      const fh = fw * 0.70; // proporção real da bandeira 10:7
+      const fw = isMobile ? Math.min(W*0.38, H*0.80, 180) : Math.min(W*0.36, H*0.52, 260);
+      const fh = fw * 0.70;
       const flagCx = W * (isMobile ? 0.25 : 0.22);
-      const flagCy = H * 0.50;
+      const flagCy = centerY;
       // Troféu: lado direito
-      const trophyScale = Math.min(H * 0.38, W * 0.18, 140);
+      const trophyScale = isMobile ? Math.min(H*0.55, W*0.18, 100) : Math.min(H*0.38, W*0.18, 140);
       const trophyCx = W * (isMobile ? 0.75 : 0.78);
-      const trophyCy = H * 0.50;
+      const trophyCy = centerY;
 
       // ── Bandeira do Brasil ────────────────────────────────
       _drawBrazilFlag(ctx, flagCx, flagCy, fw, fh, 0.82 + 0.06*Math.sin(t*0.8), t);
