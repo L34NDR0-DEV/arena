@@ -1,7 +1,7 @@
 'use strict';
 const mailer = require('./mailer');
 
-const SITE_NAME  = 'Tower Defense on the Space';
+const SITE_NAME  = 'Tower Defense Space';
 const SHORT_NAME = 'TowerDefenseSpace';
 const PUBLIC_URL = (process.env.PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, '');
 const CONTACT    = 'leandrosilva212010@gmail.com';
@@ -160,7 +160,7 @@ async function sendReceiptEmail({ order, userName, userEmail }) {
   const html = buildReceiptHtml({ order, userName, userEmail });
   return mailer.sendEmail({
     to: userEmail,
-    subject: `Comprovante #${order.id} — Tower Defense on the Space`,
+    subject: `Comprovante #${order.id} — Tower Defense Space`,
     html,
   });
 }

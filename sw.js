@@ -1,4 +1,4 @@
-// Service Worker — Tower Defense on the Space
+// Service Worker — Tower Defense Space
 // Estratégia: network-first para o jogo (sempre atualizado), cache para assets estáticos
 
 const CACHE_NAME = 'arena-space-v1';

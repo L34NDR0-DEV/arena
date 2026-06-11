@@ -25,7 +25,7 @@ async function sendEmail({ to, subject, html }) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: `Tower Defense on the Space <${EMAIL_FROM}>`,
+        from: `Tower Defense Space <${EMAIL_FROM}>`,
         reply_to: 'leandrosilva212010@gmail.com',
         to, subject, html,
       }),

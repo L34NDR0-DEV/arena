@@ -749,7 +749,7 @@ setBroadcastAll(broadcastAll);
 module.exports = { notifyUser, broadcastAll };
 
 server.listen(PORT, () => {
-  console.log(`\n  Tower Defense on the Space`);
+  console.log(`\n  Tower Defense Space`);
   console.log(`  Servidor: http://localhost:${PORT}`);
   console.log(`  Aguardando jogadores...\n`);
 });

@@ -67,7 +67,7 @@ async function createCheckout(user, packageId) {
 
   const body = {
     items: [{
-      title: `${pkg.credits} Créditos — Tower Defense on the Space`,
+      title: `${pkg.credits} Créditos — Tower Defense Space`,
       quantity: 1,
       unit_price: pkg.priceCents / 100,
       currency_id: 'BRL',

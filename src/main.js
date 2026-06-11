@@ -1821,12 +1821,20 @@ function _buildCopaShipPaths(flagCx, flagCy, fw, fh) {
           ctx.fill();
         }
         ctx.restore();
-        // Nave Ponta BR
+        // Nave Ponta BR — glow
         ctx.save();
         ctx.translate(s.x, yy);
         ctx.rotate(s.dir > 0 ? Math.PI/2 : -Math.PI/2);
-        ctx.globalAlpha = 0.35*s.depth + 0.18;
-        ctx.shadowColor = hue; ctx.shadowBlur = 10*s.depth;
+        ctx.globalAlpha = 0.18*s.depth;
+        ctx.shadowColor = hue; ctx.shadowBlur = 14*s.depth;
+        pontaSkin.drawPreview(ctx, (sz*2) / pontaSkin._size);
+        ctx.restore();
+        // multiply para remover fundo branco
+        ctx.save();
+        ctx.translate(s.x, yy);
+        ctx.rotate(s.dir > 0 ? Math.PI/2 : -Math.PI/2);
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.globalAlpha = 0.55*s.depth + 0.25;
         pontaSkin.drawPreview(ctx, (sz*2) / pontaSkin._size);
         ctx.restore();
         ctx.globalAlpha = 1;
@@ -1867,10 +1875,18 @@ function _buildCopaShipPaths(flagCx, flagCy, fw, fh) {
           ctx.beginPath(); ctx.arc(p.x-s.dir*sz*0.9,p.y,sz*0.32*a,0,Math.PI*2); ctx.fill();
         }
         ctx.restore();
+        // glow atrás da nave
         ctx.save();
         ctx.translate(s.x,yy); ctx.rotate(s.dir>0?Math.PI/2:-Math.PI/2);
-        ctx.globalAlpha=0.32*s.depth+0.16;
-        ctx.shadowColor=hue; ctx.shadowBlur=9*s.depth;
+        ctx.globalAlpha=0.18*s.depth;
+        ctx.shadowColor=hue; ctx.shadowBlur=14*s.depth;
+        s.skin.drawPreview(ctx,(sz*2)/s.skin._size);
+        ctx.restore();
+        // nave com multiply para remover fundo branco do PNG
+        ctx.save();
+        ctx.translate(s.x,yy); ctx.rotate(s.dir>0?Math.PI/2:-Math.PI/2);
+        ctx.globalCompositeOperation='multiply';
+        ctx.globalAlpha=0.55*s.depth+0.25;
         s.skin.drawPreview(ctx,(sz*2)/s.skin._size);
         ctx.restore(); ctx.globalAlpha=1;
         if((s.dir>0&&s.x>W+90)||(s.dir<0&&s.x<-90)) ships.splice(i,1);
