@@ -1204,35 +1204,110 @@ resizeLoginBg(); window.addEventListener('resize',resizeLoginBg);
   });
 })();
 
+// ── Modo Copa do Mundo: ativo por 2h a partir deste timestamp ─
+// Para reativar: troque pelo Date.now() no momento desejado.
+const COPA_START_TS = 1781197600000; // 2026-06-11 17:06 UTC — ativo agora por 2h
+const COPA_DURATION_MS = 2 * 60 * 60 * 1000; // 2 horas
+function _isCopaModeActive() {
+  const now = Date.now();
+  return now >= COPA_START_TS && now < COPA_START_TS + COPA_DURATION_MS;
+}
+
+// Pré-calcula pontos do contorno da bandeira do Brasil em coordenadas normalizadas [0,1]
+// Retorna array de {x,y,color} — usado pelas naves para seguir o trajeto
+function _buildBrazilFlagPath(W, H) {
+  const paths = [];
+  const pw = W * 0.72, ph = H * 0.50;
+  const ox = (W - pw) / 2, oy = (H - ph) / 2 + H * 0.04;
+
+  // Retângulo verde externo
+  const greenPts = [];
+  const stepsRect = 220;
+  for (let i = 0; i <= stepsRect; i++) {
+    const r = i / stepsRect;
+    if (r < 0.25)       greenPts.push({ x: ox + (pw * r * 4),        y: oy,        color: '#009c3b' });
+    else if (r < 0.5)   greenPts.push({ x: ox + pw,                  y: oy + (ph * (r-0.25)*4), color: '#009c3b' });
+    else if (r < 0.75)  greenPts.push({ x: ox + pw - (pw * (r-0.5)*4), y: oy + ph,   color: '#009c3b' });
+    else                greenPts.push({ x: ox,                        y: oy + ph - (ph * (r-0.75)*4), color: '#009c3b' });
+  }
+  paths.push(greenPts);
+
+  // Losango amarelo interno
+  const cx = ox + pw/2, cy = oy + ph/2;
+  const lw = pw * 0.82, lh = ph * 0.72;
+  const yellowPts = [];
+  const stepsLos = 220;
+  for (let i = 0; i <= stepsLos; i++) {
+    const r = i / stepsLos;
+    if (r < 0.25)       yellowPts.push({ x: cx - lw/2 + (lw/2 * r * 4),   y: cy - lh/2 + (lh/2 * r * 4),   color: '#ffdf00' });
+    else if (r < 0.5)   yellowPts.push({ x: cx + (lw/2 * (1-(r-0.25)*4)), y: cy + (lh/2 * (r-0.25)*4),      color: '#ffdf00' });
+    else if (r < 0.75)  yellowPts.push({ x: cx - (lw/2 * (r-0.5)*4),      y: cy + lh/2 - (lh/2*(r-0.5)*4), color: '#ffdf00' });
+    else                yellowPts.push({ x: cx - lw/2 + (lw/2*(r-0.75)*4), y: cy - (lh/2*(r-0.75)*4),       color: '#ffdf00' });
+  }
+  paths.push(yellowPts);
+
+  // Círculo azul
+  const rBlue = ph * 0.26;
+  const bluePts = [];
+  const stepsCirc = 180;
+  for (let i = 0; i <= stepsCirc; i++) {
+    const a = (i / stepsCirc) * Math.PI * 2;
+    bluePts.push({ x: cx + Math.cos(a) * rBlue, y: cy + Math.sin(a) * rBlue, color: '#002776' });
+  }
+  paths.push(bluePts);
+
+  // Faixa branca diagonal (atravessa o círculo)
+  const whitePts = [];
+  const stepsW = 100;
+  for (let i = 0; i <= stepsW; i++) {
+    const r = i / stepsW;
+    whitePts.push({ x: cx - rBlue*0.9 + rBlue*1.8*r, y: cy + rBlue*0.3 - rBlue*0.08*r, color: '#ffffff' });
+  }
+  paths.push(whitePts);
+
+  return paths;
+}
+
 (function animateLoginBg(){
   try {
     const ctx=loginBg.getContext('2d');
     const W=loginBg.width||window.innerWidth, H=loginBg.height||window.innerHeight;
     if(W<2||H<2){ requestAnimationFrame(animateLoginBg); return; }
     const t=Date.now()/1000;
+    const copaMode = _isCopaModeActive();
 
-    // Fundo
-    ctx.fillStyle='#020508'; ctx.fillRect(0,0,W,H);
-
-    // Nebulosa central
-    const cx=W/2, cy=H*0.42;
-    const gn=ctx.createRadialGradient(cx,cy,0,cx,cy,Math.min(W,H)*0.55);
-    gn.addColorStop(0,'rgba(0,80,120,0.18)');
-    gn.addColorStop(0.4,'rgba(0,40,80,0.08)');
-    gn.addColorStop(1,'transparent');
-    ctx.fillStyle=gn; ctx.fillRect(0,0,W,H);
+    // ── Fundo ──────────────────────────────────────────────────
+    if (copaMode) {
+      // Fundo verde escuro Copa
+      ctx.fillStyle = '#011a06'; ctx.fillRect(0,0,W,H);
+      const gn = ctx.createRadialGradient(W/2, H*0.45, 0, W/2, H*0.45, Math.min(W,H)*0.6);
+      gn.addColorStop(0, 'rgba(0,80,30,0.22)');
+      gn.addColorStop(0.5, 'rgba(0,40,15,0.10)');
+      gn.addColorStop(1, 'transparent');
+      ctx.fillStyle = gn; ctx.fillRect(0,0,W,H);
+    } else {
+      ctx.fillStyle='#020508'; ctx.fillRect(0,0,W,H);
+      const cx=W/2, cy=H*0.42;
+      const gn=ctx.createRadialGradient(cx,cy,0,cx,cy,Math.min(W,H)*0.55);
+      gn.addColorStop(0,'rgba(0,80,120,0.18)');
+      gn.addColorStop(0.4,'rgba(0,40,80,0.08)');
+      gn.addColorStop(1,'transparent');
+      ctx.fillStyle=gn; ctx.fillRect(0,0,W,H);
+    }
 
     // Grade neon pulsante
     const gs=60, gridPulse=0.3+0.2*Math.sin(t*0.7);
-    ctx.strokeStyle='#001428'; ctx.lineWidth=0.6; ctx.globalAlpha=gridPulse;
+    ctx.strokeStyle= copaMode ? '#001a06' : '#001428';
+    ctx.lineWidth=0.6; ctx.globalAlpha=gridPulse;
     for (let x=0;x<W;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
     for (let y=0;y<H;y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
     ctx.globalAlpha=1;
 
-    // Estrelas pixel animadas
-    if (!animateLoginBg._stars){
+    // Estrelas
+    if (!animateLoginBg._stars || animateLoginBg._starsW !== W){
+      animateLoginBg._starsW = W;
       animateLoginBg._stars=Array.from({length:180},()=>({
-        x:Math.random()*W,y:Math.random()*H,
+        x:Math.random()*W, y:Math.random()*H,
         r:Math.random()*1.6+0.2,
         a:Math.random()*0.7+0.1,
         sp:0.4+Math.random()*1.4,
@@ -1242,60 +1317,160 @@ resizeLoginBg(); window.addEventListener('resize',resizeLoginBg);
     }
     for (const s of animateLoginBg._stars){
       const a=s.a*(0.4+0.6*Math.sin(t*s.sp+s.bk));
-      ctx.fillStyle=`rgba(140,200,255,${a})`;
+      ctx.fillStyle= copaMode ? `rgba(220,255,200,${a*0.7})` : `rgba(140,200,255,${a})`;
       if(s.px){ctx.fillRect(s.x-s.r,s.y-s.r,s.r*2,s.r*2);}
       else{ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();}
     }
 
-    // Naves do próprio jogo cruzando o fundo, deixando um rastro luminoso
-    if (!animateLoginBg._ships) animateLoginBg._ships = [];
-    const ships = animateLoginBg._ships;
-    if (Math.random() < 0.012 && ships.length < 4 && SKINS.length) {
-      const dir = Math.random()<0.5 ? 1 : -1;
-      const depth = 0.5 + Math.random()*0.9;
-      ships.push({
-        x: dir>0 ? -70 : W+70,
-        y: H*(0.12+Math.random()*0.6),
-        dir, depth,
-        speed: (40+Math.random()*70)*dir,
-        skin: SKINS[Math.floor(Math.random()*SKINS.length)],
-        bob: Math.random()*Math.PI*2,
-        trail: [],
-      });
-    }
-    for (let i=ships.length-1;i>=0;i--){
-      const s = ships[i];
-      s.x += s.speed * (1/60);
-      const yy = s.y + Math.sin(t*1.6+s.bob)*6;
-      const sz = 15*s.depth;
+    if (copaMode) {
+      // ── MODO COPA: naves seguem o contorno da bandeira ─────
+      if (!animateLoginBg._flagPaths || animateLoginBg._flagW !== W) {
+        animateLoginBg._flagW = W;
+        animateLoginBg._flagPaths = _buildBrazilFlagPath(W, H);
+      }
+      const flagPaths = animateLoginBg._flagPaths;
 
-      s.trail.push({x:s.x,y:yy});
-      if (s.trail.length>16) s.trail.shift();
-
-      const hue = s.skin.color || '#5be8ff';
+      // Desenha a bandeira como "ghost" bem tenue no fundo
       ctx.save();
-      ctx.globalAlpha = 0.3*s.depth + 0.12;
-      for (let k=0;k<s.trail.length;k++){
-        const p=s.trail[k];
-        const a=(k/s.trail.length);
+      ctx.globalAlpha = 0.06 + 0.02*Math.sin(t*0.5);
+      for (const pts of flagPaths) {
+        if (!pts.length) continue;
+        ctx.strokeStyle = pts[0].color;
+        ctx.lineWidth = pts === flagPaths[0] ? 8 : pts === flagPaths[1] ? 6 : 4;
+        ctx.shadowColor = pts[0].color; ctx.shadowBlur = 12;
         ctx.beginPath();
-        ctx.fillStyle=hue;
-        ctx.globalAlpha=(0.3*s.depth+0.12)*a*0.5;
-        ctx.arc(p.x - s.dir*sz*0.9, p.y, sz*0.32*a, 0, Math.PI*2);
-        ctx.fill();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.closePath(); ctx.stroke();
       }
       ctx.restore();
 
-      ctx.save();
-      ctx.translate(s.x, yy);
-      ctx.rotate(s.dir>0 ? Math.PI/2 : -Math.PI/2);
-      ctx.globalAlpha = 0.32*s.depth + 0.16;
-      ctx.shadowColor = hue; ctx.shadowBlur = 9*s.depth;
-      s.skin.drawPreview(ctx, (sz*2)/s.skin._size);
-      ctx.restore();
-      ctx.globalAlpha = 1;
+      // Naves seguindo o contorno
+      if (!animateLoginBg._copaShips) {
+        animateLoginBg._copaShips = [];
+        // Distribui naves pelos 4 caminhos da bandeira
+        const totalShips = Math.min(SKINS.length, 16);
+        for (let i = 0; i < totalShips; i++) {
+          const pathIdx = i % flagPaths.length;
+          const path = flagPaths[pathIdx];
+          const startPct = (i / totalShips) + (pathIdx / flagPaths.length) * 0.15;
+          animateLoginBg._copaShips.push({
+            pathIdx,
+            pct: (startPct % 1),
+            speed: 0.14 + Math.random() * 0.10, // % do caminho por segundo
+            skin: SKINS[i % SKINS.length],
+            trail: [],
+            depth: 0.6 + Math.random() * 0.4,
+            bob: Math.random() * Math.PI * 2,
+          });
+        }
+      }
 
-      if ((s.dir>0 && s.x > W+90) || (s.dir<0 && s.x < -90)) ships.splice(i,1);
+      const copaShips = animateLoginBg._copaShips;
+      const BRASIL_COLORS = ['#009c3b','#ffdf00','#002776','#ffffff','#009c3b','#ffdf00'];
+
+      for (const s of copaShips) {
+        const path = flagPaths[s.pathIdx];
+        if (!path || path.length < 2) continue;
+
+        // Avança no caminho
+        s.pct = (s.pct + s.speed * (1/60)) % 1;
+        const rawIdx = s.pct * (path.length - 1);
+        const idx0 = Math.floor(rawIdx), idx1 = Math.min(idx0 + 1, path.length - 1);
+        const frac = rawIdx - idx0;
+        const px = path[idx0].x + (path[idx1].x - path[idx0].x) * frac;
+        const py = path[idx0].y + (path[idx1].y - path[idx0].y) * frac;
+        const bobY = Math.sin(t * 2 + s.bob) * 3;
+
+        // Calcula ângulo de direção
+        const nx = path[Math.min(idx0+2, path.length-1)].x - path[idx0].x;
+        const ny = path[Math.min(idx0+2, path.length-1)].y - path[idx0].y;
+        const angle = Math.atan2(ny, nx) + Math.PI/2;
+
+        // Rastro colorido da bandeira
+        s.trail.push({ x: px, y: py + bobY });
+        if (s.trail.length > 28) s.trail.shift();
+
+        const hue = BRASIL_COLORS[s.pathIdx % BRASIL_COLORS.length];
+        ctx.save();
+        for (let k = 0; k < s.trail.length; k++) {
+          const p = s.trail[k];
+          const a = (k / s.trail.length);
+          const sz = 18 * s.depth * a;
+          ctx.globalAlpha = (0.4 * s.depth + 0.1) * a * 0.6;
+          ctx.fillStyle = hue;
+          ctx.shadowColor = hue; ctx.shadowBlur = sz * 0.8;
+          ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(0.5, sz * 0.35), 0, Math.PI*2); ctx.fill();
+        }
+        ctx.restore();
+
+        // Nave
+        const sz = 18 * s.depth;
+        ctx.save();
+        ctx.translate(px, py + bobY);
+        ctx.rotate(angle);
+        ctx.globalAlpha = 0.42 * s.depth + 0.20;
+        ctx.shadowColor = hue; ctx.shadowBlur = 14 * s.depth;
+        s.skin.drawPreview(ctx, (sz * 2) / s.skin._size);
+        ctx.restore();
+        ctx.globalAlpha = 1;
+      }
+
+      // Badge Copa no canto
+      ctx.save();
+      ctx.globalAlpha = 0.55 + 0.15 * Math.sin(t * 1.2);
+      ctx.font = 'bold 11px "Press Start 2P", monospace';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
+      ctx.fillStyle = '#ffdf00';
+      ctx.shadowColor = '#009c3b'; ctx.shadowBlur = 8;
+      ctx.fillText('COPA DO MUNDO 2026', W - 14, H - 14);
+      ctx.globalAlpha = 1;
+      ctx.restore();
+
+    } else {
+      // ── MODO NORMAL: naves aleatórias ───────────────────────
+      if (!animateLoginBg._ships) animateLoginBg._ships = [];
+      const ships = animateLoginBg._ships;
+      if (Math.random() < 0.012 && ships.length < 4 && SKINS.length) {
+        const dir = Math.random()<0.5 ? 1 : -1;
+        const depth = 0.5 + Math.random()*0.9;
+        ships.push({
+          x: dir>0 ? -70 : W+70,
+          y: H*(0.12+Math.random()*0.6),
+          dir, depth,
+          speed: (40+Math.random()*70)*dir,
+          skin: SKINS[Math.floor(Math.random()*SKINS.length)],
+          bob: Math.random()*Math.PI*2,
+          trail: [],
+        });
+      }
+      for (let i=ships.length-1;i>=0;i--){
+        const s = ships[i];
+        s.x += s.speed * (1/60);
+        const yy = s.y + Math.sin(t*1.6+s.bob)*6;
+        const sz = 15*s.depth;
+        s.trail.push({x:s.x,y:yy});
+        if (s.trail.length>16) s.trail.shift();
+        const hue = s.skin.color || '#5be8ff';
+        ctx.save();
+        for (let k=0;k<s.trail.length;k++){
+          const p=s.trail[k];
+          const a=(k/s.trail.length);
+          ctx.fillStyle=hue;
+          ctx.globalAlpha=(0.3*s.depth+0.12)*a*0.5;
+          ctx.beginPath(); ctx.arc(p.x - s.dir*sz*0.9, p.y, sz*0.32*a, 0, Math.PI*2); ctx.fill();
+        }
+        ctx.restore();
+        ctx.save();
+        ctx.translate(s.x, yy);
+        ctx.rotate(s.dir>0 ? Math.PI/2 : -Math.PI/2);
+        ctx.globalAlpha = 0.32*s.depth + 0.16;
+        ctx.shadowColor = hue; ctx.shadowBlur = 9*s.depth;
+        s.skin.drawPreview(ctx, (sz*2)/s.skin._size);
+        ctx.restore();
+        ctx.globalAlpha = 1;
+        if ((s.dir>0 && s.x > W+90) || (s.dir<0 && s.x < -90)) ships.splice(i,1);
+      }
     }
 
     // Scanlines
