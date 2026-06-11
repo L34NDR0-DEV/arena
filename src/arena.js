@@ -107,6 +107,12 @@ export class Arena {
     return palettes[Math.floor(Math.random()*palettes.length)];
   }
 
+  // Reduz obstáculos (para modos online — mais espaço aberto)
+  reduceObstacles(factor=0.4) {
+    const keep=Math.round(this.obstacles.length*factor);
+    this.obstacles=this.obstacles.slice(0,keep);
+  }
+
   // Gera obstáculos fixos espalhados pela arena — pilares, rochas e ruínas.
   // Respeitam uma zona central livre (onde o player nasce) e as bordas.
   // Colisão esférica (mesma API de asteroides) — sem HP, sem movimento.

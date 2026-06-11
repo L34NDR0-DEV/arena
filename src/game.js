@@ -77,6 +77,11 @@ export class Game {
     // Conecta portalMgr ao combat para reflexão de balas em buracos negros
     if (this.portalMgr) this.combat.setPortalManager(this.portalMgr);
 
+    // Modos online: menos obstáculos (mais espaço aberto para combate PvP)
+    if (mode==='equipe_online'||mode==='tower_defense') {
+      this.arena.reduceObstacles(0.35);
+    }
+
     // Torres Astrais — disponíveis no modo Teste
     this.towerMgr = mode==='teste' ? new TowerManager() : null;
     // Torre central do Torneio "Tower Defense" — nasce neutra no meio da

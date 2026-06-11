@@ -55,6 +55,24 @@ export class Tower {
     this._destroyedFlash=0;
     this.captures=0; // quantas vezes já trocou de dono (visual/estatística)
 
+    // ── Novas capacidades ──────────────────────────────────────
+    // Escudo regenerável
+    this.maxShield=150; this.shield=0; // começa sem escudo; ganha com o tempo
+    this._shieldRegenCd=8; // 8s após dano para começar regen
+    this._shieldRegenTimer=0;
+    // Slot de item (ganho ao longo do tempo)
+    this.itemSlot=null; // { type, charges }
+    this._itemGainTimer=30+Math.random()*20;
+    // Movimento temporário (segue nave aliada)
+    this._followTimer=0; this._followTarget=null;
+    this._baseX=x; this._baseY=y; this._moveSpeed=60;
+    // Ondas de impacto (atordoam por 90s — agressivo)
+    this._shockwaveCd=15+Math.random()*10;
+    this._shockwaveTimer=0;
+    this._shockwaves=[]; // { x,y,r,maxR,life }
+    // Reflexão de dano
+    this.damageReflect=0.25; // 25% do dano recebido refletido de volta
+
     // ── Animação de surgimento/montagem ──────────────────────
     this._emergeT=0;          // 0 → 1 ao longo de EMERGE_DUR
     this.emerging=true;       // true enquanto a torre está sendo montada (sem combate)
@@ -80,11 +98,24 @@ export class Tower {
     return list;
   }
 
-  takeDamage(amount) {
+  takeDamage(amount, attacker=null) {
     // Torres surgindo, reconstruindo ou já mortas são invulneráveis
     if (this.dead||this.emerging||this._rebuilding) return false;
+    // Escudo absorve primeiro
+    if (this.shield>0) {
+      const abs=Math.min(this.shield,amount);
+      this.shield-=abs; amount-=abs;
+      this._shieldRegenTimer=0; // reseta regen
+    }
+    // Reflexão de dano: devolve parte ao atacante
+    if (attacker && this.damageReflect>0 && amount>0) {
+      const reflected=amount*this.damageReflect;
+      if (attacker.hp!=null) attacker.hp=Math.max(0,attacker.hp-reflected);
+    }
+    if (amount<=0) { this._hitFlash=0.1; return false; }
     this.hp=Math.max(0,this.hp-amount);
     this._hitFlash=0.15;
+    this._shieldRegenTimer=0;
     spawnDamageNumber(this.x+(Math.random()-0.5)*this.r, this.y-this.r-10, amount);
     if (this.hp<=0) return true;
     return false;
@@ -140,6 +171,51 @@ export class Tower {
     if (this._destroyedFlash>0) this._destroyedFlash-=dt;
     this._ringPulse+=dt;
     if (this.dead) return;
+
+    // ── Regen do escudo ───────────────────────────────────────
+    if (this.shield<this.maxShield) {
+      this._shieldRegenTimer+=dt;
+      if (this._shieldRegenTimer>=this._shieldRegenCd) {
+        this.shield=Math.min(this.maxShield,this.shield+20*dt);
+      }
+    }
+
+    // ── Ondas de impacto (atordoam naves adversárias por 90s) ─
+    this._shockwaveTimer-=dt;
+    if (this._shockwaveTimer<=0) {
+      this._shockwaveTimer=this._shockwaveCd;
+      this._shockwaves.push({x:this.x,y:this.y,r:this.r,maxR:400,life:1,_hit:new Set()});
+    }
+    for (const sw of this._shockwaves) {
+      sw.r+=(sw.maxR-sw.r)*dt*3; sw.life-=dt;
+      // Aplica stun às naves adversárias tocadas pela onda
+      const targets = this.owner==='enemy' ? [player] : (enemies||[]);
+      for (const t of targets) {
+        if (t.dead||sw._hit.has(t)) continue;
+        if (Math.abs(Math.hypot(t.x-sw.x,t.y-sw.y)-sw.r)<(t.r||30)+8) {
+          sw._hit.add(t);
+          t._stunTimer=(t._stunTimer||0)+90; // 90s de stun
+        }
+      }
+    }
+    this._shockwaves=this._shockwaves.filter(sw=>sw.life>0);
+
+    // ── Movimento: segue alvo aliado mais próximo por um tempo ──
+    if (this._followTimer>0) {
+      this._followTimer-=dt;
+      if (this._followTarget&&!this._followTarget.dead) {
+        const dx=this._followTarget.x-this.x,dy=this._followTarget.y-this.y;
+        const d=Math.hypot(dx,dy)||1;
+        if (d>120) {
+          this.x+=dx/d*this._moveSpeed*dt;
+          this.y+=dy/d*this._moveSpeed*dt;
+        }
+      } else {
+        // Volta para posição base
+        const dx=this._baseX-this.x,dy=this._baseY-this.y,d=Math.hypot(dx,dy)||1;
+        if (d>10) { this.x+=dx/d*this._moveSpeed*dt; this.y+=dy/d*this._moveSpeed*dt; }
+      }
+    }
 
     // Procura alvo mais próximo que NÃO seja do mesmo time da torre
     let target=null, bestD=TOWER_RANGE;
@@ -237,6 +313,30 @@ export class Tower {
       ctx.globalAlpha=this._destroyedFlash/0.6*0.5;
       ctx.fillStyle=col;
       ctx.beginPath(); ctx.arc(this.x,this.y,r*2.6,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+    }
+
+    // ── Escudo visual ──────────────────────────────────────────
+    if (this.shield>0) {
+      ctx.save();
+      const sp=this.shield/this.maxShield;
+      ctx.globalAlpha=0.35*sp;
+      ctx.strokeStyle='#44aaff'; ctx.lineWidth=4*sp;
+      ctx.shadowColor='#44aaff'; ctx.shadowBlur=14*sp;
+      ctx.beginPath(); ctx.arc(this.x,this.y,r*1.35,0,Math.PI*2); ctx.stroke();
+      ctx.restore();
+      // Barra de escudo
+      const w=120,bx=this.x-60,by2=this.y-r*1.42-12;
+      ctx.save(); ctx.fillStyle='#44aaff'; ctx.fillRect(bx,by2,w*sp,4); ctx.restore();
+    }
+
+    // ── Ondas de choque ────────────────────────────────────────
+    for (const sw of (this._shockwaves||[])) {
+      ctx.save();
+      ctx.globalAlpha=sw.life*0.5;
+      ctx.strokeStyle=col; ctx.lineWidth=3*sw.life;
+      ctx.shadowColor=col; ctx.shadowBlur=12*sw.life;
+      ctx.beginPath(); ctx.arc(this.x,this.y,sw.r,0,Math.PI*2); ctx.stroke();
       ctx.restore();
     }
   }
