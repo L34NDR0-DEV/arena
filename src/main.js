@@ -1725,10 +1725,17 @@ function _buildCopaShipPaths(flagCx, flagCy, fw, fh) {
         const tW = tH * (timg.naturalWidth / timg.naturalHeight);
         const tx = trophyCx - tW/2;
         const ty = trophyCy - tH * 0.52;
+        // 1ª passada: glow dourado sobre a silhueta (source-over normal)
         ctx.save();
-        ctx.shadowColor = `rgba(255,180,0,${0.6 + 0.2*Math.sin(t*1.8)})`;
-        ctx.shadowBlur = 30;
-        ctx.globalAlpha = 0.92 + 0.05*Math.sin(t*0.9);
+        ctx.shadowColor = `rgba(255,200,0,${0.7 + 0.2*Math.sin(t*1.8)})`;
+        ctx.shadowBlur = 36;
+        ctx.globalAlpha = 0.18;
+        ctx.drawImage(timg, tx, ty, tW, tH);
+        ctx.restore();
+        // 2ª passada: imagem real com multiply para remover fundo branco
+        ctx.save();
+        ctx.globalCompositeOperation = 'multiply';
+        ctx.globalAlpha = 1.0;
         ctx.drawImage(timg, tx, ty, tW, tH);
         ctx.restore();
       } else if (!animateLoginBg._trophyFailed) {
