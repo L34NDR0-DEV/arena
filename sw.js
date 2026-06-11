@@ -1,8 +1,8 @@
 // Service Worker — Tower Defense Space
 // Estratégia: network-first para o jogo (sempre atualizado), cache para assets estáticos
 
-const CACHE_NAME = 'arena-space-v1';
-const CACHE_STATIC = 'arena-static-v1';
+const CACHE_NAME = 'arena-space-v2';
+const CACHE_STATIC = 'arena-static-v2';
 
 // Assets que podem ser servidos do cache quando offline
 const PRECACHE = [
@@ -16,10 +16,14 @@ const PRECACHE = [
   '/sound/musicarcade.mp3',
 ];
 
-// Instala e pré-cacheou os assets essenciais
+// Instala e pré-cacheia os assets essenciais — falhas individuais não travam a instalação
 self.addEventListener('install', evt => {
   evt.waitUntil(
-    caches.open(CACHE_STATIC).then(cache => cache.addAll(PRECACHE)).then(() => self.skipWaiting())
+    caches.open(CACHE_STATIC).then(cache =>
+      Promise.allSettled(PRECACHE.map(url =>
+        cache.add(url).catch(() => {}) // ignora 404s durante install
+      ))
+    ).then(() => self.skipWaiting())
   );
 });
 
