@@ -30,6 +30,15 @@ const CENTRAL_TOWER_MAX_HP   = 3500;  // muito mais resistente — objetivo cent
 const CENTRAL_TOWER_RANGE    = 820;   // alcance maior — pressiona quem fica parado longe
 const CENTRAL_TOWER_DAMAGE   = 55;    // tiro doído — obriga coordenação de time
 const CENTRAL_TOWER_SHOOT_CD = 0.38;  // cadência alta — chuva de tiros sob foco
+const CENTRAL_RELAY_COUNT    = 3;
+const CENTRAL_RELAY_R        = 34;
+const CENTRAL_RELAY_CAPTURE_R= 128;
+const CENTRAL_RELAY_RATE     = 0.36;
+const CENTRAL_RELAY_DECAY    = 0.18;
+const CENTRAL_MIN_DAMAGE     = 0.22;
+const CENTRAL_RELAY_STEP     = 0.26;
+
+function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
 export class Tower {
   constructor(x, y, side, corner) {
@@ -637,6 +646,8 @@ export class CentralTower extends Tower {
     this.maxHp=CENTRAL_TOWER_MAX_HP;
     this.hp=this.maxHp;
     this._shootCd=Math.random()*CENTRAL_TOWER_SHOOT_CD;
+    this._relayStatus='CAPTURE RELES PARA QUEBRAR A BLINDAGEM';
+    this._shieldDamageScale=CENTRAL_MIN_DAMAGE;
   }
 
   // A torre central é um núcleo VIVO que se defende: mira e atira na nave
@@ -712,7 +723,82 @@ export class CentralTower extends Tower {
     ctx.beginPath(); ctx.arc(0, 0, this.r * (820/78) * 0.78, 0, Math.PI * 2); ctx.stroke();
     ctx.globalAlpha = 1;
 
+    // Carcaca orbital segmentada exclusiva da torre central.
+    ctx.save();
+    ctx.rotate(this._ringPulse * 0.24);
+    ctx.lineCap = 'round';
+    for (let i=0;i<8;i++) {
+      const a = i * Math.PI / 4;
+      const segGrad = ctx.createLinearGradient(Math.cos(a)*r, Math.sin(a)*r, Math.cos(a+0.45)*r, Math.sin(a+0.45)*r);
+      segGrad.addColorStop(0, '#17202c');
+      segGrad.addColorStop(0.5, '#435068');
+      segGrad.addColorStop(1, '#141b26');
+      ctx.strokeStyle = segGrad;
+      ctx.lineWidth = 10;
+      ctx.beginPath();
+      ctx.arc(0, -r*0.06, r*1.34, a+0.06, a+0.54);
+      ctx.stroke();
+      ctx.strokeStyle = col + '88';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = col;
+      ctx.shadowBlur = 10 * pulse;
+      ctx.beginPath();
+      ctx.arc(0, -r*0.06, r*1.18, a+0.16, a+0.44);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+    ctx.restore();
+
+    // Tres estabilizadores apontados para fora, dando leitura de fortaleza.
+    ctx.save();
+    ctx.rotate(-this._ringPulse * 0.18);
+    for (let i=0;i<3;i++) {
+      ctx.save();
+      ctx.rotate(i * Math.PI * 2 / 3);
+      const finGrad = ctx.createLinearGradient(r*0.85, 0, r*1.65, 0);
+      finGrad.addColorStop(0, '#101722');
+      finGrad.addColorStop(0.5, '#2b3547');
+      finGrad.addColorStop(1, '#070b12');
+      ctx.fillStyle = finGrad;
+      ctx.strokeStyle = col + '77';
+      ctx.lineWidth = 2;
+      ctx.shadowColor = col;
+      ctx.shadowBlur = 8 * pulse;
+      ctx.beginPath();
+      ctx.moveTo(r*0.78, -10);
+      ctx.lineTo(r*1.55, -20);
+      ctx.lineTo(r*1.80, 0);
+      ctx.lineTo(r*1.55, 20);
+      ctx.lineTo(r*0.78, 10);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.shadowBlur = 0;
+    ctx.restore();
+
     this._drawBody(ctx, col, r, 1, 1);
+
+    // Cristal central por cima da base reaproveitada.
+    ctx.save();
+    ctx.translate(0, -r * 0.28);
+    ctx.rotate(Math.PI / 4 + this._ringPulse * 0.08);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.fillStyle = '#ffffff';
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 20 + 12 * pulse;
+    ctx.beginPath();
+    ctx.moveTo(0, -r*0.22);
+    ctx.lineTo(r*0.22, 0);
+    ctx.lineTo(0, r*0.22);
+    ctx.lineTo(-r*0.22, 0);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
     ctx.restore();
 
     // Barra de HP (mais larga para a torre central)
@@ -735,10 +821,9 @@ export class CentralTower extends Tower {
     ctx.save();
     ctx.fillStyle = col; ctx.font = 'bold 14px system-ui'; ctx.textAlign = 'center';
     ctx.shadowColor = col; ctx.shadowBlur = 10;
-    ctx.fillText('FORTALEZA ORBITAL — DESTRUA PARA VENCER', this.x, by - 13);
+    ctx.fillText('NEXO ORBITAL - CONTROLE OS RELES', this.x, by - 13);
     ctx.font = '11px system-ui'; ctx.shadowBlur = 5;
-    const hpPct = Math.round(pct * 100);
-    ctx.fillText(`[ BLINDAGEM: ${hpPct}% ]`, this.x, by - 1);
+    ctx.fillText(this._relayStatus, this.x, by - 1);
     ctx.shadowBlur = 0;
     ctx.restore();
 
@@ -761,15 +846,85 @@ export class TowerDefenseManager {
   constructor(arenaW, arenaH) {
     this.tower = new CentralTower(arenaW/2, arenaH/2);
     this._winnerTeam=null; // 'red' | 'blue' | null
+    this._time=0;
+    const orbit = Math.max(220, Math.min(arenaW, arenaH) * 0.32);
+    this.relays = Array.from({length:CENTRAL_RELAY_COUNT}, (_, i) => {
+      const a = -Math.PI/2 + i * Math.PI * 2 / CENTRAL_RELAY_COUNT;
+      return {
+        x: arenaW/2 + Math.cos(a) * orbit,
+        y: arenaH/2 + Math.sin(a) * orbit,
+        a,
+        owner:null,
+        progress:0, // -1 azul, +1 vermelho
+        pulse:Math.random()*Math.PI*2,
+        contested:false,
+        presence:0,
+      };
+    });
   }
 
   get winnerTeam() { return this._winnerTeam; }
+
+  _relayCount(team) {
+    return this.relays.filter(r=>r.owner===team).length;
+  }
+
+  _damageScale(team) {
+    const owned = this._relayCount(team);
+    return Math.min(1, CENTRAL_MIN_DAMAGE + owned * CENTRAL_RELAY_STEP);
+  }
+
+  _relayStatus() {
+    const red = this._relayCount('red');
+    const blue = this._relayCount('blue');
+    return `RELES V:${red}/3 A:${blue}/3 | 3 RELES = DANO TOTAL`;
+  }
+
+  _updateRelays(dt, attackers=[]) {
+    for (const r of this.relays) {
+      let red=0, blue=0;
+      for (const a of attackers) {
+        if (!a || a.dead || !a.team) continue;
+        const d=Math.hypot(a.x-r.x, a.y-r.y);
+        if (d>CENTRAL_RELAY_CAPTURE_R) continue;
+        if (a.team==='red') red++;
+        else if (a.team==='blue') blue++;
+      }
+
+      const influence = red - blue;
+      r.contested = red>0 && blue>0;
+      r.presence = Math.min(1, red + blue);
+
+      if (influence !== 0) {
+        r.progress = clamp(r.progress + influence * CENTRAL_RELAY_RATE * dt, -1, 1);
+      } else if (!r.owner) {
+        const drift = CENTRAL_RELAY_DECAY * dt;
+        if (Math.abs(r.progress) <= drift) r.progress = 0;
+        else r.progress -= Math.sign(r.progress) * drift;
+      }
+
+      if (r.progress >= 0.98) {
+        r.progress = 1;
+        r.owner = 'red';
+      } else if (r.progress <= -0.98) {
+        r.progress = -1;
+        r.owner = 'blue';
+      } else if (Math.abs(r.progress) < 0.38) {
+        r.owner = null;
+      }
+      r.pulse += dt;
+    }
+  }
 
   // `bullets` é o array compartilhado do CombatSystem — a torre central
   // dispara diretamente nele. `attackers` é a lista de naves vivas (jogador
   // local + remotos + bots) que servem de alvo para a defesa automática.
   update(dt, bullets=[], attackers=[]) {
     if (this._winnerTeam) return;
+    this._time+=dt;
+    this._updateRelays(dt, attackers);
+    this.tower._relayStatus = this._relayStatus();
+    this.tower._shieldDamageScale = Math.max(this._damageScale('red'), this._damageScale('blue'));
     this.tower._bullets = bullets;
     this.tower.update(dt, attackers);
   }
@@ -782,16 +937,127 @@ export class TowerDefenseManager {
     const d=Math.hypot(t.x-x,t.y-y);
     if (d>=t.r+radius) return null;
 
-    const destroyed=t.takeDamage(amount);
+    const relayCount=this._relayCount(attackerTeam);
+    const damageScale=this._damageScale(attackerTeam);
+    const finalDamage=amount*damageScale;
+    const destroyed=t.takeDamage(finalDamage);
     if (destroyed) {
       t.captureBy(attackerTeam);
       this._winnerTeam=attackerTeam;
-      return { tower:t, destroyed:true, winnerTeam:attackerTeam };
+      return { tower:t, destroyed:true, winnerTeam:attackerTeam, damageScale, relayCount };
     }
-    return { tower:t, destroyed:false };
+    return { tower:t, destroyed:false, damageScale, relayCount };
+  }
+
+  _drawRelayLinks(ctx) {
+    for (const r of this.relays) {
+      if (!r.owner) continue;
+      const col = COLORS[r.owner];
+      const pulse = 0.55 + 0.45 * Math.sin(this._time * 3 + r.a);
+      ctx.save();
+      ctx.globalAlpha = 0.18 + 0.12 * pulse;
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 2;
+      ctx.setLineDash([12, 10]);
+      ctx.lineDashOffset = -this._time * 34;
+      ctx.shadowColor = col;
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.moveTo(r.x, r.y);
+      ctx.lineTo(this.tower.x, this.tower.y);
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  _drawRelay(ctx, r, idx) {
+    const ownerCol = r.owner ? COLORS[r.owner] : COLORS.neutral;
+    const signCol = r.progress >= 0 ? COLORS.red : COLORS.blue;
+    const capture = Math.abs(r.progress);
+    const pulse = 0.55 + 0.45 * Math.sin(r.pulse * 3);
+
+    ctx.save();
+    ctx.translate(r.x, r.y);
+
+    if (r.presence || r.owner) {
+      ctx.save();
+      ctx.globalAlpha = r.contested ? 0.12 : 0.06 + 0.04 * pulse;
+      ctx.strokeStyle = r.contested ? '#ffffff' : ownerCol;
+      ctx.lineWidth = r.contested ? 2 : 1;
+      ctx.setLineDash(r.contested ? [8, 8] : []);
+      ctx.beginPath();
+      ctx.arc(0, 0, CENTRAL_RELAY_CAPTURE_R, 0, Math.PI*2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    const shell = ctx.createRadialGradient(-12, -14, 8, 0, 0, CENTRAL_RELAY_R*1.3);
+    shell.addColorStop(0, '#4a5468');
+    shell.addColorStop(0.42, '#18202c');
+    shell.addColorStop(1, '#070a10');
+    ctx.fillStyle = shell;
+    ctx.shadowColor = ownerCol;
+    ctx.shadowBlur = 8 + 10 * pulse * (r.owner ? 1 : 0.35);
+    ctx.beginPath();
+    ctx.arc(0, 0, CENTRAL_RELAY_R, 0, Math.PI*2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    for (let i=0;i<4;i++) {
+      const a=i*Math.PI/2 + this._time*0.18;
+      ctx.strokeStyle = '#596276';
+      ctx.beginPath();
+      ctx.arc(0, 0, CENTRAL_RELAY_R+3, a+0.18, a+0.72);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = signCol;
+    ctx.lineWidth = 3;
+    ctx.shadowColor = signCol;
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    const start = -Math.PI/2;
+    const end = start + Math.PI*2*capture*(r.progress < 0 ? -1 : 1);
+    ctx.arc(0, 0, CENTRAL_RELAY_R+9, start, end, r.progress < 0);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    ctx.save();
+    ctx.rotate(this._time*0.7 + idx);
+    ctx.strokeStyle = ownerCol + 'aa';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    for (let i=0;i<6;i++) {
+      const a=i*Math.PI/3 - Math.PI/6;
+      const px=Math.cos(a)*CENTRAL_RELAY_R*0.56;
+      const py=Math.sin(a)*CENTRAL_RELAY_R*0.56;
+      if (i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.closePath();
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.fillStyle = r.owner ? ownerCol : '#d8e4ff';
+    ctx.shadowColor = ownerCol;
+    ctx.shadowBlur = 14 * pulse;
+    ctx.beginPath();
+    ctx.arc(0, 0, 8 + pulse*2, 0, Math.PI*2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.fillStyle = ownerCol;
+    ctx.font = 'bold 10px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`R${idx+1}`, 0, CENTRAL_RELAY_R + 13);
+    ctx.restore();
   }
 
   draw(ctx) {
+    this._drawRelayLinks(ctx);
+    this.relays.forEach((r, idx)=>this._drawRelay(ctx, r, idx));
     this.tower.draw(ctx);
   }
 }

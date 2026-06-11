@@ -18,6 +18,7 @@ export class CombatSystem {
   setEnemyManager(mgr) { this._enemyMgr=mgr; }
   setAudio(audio) { this._audio=audio; }
   setShakeCallback(fn) { this._shake=fn; }
+  setHitStopCallback(fn) { this._hitStop=fn; }
 
   // Contexto do modo "Equipe Online" (PvP): jogadores remotos, bots locais,
   // time do jogador local e referência de rede para reportar abates.
@@ -133,7 +134,29 @@ export class CombatSystem {
 
   spawnExplosion(x,y,r,color) {
     this.explosions.push({x,y,r,maxR:r,color,life:1});
-    this.arena.spawnParticles(x,y,color,10,150);
+    const effects = this.arena.effects;
+    if (effects) {
+      effects.ring(x, y, { color, maxRadius:r, duration:0.36, width:3 });
+      effects.burst(x, y, { color, count:10, speed:150 });
+    } else {
+      this.arena.spawnParticles(x,y,color,10,150);
+    }
+  }
+
+  _flash(entity, color='#ffffff') {
+    this.arena.effects?.flash(entity, { color, duration:0.08 });
+  }
+
+  _impactSpark(b, x=b.x, y=b.y, color=b.owner_color||'#ffffff') {
+    const dirX = b.dirX ?? (b.vx || 0);
+    const dirY = b.dirY ?? (b.vy || 0);
+    const d = Math.hypot(dirX, dirY) || 1;
+    const angle = Math.atan2(-dirY/d, -dirX/d);
+    this.arena.effects?.spark(x, y, angle, { color, count:6, speed:210 });
+  }
+
+  _enemyKilled() {
+    this._hitStop?.(0.04);
   }
 
   update(dt, player, enemies) {
@@ -156,14 +179,18 @@ export class CombatSystem {
           if (b._hitEnemies?.has(e)) continue; // piercing: não acerta o mesmo inimigo duas vezes
           if (Math.hypot(b.x-e.x,b.y-e.y)<e.r+r) {
             e.hp-=b.damage;
+            this._flash(e);
+            this._impactSpark(b, b.x, b.y, b.owner_color||e.color||'#ffffff');
             spawnDamageNumber(e.x + (Math.random()-0.5)*e.r, e.y - e.r, b.damage);
             if (b.vampire && b._player) b._player.heal(Math.round(b.damage*0.3));
             if (e.hp<=0) {
               if (isContra1) {
                 this._enemyMgr.enemyLostLife(e,this.arena,{spawnAt:()=>{}});
                 player.score+=10; player.addXP(20);
+                if (e.dead) this._enemyKilled();
               } else {
                 e.dead=true; player.kills++; player.score+=e.score; player.addXP(e.score);
+                this._enemyKilled();
               }
             }
             this.spawnExplosion(b.x,b.y,r*3,b.owner_color||'#ffffff');
@@ -180,6 +207,8 @@ export class CombatSystem {
       } else if (b.owner==='enemy') {
         if (!player.dead&&!player.rebuilding&&player.invincible<=0&&Math.hypot(b.x-player.x,b.y-player.y)<player.r+r) {
           const died=player.takeDamage(b.damage);
+          this._flash(player);
+          this._impactSpark(b, b.x, b.y, b.owner_color||'#ff4466');
           if (died) this._triggerPlayerRebuild(player,isContra1);
           this.spawnExplosion(b.x,b.y,12,b.owner_color||'#ff4466');
           return false;
@@ -195,6 +224,8 @@ export class CombatSystem {
               && !player.dead && !player.rebuilding && player.invincible<=0
               && Math.hypot(b.x-player.x,b.y-player.y)<player.r+r) {
             const died=player.takeDamage(b.damage);
+            this._flash(player);
+            this._impactSpark(b, b.x, b.y, b.owner_color||'#ff4466');
             if (died) {
               this._triggerPlayerRebuild(player,isContra1);
               const killerName = b.owner==='tower' ? 'Torre Central' : (b.shooter?.name||'Adversário');
@@ -209,10 +240,13 @@ export class CombatSystem {
           for (const target of this._pvpTargets(shooterTeam)) {
             if (Math.hypot(b.x-target.x,b.y-target.y)<(target.r||30)+r) {
               target.hp-=b.damage;
+              this._flash(target);
+              this._impactSpark(b, b.x, b.y, b.owner_color||'#ffffff');
               spawnDamageNumber(target.x+(Math.random()-0.5)*30, target.y-30, b.damage);
               if (target.hp<=0 && !target.dead) {
                 target.dead=true;
                 target.startDeath?.();
+                this._enemyKilled();
                 if (b.owner==='player') { player.kills++; player.score+=15; player.addXP(15); }
                 else if (b.shooter) { b.shooter.kills++; b.shooter.score+=15; }
                 const killerName = b.owner==='player' ? player.name
@@ -240,6 +274,7 @@ export class CombatSystem {
         e.vx-=nx*80;       e.vy-=ny*80;
         this._playCollisionSfx(1.3);
         const died=player.takeDamage(e.damage*dt*2.5, true); // colisão física: escudo 50% efetivo
+        this._flash(player);
         if (died) this._triggerPlayerRebuild(player,isContra1);
       }
     }
@@ -269,7 +304,7 @@ export class CombatSystem {
       this.bullets=this.bullets.filter(b=>{
         if (!b._hitAst) {
           const a=this.arena.checkAsteroidCollision(b.x,b.y,4,b.damage*0.5);
-          if (a) { this.spawnExplosion(b.x,b.y,8,'#cc8822'); return false; }
+          if (a) { this._impactSpark(b,b.x,b.y,'#cc8822'); this.spawnExplosion(b.x,b.y,8,'#cc8822'); return false; }
         }
         return true;
       });
@@ -290,6 +325,7 @@ export class CombatSystem {
         // Dano só quando não está invencível (dash, godmode, rebuild)
         if (player.invincible<=0) {
           const died=player.takeDamage(18*dt, true);
+          this._flash(player);
           if (died) this._triggerPlayerRebuild(player,isContra1);
         }
       }
@@ -314,7 +350,7 @@ export class CombatSystem {
       // Projéteis → obstáculos (destruído ao colidir)
       this.bullets=this.bullets.filter(b=>{
         const o=this.arena.checkObstacleCollision(b.x,b.y,4);
-        if (o) { this.spawnExplosion(b.x,b.y,8,'#4488aa'); return false; }
+        if (o) { this._impactSpark(b,b.x,b.y,'#4488aa'); this.spawnExplosion(b.x,b.y,8,'#4488aa'); return false; }
         return true;
       });
 
@@ -399,6 +435,8 @@ export class CombatSystem {
         if (e.dead || e.isRespawning) continue;
         if (Math.hypot(m.x-e.x, m.y-e.y) < e.r + 8) {
           e.hp -= m.damage;
+          this._flash(e);
+          this._impactSpark({ dirX:Math.cos(m.angle), dirY:Math.sin(m.angle), owner_color:'#ff8800' }, m.x, m.y, '#ff8800');
           spawnDamageNumber(e.x, e.y - e.r, m.damage);
           this.spawnExplosion(m.x, m.y, 36, '#ff6600');
           this.arena.spawnParticles(m.x, m.y, '#ff8800', 14, 100);
@@ -407,6 +445,7 @@ export class CombatSystem {
             m._player.kills++;
             m._player.score += e.score;
             m._player.addXP(e.score);
+            this._enemyKilled();
           }
           return false;
         }
@@ -416,8 +455,9 @@ export class CombatSystem {
   }
 
   _triggerPlayerRebuild(player, isContra1) {
-    this.arena.spawnParticles(player.x,player.y,'#ff4466',20,200);
-    this.spawnExplosion(player.x,player.y,60,'#ff4466');
+    const deathColor = player.skin?.deathColor || player.skin?.color || '#ff4466';
+    this.arena.spawnParticles(player.x,player.y,deathColor,20,200);
+    this.spawnExplosion(player.x,player.y,60,deathColor);
     this._shake?.(10);
     if (isContra1) {
       this._enemyMgr?.playerLostLife();
@@ -578,7 +618,13 @@ export class CombatSystem {
     for (const e of enemies) {
       if (e.dead||e.isRespawning) continue;
       const d=Math.hypot(e.x-x,e.y-y);
-      if (d<R){const dmg=Math.round(90*(1-d/R));e.hp-=dmg;spawnDamageNumber(e.x,e.y-e.r,dmg);if(e.hp<=0){e.dead=true;player.kills++;player.score+=e.score;player.addXP(e.score);}}
+      if (d<R){
+        const dmg=Math.round(90*(1-d/R));
+        e.hp-=dmg;
+        this._flash(e);
+        spawnDamageNumber(e.x,e.y-e.r,dmg);
+        if(e.hp<=0){e.dead=true;player.kills++;player.score+=e.score;player.addXP(e.score);this._enemyKilled();}
+      }
     }
   }
 }

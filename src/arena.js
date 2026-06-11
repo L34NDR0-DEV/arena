@@ -1,4 +1,5 @@
 // Arena com fundo arcade-estelar: grade neon + nebulosas + estrelas piscando.
+import { EffectsManager } from './effects.js';
 export const ARENA_W_DEFAULT = 8000;
 export const ARENA_H_DEFAULT = 5500;
 
@@ -53,7 +54,8 @@ export class Arena {
   constructor(w, h, arenaType = 'nebulosa') {
     this.w = w; this.h = h;
     this.type = arenaType;
-    this.particles = [];
+    this.effects = new EffectsManager();
+    this.particles = this.effects.particles; // compat: leitura externa do array antigo
     this._build();
   }
 
@@ -184,23 +186,11 @@ export class Arena {
   }
 
   spawnParticles(x, y, color, count=8, speed=130) {
-    for (let i=0;i<count;i++) {
-      const a=Math.random()*Math.PI*2, v=speed*(0.3+Math.random()*0.9);
-      this.particles.push({
-        x,y, vx:Math.cos(a)*v, vy:Math.sin(a)*v,
-        life:1, decay:0.9+Math.random()*0.7,
-        r:2+Math.random()*3, color,
-      });
-    }
+    this.effects.burst(x, y, { color, count, speed });
   }
 
   update(dt) {
-    this.particles = this.particles.filter(p=>{
-      p.x+=p.vx*dt; p.y+=p.vy*dt;
-      p.vx*=0.96; p.vy*=0.96;
-      p.life-=p.decay*dt;
-      return p.life>0;
-    });
+    this.effects.update(dt);
 
     // Asteroides
     for (const a of this.asteroids) {
@@ -866,11 +856,6 @@ export class Arena {
   }
 
   drawParticles(ctx) {
-    for (const p of this.particles) {
-      ctx.globalAlpha = p.life;
-      ctx.fillStyle   = p.color;
-      ctx.beginPath(); ctx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2); ctx.fill();
-    }
-    ctx.globalAlpha = 1;
+    this.effects.draw(ctx);
   }
 }

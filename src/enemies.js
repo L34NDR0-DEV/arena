@@ -27,6 +27,36 @@ function drawEnemySprite(ctx, img, size, angle) {
   return true;
 }
 
+function triggerHitFlash(entity, duration=0.08) {
+  entity._hitFlash = Math.max(entity._hitFlash || 0, duration);
+  entity._hitFlashMax = Math.max(entity._hitFlashMax || 0, entity._hitFlash);
+  entity._hitFlashColor = '#ffffff';
+  entity._hitFlashManaged = false;
+}
+
+function tickHitFlash(entity, dt) {
+  if (entity._hitFlash>0 && !entity._hitFlashManaged) {
+    entity._hitFlash = Math.max(0, entity._hitFlash - dt);
+    if (entity._hitFlash<=0) entity._hitFlashMax = 0;
+  }
+}
+
+function drawHitFlash(ctx, entity, radius=null) {
+  if (!entity._hitFlash) return;
+  const t = entity._hitFlash / (entity._hitFlashMax || 0.08);
+  const r = radius ?? entity.r ?? 28;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = Math.min(0.65, t * 0.65);
+  ctx.fillStyle = entity._hitFlashColor || '#ffffff';
+  ctx.shadowColor = '#ffffff';
+  ctx.shadowBlur = 16 * t;
+  ctx.beginPath();
+  ctx.arc(entity.x, entity.y, r * 1.05, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 const ENEMY_SHIP_IMG    = loadEnemyImg('skininimiga.png');
 const ENEMY_DISC_IMG    = loadEnemyImg('skininimigas.png');
 
@@ -287,6 +317,7 @@ export class SmartEnemy {
     }
     if (this.dead) return;
     this._age+=dt;
+    tickHitFlash(this, dt);
     tickStatus(this, dt);
 
     // ── Respawn: invencível e teleportando ─────────────────
@@ -442,6 +473,7 @@ export class SmartEnemy {
     // nunca disponível como skin de jogador.
     drawEnemySprite(ctx, ENEMY_SHIP_IMG, this.r*2.4, 0);
     ctx.restore();
+    drawHitFlash(ctx, this, this.r);
 
     // HP bar
     const bw=58;
@@ -585,6 +617,7 @@ export class TeamBot {
 
   update(dt, players, bullets) {
     if (this.dead) return;
+    tickHitFlash(this, dt);
     tickStatus(this, dt);
     // Compartilha o objeto de status com o _brain para que as checagens de
     // isStunned/isFrozen/isConfused dentro de SmartEnemy.update (e _firePredictive)
@@ -639,6 +672,7 @@ export class TeamBot {
   draw(ctx) {
     if (this.dead) return;
     this._brain.draw(ctx);
+    drawHitFlash(ctx, this, this.r);
     const teamColor=TEAM_COLORS[this.team]||'#aaccff';
     ctx.save();
     ctx.strokeStyle=teamColor; ctx.globalAlpha=0.55; ctx.lineWidth=2;
@@ -696,6 +730,7 @@ export class DroneEnemy {
     }
     if (this.dead) return;
     this._age+=dt;
+    tickHitFlash(this, dt);
     tickStatus(this, dt);
 
     if (isFrozen(this)) {
@@ -765,6 +800,7 @@ export class DroneEnemy {
     ctx.fillStyle='#ffaa22';
     ctx.beginPath(); ctx.moveTo(0,-this.r); ctx.lineTo(5,-this.r+7); ctx.lineTo(-5,-this.r+7); ctx.closePath(); ctx.fill();
     ctx.restore();
+    drawHitFlash(ctx, this, this.r);
 
     // HP bar
     const bw=34;
@@ -835,6 +871,7 @@ export class GuardianEnemy {
     }
     if (this.dead) return;
     this._age+=dt;
+    tickHitFlash(this, dt);
     tickStatus(this, dt);
 
     if (isFrozen(this)) {
@@ -950,6 +987,7 @@ export class GuardianEnemy {
     // brilhante), nunca disponível como skin de jogador.
     drawEnemySprite(ctx, ENEMY_DISC_IMG, this.r*2.4, 0);
     ctx.restore();
+    drawHitFlash(ctx, this, this.r);
 
     // HP bar
     const bw=52;
@@ -1140,7 +1178,7 @@ export class EnemyManager {
     } else {
       enemy.loseLife();
       this._audio?.playExplosion(1);
-      arena.spawnParticles(enemy.x,enemy.y,'#ff4466',12,160);
+      arena.spawnParticles(enemy.x,enemy.y,enemy.color||'#ff4466',12,160);
     }
   }
 
@@ -1184,6 +1222,7 @@ export class SwarmerEnemy {
     if (this.dead) return;
     this._age+=dt;
     // Movimento em direção ao player com wobble de enxame
+    tickHitFlash(this, dt);
     const dx=player.x+this._flockOffset.x-this.x;
     const dy=player.y+this._flockOffset.y-this.y;
     const dist=Math.hypot(dx,dy)||1;
@@ -1206,6 +1245,7 @@ export class SwarmerEnemy {
       if (Math.hypot(this.x-b.x, this.y-b.y) < this.r+b.r) {
         b.dead=true;
         this.hp-=b.damage||20;
+        triggerHitFlash(this);
         if (this.hp<=0) this.dead=true;
       }
     }
@@ -1247,6 +1287,7 @@ export class SwarmerEnemy {
     ctx.shadowColor=this.color; ctx.shadowBlur=8;
     ctx.fill();
     ctx.restore();
+    drawHitFlash(ctx, this, this.r);
     ctx.globalAlpha=0.4;
     ctx.strokeStyle=this.color; ctx.lineWidth=1;
     ctx.beginPath(); ctx.arc(this.x,this.y,this.r+4,0,Math.PI*2); ctx.stroke();
@@ -1289,6 +1330,7 @@ export class TitanEnemy {
   update(dt, player, bullets) {
     if (this.dead) return;
     this._age+=dt;
+    tickHitFlash(this, dt);
     // Regen de escudo
     if (this.shield < this.maxShield) this.shield=Math.min(this.maxShield, this.shield+this._shieldRegen*dt);
     // Movimento em direção ao player
@@ -1331,6 +1373,7 @@ export class TitanEnemy {
         } else {
           this.hp-=dmg;
         }
+        triggerHitFlash(this);
         if (this.hp<=0) this.dead=true;
       }
     }
@@ -1375,6 +1418,7 @@ export class TitanEnemy {
     ctx.fill();
     ctx.strokeStyle='#44ff88'; ctx.lineWidth=3; ctx.stroke();
     ctx.restore();
+    drawHitFlash(ctx, this, this.r);
     // Anel de escudo
     if (this.shield>0) {
       const shieldAlpha=0.25+0.45*(this.shield/this.maxShield);

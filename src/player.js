@@ -137,6 +137,43 @@ function drawTrail(ctx, trail, trailDef) {
   ctx.restore();
 }
 
+function colorWithAlpha(color, alpha) {
+  if (typeof color !== 'string') return `rgba(255,255,255,${alpha})`;
+  const raw = color.trim().replace('#', '');
+  if (raw.length === 3 || raw.length === 6) {
+    const full = raw.length === 3
+      ? raw.split('').map(c => c + c).join('')
+      : raw;
+    const r = parseInt(full.slice(0, 2), 16);
+    const g = parseInt(full.slice(2, 4), 16);
+    const b = parseInt(full.slice(4, 6), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+  return color;
+}
+
+function drawTintedSkin(ctx, skin, scale, color) {
+  const img = skin?.img;
+  if (!img?.complete || !img.naturalWidth || typeof document === 'undefined') {
+    skin?.draw?.(ctx, scale);
+    return;
+  }
+  const size = Math.ceil((skin._size ?? 72) * scale);
+  const canvas = drawTintedSkin._canvas || (drawTintedSkin._canvas = document.createElement('canvas'));
+  const g = canvas.getContext('2d');
+  if (canvas.width !== size || canvas.height !== size) {
+    canvas.width = size;
+    canvas.height = size;
+  }
+  g.clearRect(0, 0, size, size);
+  g.drawImage(img, 0, 0, size, size);
+  g.globalCompositeOperation = 'source-atop';
+  g.fillStyle = color;
+  g.fillRect(0, 0, size, size);
+  g.globalCompositeOperation = 'source-over';
+  ctx.drawImage(canvas, -size/2, -size/2, size, size);
+}
+
 const SPEED       = 220;
 const DASH_SPEED  = 650;
 const DASH_DUR    = 0.17;
@@ -153,7 +190,8 @@ const REBUILD_DUR = 10;         // segundos reconstruindo
 // ── Combustão na popa — estilo arcade: núcleo alongado + faíscas ──
 // `angle` aqui é sempre o ângulo de VOO da nave (para onde o bico aponta),
 // não o ângulo de mira — a chama sai pela popa, ou seja, na direção oposta.
-function spawnFlameAt(flames, ex, ey, angle, intensity) {
+function spawnFlameAt(flames, ex, ey, angle, intensity, flameColors=null) {
+  const colors = flameColors || ['#ffffeb', '#ffb840', '#ff3000'];
   const back = angle + Math.PI;
   // Núcleo: poucas partículas grandes, alongadas no eixo da popa — dão o
   // efeito de "jato" contínuo em vez de uma bolha de fumaça.
@@ -168,6 +206,7 @@ function spawnFlameAt(flames, ex, ey, angle, intensity) {
       x:ex+(Math.random()-.5)*2, y:ey+(Math.random()-.5)*2,
       vx:Math.cos(fa)*sp, vy:Math.sin(fa)*sp,
       angle: fa,
+      colors,
       life, maxLife:life, size:5+intensity*9+Math.random()*3, flicker:Math.random(),
     });
   }
@@ -184,6 +223,7 @@ function spawnFlameAt(flames, ex, ey, angle, intensity) {
       x:ex+(Math.random()-.5)*3, y:ey+(Math.random()-.5)*3,
       vx:Math.cos(fa)*sp, vy:Math.sin(fa)*sp,
       angle: fa,
+      colors,
       life, maxLife:life, size:1+Math.random()*2, flicker:Math.random(),
     });
   }
@@ -194,6 +234,10 @@ function updateFlames(flames, dt) {
 }
 function drawFlames(ctx, flames) {
   for (const f of flames) {
+    const colors = f.colors || ['#ffffeb', '#ffb840', '#ff3000'];
+    const light = colors[0] || '#ffffeb';
+    const mid   = colors[1] || light;
+    const dark  = colors[2] || mid;
     const t=f.life/f.maxLife;
     const fk=0.7+0.3*Math.sin(f.flicker*40+Date.now()*0.03);
     ctx.save(); ctx.globalAlpha=Math.min(1,t*1.3)*fk;
@@ -202,7 +246,7 @@ function drawFlames(ctx, flames) {
       const len=f.size*3*t+2;
       ctx.translate(f.x,f.y); ctx.rotate(f.angle);
       const g=ctx.createLinearGradient(0,0,-len,0);
-      g.addColorStop(0,'rgba(255,255,210,0.95)'); g.addColorStop(1,'rgba(255,140,20,0)');
+      g.addColorStop(0,colorWithAlpha(light,0.95)); g.addColorStop(1,colorWithAlpha(dark,0));
       ctx.strokeStyle=g; ctx.lineWidth=f.size*t+0.6; ctx.lineCap='round';
       ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-len,0); ctx.stroke();
     } else {
@@ -210,10 +254,10 @@ function drawFlames(ctx, flames) {
       const len=f.size*(1.8+t), wid=f.size*t*0.85;
       ctx.translate(f.x,f.y); ctx.rotate(f.angle);
       const g=ctx.createLinearGradient(0,0,-len,0);
-      g.addColorStop(0,'rgba(255,255,235,1)');
-      g.addColorStop(0.28,'rgba(255,200,80,0.95)');
-      g.addColorStop(0.6,'rgba(255,110,20,0.8)');
-      g.addColorStop(1,'rgba(255,30,0,0)');
+      g.addColorStop(0,colorWithAlpha(light,1));
+      g.addColorStop(0.28,colorWithAlpha(light,0.95));
+      g.addColorStop(0.6,colorWithAlpha(mid,0.8));
+      g.addColorStop(1,colorWithAlpha(dark,0));
       ctx.fillStyle=g;
       ctx.beginPath();
       ctx.ellipse(-len*0.5,0,len*0.5,wid,0,0,Math.PI*2);
@@ -269,27 +313,35 @@ function _shardStyle(style, lx, ly, sz) {
 // skinId → estilo de estilhaço (0-6)
 const SKIN_SHARD_STYLE = [0, 3, 1, 2, 5, 4, 6];
 
-function createShards(skin, originX, originY) {
+function createShards(skin, originX, originY, angle=0) {
   const shards = [];
-  const COLS = 5, ROWS = 5;
+  const COLS = 7, ROWS = 7;
   const sz = skin._size ?? 72;
   const style = SKIN_SHARD_STYLE[skin.id] ?? 0;
+  const ca = Math.cos(angle);
+  const sa = Math.sin(angle);
+  const rotateVec = (x, y) => ({ x:x*ca - y*sa, y:x*sa + y*ca });
 
   for (let row = 0; row < ROWS; row++) {
     for (let col = 0; col < COLS; col++) {
       const lx = (col / COLS - 0.5 + 0.5/COLS) * sz;
       const ly = (row / ROWS - 0.5 + 0.5/ROWS) * sz;
-      if (Math.hypot(lx, ly) > sz * 0.58) continue;
+      const dist = Math.hypot(lx, ly);
+      if (dist > sz * 0.64) continue;
 
       const { vx, vy, vr } = _shardStyle(style, lx, ly, sz);
+      const pos = rotateVec(lx, ly);
+      const vel = rotateVec(vx, vy);
       shards.push({
-        wx: originX + lx * 0.05,
-        wy: originY + ly * 0.05,
-        vx, vy, rot: 0, vr,
+        wx: originX + pos.x,
+        wy: originY + pos.y,
+        vx:vel.x, vy:vel.y, rot: angle + (Math.random()-0.5)*0.25, targetRot:angle, vr,
         lx, ly,
         sx: col*(sz/COLS), sy: row*(sz/ROWS),
         sw: sz/COLS, sh: sz/ROWS,
         hw: sz/COLS/2, hh: sz/ROWS/2,
+        scale:1,
+        delay:Math.min(0.55, dist/(sz*1.55) + Math.random()*0.18),
         img: skin.img,
       });
     }
@@ -387,6 +439,8 @@ export class Player {
 
     this.flames=[]; this._alienAngle=0; this._age=0; this._aimAngle=-Math.PI/2;
     this.trail=[]; this._trailTimer=0; this.equippedTrailId=0;
+    this.dashGhosts=[]; this._dashGhostTimer=0;
+    this._recoil=0; this._recoilDx=0; this._recoilDy=0;
 
     // Sistema de descarte por inatividade de inventário
     // 90s sem usar item → descarta 1; 60s de intervalo entre descartes
@@ -448,6 +502,45 @@ export class Player {
 
   moveTo(wx,wy) { this._targetX=wx; this._targetY=wy; this._moving=true; }
 
+  _currentDrawAngle() {
+    if (this.skin.spinsOnAxis) return this._alienAngle * 2.5;
+    if (this.isAlien) return this.angle + this._alienAngle;
+    return this.angle;
+  }
+
+  _pushDashGhost() {
+    this.dashGhosts.push({
+      x:this.x, y:this.y,
+      angle:this._currentDrawAngle(),
+      life:0.18, maxLife:0.18,
+    });
+    if (this.dashGhosts.length > 8) this.dashGhosts.shift();
+  }
+
+  _updateDashGhosts(dt) {
+    for (const g of this.dashGhosts) g.life -= dt;
+    this.dashGhosts = this.dashGhosts.filter(g => g.life > 0);
+  }
+
+  _drawDashGhosts(ctx) {
+    if (!this.dashGhosts.length) return;
+    const color = this.skin.dashColor || this.skin.color || '#ffffff';
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const g of this.dashGhosts) {
+      const t = g.life / g.maxLife;
+      ctx.save();
+      ctx.globalAlpha = t * 0.32;
+      ctx.translate(g.x, g.y);
+      ctx.rotate(g.angle);
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 18 * t;
+      drawTintedSkin(ctx, this.skin, 1.76, color);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
   // Chamado pelo combat: player perde vida
   startRebuild(x, y) {
     const ox = x||this.x, oy = y||this.y;
@@ -455,7 +548,8 @@ export class Player {
     this.rebuilding=true;
     this.rebuildTimer=REBUILD_DUR;
     this._explodeAge=0;
-    this.shards=createShards(this.skin, ox, oy);
+    this.shards=createShards(this.skin, ox, oy, this._currentDrawAngle());
+    this.dashGhosts=[];
     this.vx=0; this.vy=0;
     this.invincible=REBUILD_DUR+1;
     // Nave reposicionada — shards vão voar e voltar para cá
@@ -466,6 +560,10 @@ export class Player {
   // collision=true: batida física — escudo absorve só 50%, resto passa pro HP
   takeDamage(amount, collision=false) {
     if (this.dashing||this.invincible>0||this.dead||this.rebuilding) return false;
+    this._hitFlash = Math.max(this._hitFlash || 0, 0.08);
+    this._hitFlashMax = Math.max(this._hitFlashMax || 0, this._hitFlash);
+    this._hitFlashColor = '#ffffff';
+    this._hitFlashManaged = false;
     if (this.shield>0) {
       const absEff = collision ? 0.5 : 1.0; // colisão penetra 50% do escudo
       const abs = Math.min(this.shield, amount * absEff);
@@ -622,22 +720,35 @@ export class Player {
     if (this.rebuilding) {
       this.rebuildTimer-=dt;
       this._explodeAge+=dt;
-      const phase2 = this._explodeAge > 5;
+      const explodeDur = Math.min(3.4, REBUILD_DUR * 0.38);
+      const phase2 = this._explodeAge > explodeDur;
+      const rebuildAngle = this._currentDrawAngle();
+      const ca = Math.cos(rebuildAngle);
+      const sa = Math.sin(rebuildAngle);
       for (const s of this.shards) {
         if (!phase2) {
           // Fase 1: coordenadas mundo absolutas voam para fora
-          const drag = Math.min(1, this._explodeAge * 0.3);
-          s.wx += s.vx * dt * (1 - drag * 0.85);
-          s.wy += s.vy * dt * (1 - drag * 0.85);
-          s.rot += s.vr * dt * (1 - drag * 0.7);
+          const drag = Math.min(1, this._explodeAge * 0.22);
+          s.wx += s.vx * dt * (1 - drag * 0.72);
+          s.wy += s.vy * dt * (1 - drag * 0.72);
+          s.rot += s.vr * dt * (1 - drag * 0.55);
+          s.scale = 1 + Math.sin(Math.min(1, this._explodeAge/explodeDur) * Math.PI) * 0.22;
         } else {
           // Fase 2: voltar para posição local relativa à nave reposicionada
-          const pull = Math.min(0.96, (this._explodeAge - 5) / (REBUILD_DUR - 5));
-          const targetWx = this.x + s.lx;
-          const targetWy = this.y + s.ly;
-          s.wx += (targetWx - s.wx) * pull * 0.07;
-          s.wy += (targetWy - s.wy) * pull * 0.07;
-          s.rot *= (1 - 0.06 * pull);
+          const rawPull = Math.max(0, (this._explodeAge - explodeDur) / Math.max(0.1, REBUILD_DUR - explodeDur));
+          const localPull = Math.max(0, Math.min(1, (rawPull - s.delay) / Math.max(0.08, 1 - s.delay)));
+          const pull = 1 - Math.pow(1 - localPull, 3);
+          const targetWx = this.x + s.lx*ca - s.ly*sa;
+          const targetWy = this.y + s.lx*sa + s.ly*ca;
+          const snap = Math.min(1, 0.08 + pull * 0.22);
+          s.wx += (targetWx - s.wx) * snap;
+          s.wy += (targetWy - s.wy) * snap;
+          let da = rebuildAngle - s.rot;
+          while (da > Math.PI) da -= Math.PI*2;
+          while (da < -Math.PI) da += Math.PI*2;
+          s.rot += da * snap;
+          s.targetRot = rebuildAngle;
+          s.scale += (1 - s.scale) * Math.min(1, 0.12 + pull * 0.2);
         }
       }
       if (this.rebuildTimer<=0) {
@@ -652,6 +763,11 @@ export class Player {
 
     if (this.invincible>0)      this.invincible-=dt;
     if (this.shootCd>0)         this.shootCd-=dt;
+    if (this._recoil>0)         this._recoil=Math.max(0,this._recoil-dt*12);
+    if (this._hitFlash>0 && !this._hitFlashManaged) {
+      this._hitFlash=Math.max(0,this._hitFlash-dt);
+      if (this._hitFlash<=0) this._hitFlashMax=0;
+    }
     if (this.dashCd>0)          this.dashCd-=dt;
     if (this.magnetTimer>0)     this.magnetTimer-=dt;
     if (this.rapidTimer>0)      this.rapidTimer-=dt;
@@ -706,6 +822,11 @@ export class Player {
       this.dashTimer-=dt;
       this.x+=this.dashDx*DASH_SPEED*dt; this.y+=this.dashDy*DASH_SPEED*dt;
       this.mana=Math.max(0,this.mana-MANA_DASH*dt*3);
+      this._dashGhostTimer-=dt;
+      if (this._dashGhostTimer<=0) {
+        this._dashGhostTimer=0.025;
+        this._pushDashGhost();
+      }
       if (this.dashTimer<=0) this.dashing=false;
     } else if (input.dash && this.dashCd<=0 && this._moving && this.mana>=MANA_DASH) {
       const ddx=this._targetX-this.x, ddy=this._targetY-this.y;
@@ -714,6 +835,8 @@ export class Player {
       this.dashing=true; this.dashTimer=DASH_DUR;
       this.dashCd=DASH_CD*(this.hasDashBoost?0.4:1); this.invincible=DASH_DUR+0.08;
       this.mana=Math.max(0,this.mana-MANA_DASH);
+      this._dashGhostTimer=0;
+      this._pushDashGhost();
     } else {
       if (this._moving && canMove) {
         const ddx=this._targetX-this.x, ddy=this._targetY-this.y;
@@ -736,6 +859,7 @@ export class Player {
       }
       this.x+=this.vx*dt; this.y+=this.vy*dt;
     }
+    this._updateDashGhosts(dt);
 
     // Regen extra quando completamente parado
     if (Math.hypot(this.vx,this.vy)<5) {
@@ -753,7 +877,7 @@ export class Player {
       const visualAngle = this.skin.spinsOnAxis ? (this._alienAngle * 2.5) : this.angle;
       const engPoints=this.skin.getEngines(this.x,this.y,visualAngle,1.76);
       const intensity=this.skin.spinsOnAxis ? 0.8 : this.mana/this.maxMana;
-      for (const ep of engPoints) spawnFlameAt(this.flames,ep.x,ep.y,visualAngle,intensity);
+      for (const ep of engPoints) spawnFlameAt(this.flames,ep.x,ep.y,visualAngle,intensity,this.skin.flameColors);
     }
     if (!this._isCardsMode) this.flames=updateFlames(this.flames,dt);
 
@@ -864,6 +988,10 @@ export class Player {
   _shoot(tx, ty, bullets, combat) {
     const shootAngle = this._aimAngle ?? this.angle;
     const nozzle = this.skin.getNozzle(this.x, this.y, shootAngle, 1.76);
+    const recoilAngle = Math.atan2(ty - nozzle.y, tx - nozzle.x);
+    this._recoil = 1;
+    this._recoilDx = -Math.cos(recoilAngle) * 3;
+    this._recoilDy = -Math.sin(recoilAngle) * 3;
     const rawDmg = (38 + (this.level-1)*5) * (this.hasOverclock ? 2 : 1);
     const baseDmg = rawDmg * this._cardDmgMult * this._cardSkinDmgBonus
                   * (this._cardBerserker && this.hp < this.maxHp * 0.30 ? 1.50 : 1);
@@ -966,6 +1094,7 @@ export class Player {
 
     // Rastro cosmético — desenhado antes das chamas e da nave
     drawTrail(ctx, this.trail, TRAILS[this.equippedTrailId]);
+    this._drawDashGhosts(ctx);
 
     // Chamas — discos "UFO" totalmente blindados (noThruster) não emitem
     // nenhum rastro de propulsão, nem o clássico nem o thruster alienígena.
@@ -982,7 +1111,7 @@ export class Player {
 
     // Nave
     ctx.save();
-    ctx.translate(this.x,this.y);
+    ctx.translate(this.x + this._recoilDx*this._recoil, this.y + this._recoilDy*this._recoil);
     if (this.rebuilding) {
       // Fase 2: nave aparece gradualmente conforme reconstrói
       const assemblyPct = Math.max(0,(this._explodeAge-5)/(REBUILD_DUR-5));
@@ -1002,6 +1131,14 @@ export class Player {
       ctx.rotate(this.angle);
     }
     this.skin.draw(ctx, 1.76);
+    if (this._hitFlash>0) {
+      const flashT = this._hitFlash / (this._hitFlashMax || 0.08);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(0.85, flashT * 0.85);
+      drawTintedSkin(ctx, this.skin, 1.76, this._hitFlashColor || '#ffffff');
+      ctx.restore();
+    }
     ctx.restore();
 
     // ── Barra de vida grudada na nave ────────────────────────
@@ -1023,6 +1160,7 @@ export class Player {
     const shRatio   = Math.max(0, this.shield / this.maxShield);
     const manaRatio = Math.max(0, this.mana / this.maxMana);
     const hasShield = this.shield > 0;
+    const shieldColor = this.skin.shieldColor || '#00c8f0';
 
     // ── Layout: duas linhas acima da nave ────────────────────
     // Linha de baixo (mais próxima da nave): MANA (azul) — largura total
@@ -1069,12 +1207,12 @@ export class Player {
       // Fundo
       ctx.fillStyle = '#08101ecc';
       ctx.fillRect(shX, yHp - bh, shW, bh);
-      // Preenchimento ciano
-      ctx.fillStyle = '#00c8f0cc';
-      ctx.shadowColor = '#00c8f0'; ctx.shadowBlur = 7;
+      // Preenchimento na cor de escudo da skin
+      ctx.fillStyle = colorWithAlpha(shieldColor, 0.8);
+      ctx.shadowColor = shieldColor; ctx.shadowBlur = 7;
       ctx.fillRect(shX, yHp - bh, shW * shRatio, bh);
       ctx.shadowBlur = 0;
-      ctx.strokeStyle = '#00c8f044'; ctx.lineWidth = 0.5;
+      ctx.strokeStyle = colorWithAlpha(shieldColor, 0.28); ctx.lineWidth = 0.5;
       ctx.strokeRect(shX, yHp - bh, shW, bh);
     }
 
@@ -1083,16 +1221,16 @@ export class Player {
       const shieldR = this.r + 5;
       ctx.save();
       ctx.translate(this.x, this.y);
-      ctx.strokeStyle = '#4488aa22'; ctx.lineWidth = 4;
+      ctx.strokeStyle = colorWithAlpha(shieldColor, 0.13); ctx.lineWidth = 4;
       ctx.beginPath(); ctx.arc(0, 0, shieldR, 0, Math.PI*2); ctx.stroke();
-      ctx.strokeStyle = '#00c8f0cc'; ctx.lineWidth = 4;
-      ctx.shadowColor = '#00c8f0'; ctx.shadowBlur = 12;
+      ctx.strokeStyle = colorWithAlpha(shieldColor, 0.8); ctx.lineWidth = 4;
+      ctx.shadowColor = shieldColor; ctx.shadowBlur = 12;
       ctx.beginPath();
       ctx.arc(0, 0, shieldR, -Math.PI/2, -Math.PI/2 + Math.PI*2*shRatio);
       ctx.stroke();
       ctx.shadowBlur = 0;
       if (shRatio > 0.9) {
-        ctx.strokeStyle = '#00c8f044'; ctx.lineWidth = 9;
+        ctx.strokeStyle = colorWithAlpha(shieldColor, 0.28); ctx.lineWidth = 9;
         ctx.beginPath(); ctx.arc(0, 0, shieldR, 0, Math.PI*2); ctx.stroke();
       }
       ctx.restore();
@@ -1260,64 +1398,41 @@ export class Player {
     const engPoints   = this.skin.getEngines(this.x, this.y, visualAngle, 1.76);
     const intensity   = Math.max(0.4, this.mana / this.maxMana);
     for (const ep of engPoints) {
-      spawnFlameAt(this._cardFlames, ep.x, ep.y, visualAngle, intensity);
+      spawnFlameAt(this._cardFlames, ep.x, ep.y, visualAngle, intensity, this.skin.flameColors);
     }
     this._cardFlames = updateFlames(this._cardFlames, dt);
   }
 
   _drawCardsThrust(ctx) {
     if (!this._cardFlames.length) return;
-    for (const f of this._cardFlames) {
-      const t  = f.life / f.maxLife;
-      const fk = 0.7 + 0.3 * Math.sin(f.flicker * 40 + Date.now() * 0.03);
-      ctx.save();
-      ctx.globalAlpha = Math.min(1, t * 1.3) * fk;
-      if (f.kind === 'spark') {
-        const len = f.size * 3 * t + 2;
-        ctx.translate(f.x, f.y); ctx.rotate(f.angle);
-        const g = ctx.createLinearGradient(0, 0, -len, 0);
-        g.addColorStop(0, 'rgba(0,255,180,0.95)');
-        g.addColorStop(1, 'rgba(0,180,100,0)');
-        ctx.strokeStyle = g; ctx.lineWidth = f.size * t + 0.6; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(-len, 0); ctx.stroke();
-      } else {
-        const len = f.size * (1.8 + t), wid = f.size * t * 0.85;
-        ctx.translate(f.x, f.y); ctx.rotate(f.angle);
-        const g = ctx.createLinearGradient(0, 0, -len, 0);
-        g.addColorStop(0,    'rgba(180,255,255,1)');
-        g.addColorStop(0.28, 'rgba(0,255,140,0.95)');
-        g.addColorStop(0.6,  'rgba(0,200,80,0.8)');
-        g.addColorStop(1,    'rgba(0,100,40,0)');
-        ctx.fillStyle = g;
-        ctx.beginPath();
-        ctx.ellipse(-len * 0.5, 0, len * 0.5, wid, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-    }
+    drawFlames(ctx, this._cardFlames);
   }
 
   _drawRebuild(ctx) {
-    const progress  = 1 - (this.rebuildTimer / REBUILD_DUR);
-    const exploding = this._explodeAge < 5;
+    const explodeDur = Math.min(3.4, REBUILD_DUR * 0.38);
+    const exploding = this._explodeAge < explodeDur;
     const img = this.skin.img;
     if (!img.complete || !img.naturalWidth) return;
 
-    const sz  = this.skin._size ?? 72;
+    const rebuildColor = this.skin.deathColor || this.skin.color || '#00c8f0';
 
     const assemblyPct = !exploding
-      ? Math.max(0, (progress - 5/REBUILD_DUR) / (1 - 5/REBUILD_DUR))
+      ? Math.max(0, (this._explodeAge - explodeDur) / Math.max(0.1, REBUILD_DUR - explodeDur))
       : 0;
 
     for (const s of this.shards) {
+      const localAssembly = !exploding
+        ? Math.max(0, Math.min(1, (assemblyPct - s.delay) / Math.max(0.08, 1 - s.delay)))
+        : 0;
       const alpha = exploding
         ? Math.min(1, this._explodeAge * 0.8)
-        : 0.9 - assemblyPct * 0.1;
+        : 0.52 + localAssembly * 0.38;
 
       ctx.save();
       ctx.globalAlpha = alpha;
       ctx.translate(s.wx, s.wy);
       ctx.rotate(s.rot);
+      ctx.scale(s.scale || 1, s.scale || 1);
 
       const hw = s.hw + 1, hh = s.hh + 1;
       ctx.beginPath();
@@ -1326,12 +1441,19 @@ export class Player {
 
       ctx.drawImage(img, s.sx, s.sy, s.sw, s.sh, -hw, -hh, hw*2, hh*2);
 
-      // Brilho ciano na fase de reconstrução
-      if (!exploding && assemblyPct > 0.05) {
-        ctx.strokeStyle = `rgba(0,200,240,${assemblyPct * 0.7})`;
+      // Brilho da paleta da skin na fase de reconstrução
+      if (exploding) {
+        ctx.strokeStyle = colorWithAlpha(rebuildColor, 0.32);
+        ctx.lineWidth = 1;
+        ctx.shadowColor = rebuildColor;
+        ctx.shadowBlur = 5;
+        ctx.strokeRect(-hw, -hh, hw*2, hh*2);
+        ctx.shadowBlur = 0;
+      } else if (localAssembly > 0.02) {
+        ctx.strokeStyle = colorWithAlpha(rebuildColor, localAssembly * 0.78);
         ctx.lineWidth = 1.5;
-        ctx.shadowColor = '#00c8f0';
-        ctx.shadowBlur = 6 * assemblyPct;
+        ctx.shadowColor = rebuildColor;
+        ctx.shadowBlur = 4 + 8 * localAssembly;
         ctx.strokeRect(-hw, -hh, hw*2, hh*2);
         ctx.shadowBlur = 0;
       }
@@ -1342,7 +1464,7 @@ export class Player {
     // Contador simples acima da nave
     ctx.save();
     const secs = Math.ceil(this.rebuildTimer);
-    ctx.fillStyle = secs <= 10 ? '#ff4466' : '#00d4ff';
+    ctx.fillStyle = secs <= 10 ? rebuildColor : '#00d4ff';
     ctx.font = 'bold 14px monospace';
     ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
     ctx.shadowColor = ctx.fillStyle; ctx.shadowBlur = 10;
