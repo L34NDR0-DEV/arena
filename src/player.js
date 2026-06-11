@@ -175,8 +175,8 @@ function drawTintedSkin(ctx, skin, scale, color) {
 }
 
 const SPEED       = 220;
-const DASH_SPEED  = 650;
-const DASH_DUR    = 0.17;
+const DASH_SPEED  = 1100; // mais rápido = teleporta bem mais longe
+const DASH_DUR    = 0.28; // dura mais
 const DASH_CD     = 1.4;
 const HP_MAX      = 400;
 const SHIELD_MAX  = 300; // dobrado — mas absorção em colisão é 50% menos efetiva
@@ -841,8 +841,26 @@ export class Player {
       const ddx=this._targetX-this.x, ddy=this._targetY-this.y;
       const len=Math.hypot(ddx,ddy)||1;
       this.dashDx=ddx/len; this.dashDy=ddy/len;
-      this.dashing=true; this.dashTimer=DASH_DUR;
-      this.dashCd=DASH_CD*(this.hasDashBoost?0.4:1); this.invincible=DASH_DUR+0.08;
+      const fullHp = this.hp >= this.maxHp * 0.90;
+      if (fullHp) {
+        // Dash completo — vida cheia
+        this.dashing=true; this.dashTimer=DASH_DUR;
+        this.invincible=DASH_DUR+0.08;
+      } else {
+        // Sem vida cheia: converte parte do HP em mana e realiza dash reduzido
+        const hpCost = this.maxHp * 0.12; // consome 12% do HP máximo
+        if (this.hp > hpCost + 10) {
+          this.hp = Math.max(10, this.hp - hpCost);
+          this.addMana(Math.min(this.maxMana - this.mana, hpCost * 0.5));
+          this.dashing=true; this.dashTimer=DASH_DUR*0.6; // dash menor
+          this.invincible=DASH_DUR*0.6+0.05;
+        } else {
+          // HP insuficiente para o custo — dash não acontece
+          this.dashCd=0; // sem penalidade de cooldown
+          return; // sai da lógica
+        }
+      }
+      this.dashCd=DASH_CD*(this.hasDashBoost?0.4:1);
       this.mana=Math.max(0,this.mana-MANA_DASH);
       this._dashGhostTimer=0;
       this._pushDashGhost();
