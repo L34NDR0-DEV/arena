@@ -215,11 +215,6 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   box-shadow:0 1px 0 #9b5cff22,0 6px 18px -8px #9b5cff1c;
   justify-content:space-between;
 }
-/* Logo centralizado absolutamente — não empurra os botões */
-.menu-logo-small-wrap{
-  position:absolute;left:50%;transform:translateX(-50%);
-  pointer-events:none;
-}
 .menu-header::after{
   content:'';position:absolute;left:0;right:0;bottom:-1px;height:1px;
   background:linear-gradient(90deg,transparent,var(--orange),var(--accent-violet),transparent);
