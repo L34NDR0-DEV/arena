@@ -1615,13 +1615,16 @@ export class Game {
     }, 700);
   }
 
-  _playElectricWallsAudio() {
-    // Toca o arquivo público de voz feminina anunciando as paredes elétricas
+  _playVoice(name, volume=0.85) {
     try {
-      const audio = new Audio('./public/audio/electric_walls.mp3');
-      audio.volume = 0.85;
+      const audio = new Audio(`./sound/voice/${name}.mp3`);
+      audio.volume = volume;
       audio.play().catch(()=>{});
     } catch(e) {}
+  }
+
+  _playElectricWallsAudio() {
+    this._playVoice('electric_walls');
   }
 
   _endGame(survived) {
