@@ -248,13 +248,13 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   55%{opacity:1;transform:translateY(1px) scale(1.18);filter:blur(0) brightness(1.6);}
   100%{opacity:1;transform:translateY(0) scale(1);filter:blur(0) brightness(1);text-shadow:none;}
 }
-.menu-header-right{display:flex;align-items:center;gap:12px;margin-left:auto;flex-wrap:wrap;row-gap:8px;}
+.menu-header-right{display:flex;align-items:center;gap:16px;margin-left:auto;flex-wrap:wrap;row-gap:10px;}
 .pilot-badge{
-  display:flex;align-items:center;gap:8px;
+  display:flex;align-items:center;gap:10px;
   background:var(--panel2);border:1px solid var(--border);border-radius:4px;
-  padding:6px 14px;font-size:11px;
+  padding:9px 18px;font-size:13px;
 }
-.pilot-badge svg{width:12px;height:12px;color:var(--orange);}
+.pilot-badge svg{width:15px;height:15px;color:var(--orange);}
 .pilot-name{color:var(--orange);font-weight:700;}
 
 /* Badge "Status dos modos" — fica ao lado do nome do piloto e abre um
@@ -265,14 +265,14 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 }
 .mode-status-badge:hover{border-color:var(--border2);color:var(--text);}
 .mode-status-dot{
-  width:8px;height:8px;border-radius:50%;flex:none;
-  background:var(--green);box-shadow:0 0 6px var(--green);
+  width:11px;height:11px;border-radius:50%;flex:none;
+  background:var(--green);box-shadow:0 0 8px var(--green);
 }
 .mode-status-dot.maint{background:#ffcc44;box-shadow:0 0 6px #ffcc44;}
 .pilot-icon-wrap{position:relative;display:inline-flex;flex-shrink:0;}
 .pilot-icon-gear{
-  position:absolute;bottom:-3px;right:-3px;
-  width:11px;height:11px;
+  position:absolute;bottom:-4px;right:-4px;
+  width:14px;height:14px;
   color:var(--orange);opacity:.75;
   background:var(--bg);border-radius:50%;
   pointer-events:none;
@@ -282,8 +282,8 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .pilot-badge-profile:hover .pilot-icon-btn{border-color:var(--orange);}
 
 .pilot-icon-btn{
-  width:22px;height:22px;border-radius:3px;display:flex;align-items:center;justify-content:center;
-  background:var(--panel);border:1px solid var(--border);font-size:13px;cursor:pointer;
+  width:30px;height:30px;border-radius:3px;display:flex;align-items:center;justify-content:center;
+  background:var(--panel);border:1px solid var(--border);font-size:16px;cursor:pointer;
   padding:0;line-height:1;color:var(--orange);transition:border-color .15s,transform .15s;
   overflow:hidden;
 }
@@ -336,36 +336,36 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .logout-btn{color:#ff6b6b;border-color:#5a2222;}
 .logout-btn:hover{border-color:#ff6b6b;box-shadow:0 0 10px #ff6b6b33;color:#ff8a8a;}
 .changelog-btn{
-  display:flex;align-items:center;gap:7px;
+  display:flex;align-items:center;gap:8px;
   background:var(--panel2);border:1px solid var(--border);border-radius:4px;
-  padding:8px 14px;font-size:8px;letter-spacing:1px;color:var(--gold);cursor:pointer;
+  padding:10px 18px;font-size:10px;letter-spacing:1px;color:var(--gold);cursor:pointer;
   font-family:'Press Start 2P',monospace;transition:all .15s;white-space:nowrap;
 }
 .changelog-btn:hover{border-color:var(--gold);box-shadow:0 0 10px #ffcc0033;}
-.changelog-btn svg{width:11px;height:11px;}
+.changelog-btn svg{width:14px;height:14px;}
 .changelog-overlay{
   position:fixed;inset:0;z-index:200;background:#04080fcc;backdrop-filter:blur(3px);
   display:flex;align-items:center;justify-content:center;
 }
 .changelog-panel{
-  width:min(480px,90vw);max-height:80vh;display:flex;flex-direction:column;
+  width:min(720px,94vw);max-height:88vh;display:flex;flex-direction:column;
   background:var(--panel);border:1.5px solid var(--border2);border-radius:6px;
-  box-shadow:0 0 30px #9b5cff22;
+  box-shadow:0 0 40px #9b5cff33;
 }
 .changelog-header{
   display:flex;align-items:center;justify-content:space-between;
-  padding:14px 18px;border-bottom:1px solid var(--border);
+  padding:18px 24px;border-bottom:1px solid var(--border);
 }
-.changelog-header h2{font-size:13px;color:var(--orange);letter-spacing:1px;font-family:'Press Start 2P',monospace;}
-.changelog-close{background:none;border:none;color:var(--text2);font-size:16px;cursor:pointer;padding:2px 6px;display:flex;align-items:center;justify-content:center;}
-.changelog-close svg{width:13px;height:13px;}
+.changelog-header h2{font-size:15px;color:var(--orange);letter-spacing:1px;font-family:'Press Start 2P',monospace;}
+.changelog-close{background:none;border:none;color:var(--text2);font-size:18px;cursor:pointer;padding:2px 8px;display:flex;align-items:center;justify-content:center;}
+.changelog-close svg{width:16px;height:16px;}
 .changelog-close:hover{color:var(--red);}
-.changelog-list{overflow-y:auto;padding:14px 18px;display:flex;flex-direction:column;gap:14px;}
-.changelog-entry{border-left:2px solid var(--orange);padding-left:12px;}
-.changelog-version{font-size:11px;color:var(--gold);font-weight:700;font-family:'Press Start 2P',monospace;}
-.changelog-date{font-size:9px;color:var(--text2);margin-left:8px;}
-.changelog-changes{margin-top:6px;list-style:none;display:flex;flex-direction:column;gap:4px;}
-.changelog-changes li{font-size:11px;color:var(--text);position:relative;padding-left:14px;}
+.changelog-list{overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:18px;}
+.changelog-entry{border-left:3px solid var(--orange);padding-left:16px;}
+.changelog-version{font-size:13px;color:var(--gold);font-weight:700;font-family:'Press Start 2P',monospace;}
+.changelog-date{font-size:10px;color:var(--text2);margin-left:10px;}
+.changelog-changes{margin-top:8px;list-style:none;display:flex;flex-direction:column;gap:6px;}
+.changelog-changes li{font-size:12px;color:var(--text);position:relative;padding-left:16px;line-height:1.7;}
 .changelog-changes li::before{content:'▸';position:absolute;left:0;color:var(--orange);}
 .play-btn{
   padding:9px 22px;border-radius:3px;border:none;cursor:pointer;
