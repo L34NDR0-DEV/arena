@@ -177,6 +177,14 @@ export class Game {
     this._refreshMatchLoading();
     if (!this._lobby) this._loadingHideAt = performance.now() + 3000;
 
+    // Zona segura: 20s de proteção no início — parede central bloqueia os times
+    // Só ativo nos modos online com times (equipe_online, tower_defense)
+    this._safezone = (mode==='equipe_online'||mode==='tower_defense') ? {
+      timer: 20,      // segundos restantes
+      active: true,   // parede ativa
+      wallX: ARENA_W/2, // posição X da parede divisória
+    } : null;
+
     this._pendingDeploy = null; // 'tower' | 'trap' | null
     this._keys={}; this._mouse={wx:ARENA_W/2,wy:ARENA_H/2,left:false,right:false};
     this._bindInput();
@@ -686,6 +694,35 @@ export class Game {
     // Cooldown de vida do player
     if (this.player._lifeTimer>0) this.player._lifeTimer-=dt;
 
+    // ── Zona segura (20s iniciais nos modos online) ───────────
+    if (this._safezone?.active && !this._lobby) {
+      this._safezone.timer = Math.max(0, this._safezone.timer - dt);
+      if (this._safezone.timer <= 0) {
+        this._safezone.active = false;
+        this.ui.notify('A BATALHA COMEÇOU!', '#ff8c00');
+        this._playVoice('bemvindoaarena');
+      } else {
+        // Bloqueia o player de cruzar a parede central
+        const wall = this._safezone.wallX;
+        const pr = this.player.r + 4;
+        if (this.team === 'red' && this.player.x > wall - pr) {
+          this.player.x = wall - pr;
+          this.player.vx = Math.min(0, this.player.vx ?? 0);
+        } else if (this.team === 'blue' && this.player.x < wall + pr) {
+          this.player.x = wall + pr;
+          this.player.vx = Math.max(0, this.player.vx ?? 0);
+        }
+        // Bloqueia balas de cruzar a parede
+        for (const b of this.combat.bullets) {
+          if (b.owner === 'player') {
+            if (this.team === 'red' && b.x > wall) { b.life = 0; }
+            else if (this.team === 'blue' && b.x < wall) { b.life = 0; }
+          }
+        }
+        // Inimigos não aparecem durante zona segura
+      }
+    }
+
     // Modos online em fila: aguardam formação da partida (lobby/fila)
     if ((this.mode==='equipe_online' || this.mode==='tower_defense') && this._lobby) {
       this.ui.update(this.player,this.timeLeft,0,null,null,0,this.mode);
@@ -889,7 +926,7 @@ export class Game {
       this.ui.notify('Descartou: '+ejected.def?.label, ejected.def?.color||'#aaaaaa');
     }
 
-    if (!this._isCardsMode) {
+    if (!this._isCardsMode && !this._safezone?.active) {
       this.enemyMgr.update(dt,this.player,this.combat.bullets,this.arena,this.itemMgr,this.towerMgr?.towers);
     }
 
@@ -1206,6 +1243,48 @@ export class Game {
       drawCrosshair(ctx,this._mouse.wx,this._mouse.wy,this.player._age);
     }
 
+    // ── Zona Segura — parede central divisória ───────────────
+    if (this._safezone?.active) {
+      const wall = this._safezone.wallX;
+      const t = performance.now() * 0.003;
+      const pulse = 0.55 + 0.45 * Math.abs(Math.sin(t * 2.5));
+      ctx.save();
+      // Zona colorida de cada time (fill suave)
+      ctx.fillStyle = `rgba(255,60,80,${0.04 + 0.02*Math.sin(t)})`;
+      ctx.fillRect(0, 0, wall, ARENA_H);
+      ctx.fillStyle = `rgba(60,140,255,${0.04 + 0.02*Math.sin(t+1)})`;
+      ctx.fillRect(wall, 0, ARENA_W - wall, ARENA_H);
+      // Parede central pulsante
+      const grad = ctx.createLinearGradient(wall-12, 0, wall+12, 0);
+      grad.addColorStop(0, `rgba(255,60,80,${pulse})`);
+      grad.addColorStop(0.5, `rgba(255,255,255,${pulse*0.9})`);
+      grad.addColorStop(1, `rgba(60,140,255,${pulse})`);
+      ctx.fillStyle = grad;
+      ctx.fillRect(wall - 4, 0, 8, ARENA_H);
+      // Bordas brilhantes
+      ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 20 * pulse;
+      ctx.strokeStyle = `rgba(255,255,255,${pulse * 0.7})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(wall, 0); ctx.lineTo(wall, ARENA_H); ctx.stroke();
+      // Texto "ZONA SEGURA" ao longo da parede (no mundo)
+      ctx.shadowBlur = 0;
+      ctx.font = 'bold 22px "Press Start 2P", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const spacing = 420;
+      const count = Math.floor(ARENA_H / spacing);
+      for (let i = 0; i <= count; i++) {
+        const wy = i * spacing + spacing/2;
+        ctx.fillStyle = `rgba(255,60,80,${0.3 + 0.15*Math.sin(t + i)})`;
+        ctx.save(); ctx.translate(wall - 60, wy); ctx.rotate(-Math.PI/2);
+        ctx.fillText('ZONA SEGURA', 0, 0); ctx.restore();
+        ctx.fillStyle = `rgba(60,140,255,${0.3 + 0.15*Math.sin(t + i)})`;
+        ctx.save(); ctx.translate(wall + 60, wy); ctx.rotate(Math.PI/2);
+        ctx.fillText('ZONA SEGURA', 0, 0); ctx.restore();
+      }
+      ctx.restore();
+    }
+
     // ── Paredes elétricas ─────────────────────────────────────
     if (this._electricWallsActive && this._electricWallMargin>0) {
       const m=this._electricWallMargin;
@@ -1228,6 +1307,38 @@ export class Game {
 
     // Efeito de borda ao usar item (em coords tela)
     this.borderEffect.draw(ctx, W, H);
+
+    // ── Contador de zona segura (em coords de tela) ──────────
+    if (this._safezone?.active) {
+      const secs = Math.ceil(this._safezone.timer);
+      const t = performance.now() * 0.003;
+      const pulse = 0.85 + 0.15 * Math.sin(t * 4);
+      ctx.save();
+      // Fundo do painel
+      const pw = Math.min(420, W - 32);
+      const ph = 80;
+      const px = W/2 - pw/2;
+      const py = H/2 - ph/2 - 60;
+      ctx.fillStyle = 'rgba(2,1,8,0.88)';
+      ctx.strokeStyle = secs <= 5 ? `rgba(255,60,80,${pulse})` : `rgba(155,92,255,${pulse * 0.8})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(px, py, pw, ph, 6);
+      ctx.fill(); ctx.stroke();
+      // Número grande
+      const numColor = secs <= 5 ? `rgba(255,80,80,${pulse})` : `rgba(255,200,80,${pulse})`;
+      ctx.font = 'bold 38px "Press Start 2P", monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = numColor;
+      ctx.shadowColor = numColor; ctx.shadowBlur = 18 * pulse;
+      ctx.fillText(secs, W/2, py + 28);
+      // Texto
+      ctx.shadowBlur = 0;
+      ctx.font = '7px "Press Start 2P", monospace';
+      ctx.fillStyle = 'rgba(200,180,255,0.85)';
+      ctx.fillText('ZONA SEGURA — PREPARE-SE PARA A BATALHA', W/2, py + 62);
+      ctx.restore();
+    }
 
     const mm=document.getElementById('minimap');
     if (mm) { const mc=mm.getContext('2d'); this.ui.drawMinimap(mc,this.player,this.enemyMgr.enemies,this.itemMgr.items,mm.width,mm.height); }

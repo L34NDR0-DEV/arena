@@ -1478,10 +1478,20 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   .arcade-title{margin-bottom:12px;}
   .arcade-title-main{font-size:clamp(15px,5.5vw,26px);}
   .arcade-title-top,.arcade-title-sub{font-size:7px;letter-spacing:3px;}
-  #hud-left{top:8px;left:8px;}
-  #hud-right{top:8px;right:8px;}
-  #minimap{bottom:96px;right:8px;transform:scale(.8);transform-origin:bottom right;}
-  #hud-bottom{display:none;} /* dicas de teclado não fazem sentido no touch */
+  /* HUD do jogo no mobile */
+  #hud-left{top:6px;left:6px;transform:scale(.78);transform-origin:top left;}
+  #hud-right{top:6px;right:6px;transform:scale(.78);transform-origin:top right;}
+  #minimap{bottom:96px;right:6px;transform:scale(.75);transform-origin:bottom right;}
+  #hud-bottom{display:none;}
+  /* Slots de arma menores no mobile */
+  #weapon-slots{gap:3px;}
+  .ws-slot{width:32px;height:32px;}
+  .ws-icon{width:26px!important;height:26px!important;}
+  #powerup-slots{gap:3px;}
+  .pu-slot{width:30px;height:30px;}
+  .pu-icon{width:24px!important;height:24px!important;}
+  /* Slots de arma ficam acima dos controles touch */
+  #hud-right{z-index:200;}
 }
 @media (max-width:400px){
   .arcade-title-top{display:none;} /* economiza espaço vertical em telas muito pequenas */
