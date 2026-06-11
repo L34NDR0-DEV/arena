@@ -817,8 +817,8 @@ const WEAPON_TYPES = [
 export class ItemManager {
   constructor() {
     this.items      = [];
-    this.spawnTimer = 2;
-    this.maxItems   = 90; // suporta os itens iniciais + spawn contínuo
+    this.spawnTimer = 5;
+    this.maxItems   = 35;
   }
 
   // Spawna o lote inicial: 30 armas + 40 itens aleatórios, espaçados pela arena
@@ -834,11 +834,11 @@ export class ItemManager {
       } while (arena?.checkObstacleCollision(x, y, 14) && tries < 12);
       this.items.push(new Item(x, y, type));
     };
-    // 30 armas espalhadas (cicla as 20 types + mais 10 repetidos dos mais comuns)
-    const weaponPool = [...WEAPON_TYPES, ...WEAPON_TYPES.slice(0, 10)];
-    for (let i = 0; i < 30; i++) place(weaponPool[i % weaponPool.length]);
-    // 40 itens aleatórios (sem armas para não repetir demais)
-    for (let i = 0; i < 40; i++) place(randomType(false));
+    // 10 armas espalhadas (1 de cada tipo principal)
+    const weaponPool = [...WEAPON_TYPES];
+    for (let i = 0; i < 10; i++) place(weaponPool[i % weaponPool.length]);
+    // 15 itens aleatórios
+    for (let i = 0; i < 15; i++) place(randomType(false));
   }
 
   spawnAt(x, y, count=1, arena=null) {
@@ -868,8 +868,8 @@ export class ItemManager {
   update(dt, px, py, hasMagnet, hasExtraSlot=false, arena=null) {
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0 && this.items.length < this.maxItems) {
-      this.spawnTimer = 2.5 + Math.random()*2;
-      const n = 1 + Math.floor(Math.random()*3);
+      this.spawnTimer = 5 + Math.random()*3;
+      const n = 1;
       for (let i=0;i<n;i++) {
         let x, y, tries=0;
         do {
