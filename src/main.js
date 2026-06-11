@@ -3572,3 +3572,46 @@ window._handlePricesUpdate = function(prices) {
     setupGoogleSignIn();
   }
 })();
+
+// ── Canvas de fundo animado para lobby e match-loading ─────────
+(function initQueueCanvas(){
+  function makeStars(n){ return Array.from({length:n},()=>({
+    x:Math.random()*2000, y:Math.random()*1200,
+    r:Math.random()*1.4+0.3, s:Math.random()*0.4+0.1,
+    o:Math.random()
+  }));}
+  function animateBg(canvas, accentColor){
+    if(!canvas) return;
+    const ctx=canvas.getContext('2d');
+    const stars=makeStars(180);
+    let raf=null;
+    function resize(){ canvas.width=window.innerWidth; canvas.height=window.innerHeight; }
+    resize();
+    window.addEventListener('resize',resize);
+    function frame(){
+      const W=canvas.width, H=canvas.height;
+      ctx.clearRect(0,0,W,H);
+      for(const s of stars){
+        s.x-=s.s; if(s.x<0) s.x=W;
+        s.o+=0.02; if(s.o>Math.PI*2) s.o=0;
+        const a=0.35+0.35*Math.sin(s.o);
+        ctx.globalAlpha=a;
+        ctx.fillStyle='#ffffff';
+        ctx.beginPath(); ctx.arc(s.x/2000*W, s.y/1200*H, s.r, 0, Math.PI*2); ctx.fill();
+      }
+      // grade de pontos
+      ctx.globalAlpha=0.06;
+      ctx.fillStyle=accentColor;
+      const gs=60;
+      for(let x=0;x<W;x+=gs) for(let y=0;y<H;y+=gs){
+        ctx.beginPath(); ctx.arc(x,y,1,0,Math.PI*2); ctx.fill();
+      }
+      ctx.globalAlpha=1;
+      raf=requestAnimationFrame(frame);
+    }
+    frame();
+    return ()=>{ cancelAnimationFrame(raf); window.removeEventListener('resize',resize); };
+  }
+  animateBg(document.getElementById('tl-bg-canvas'),'#9b5cff');
+  animateBg(document.getElementById('ml-bg-canvas'),'#4da6ff');
+})();

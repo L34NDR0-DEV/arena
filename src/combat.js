@@ -599,22 +599,125 @@ export class CombatSystem {
   _drawTracer(ctx,b) {
     const color=b.owner_color||'#ffffff';
     const isEnemy=b.owner==='enemy';
-    const spd=Math.hypot(b.vx,b.vy);
-    const len=Math.min(spd*0.065,42);
-    const tail={x:b.x-(b.vx/spd)*len, y:b.y-(b.vy/spd)*len};
+    const wt=b.weaponType;
+    const spd=Math.hypot(b.vx,b.vy)||1;
     ctx.save();
     ctx.globalCompositeOperation='lighter';
-    ctx.strokeStyle=color+'22'; ctx.lineWidth=isEnemy?7:9; ctx.lineCap='round';
-    ctx.beginPath(); ctx.moveTo(tail.x,tail.y); ctx.lineTo(b.x,b.y); ctx.stroke();
-    ctx.strokeStyle=color+'aa'; ctx.lineWidth=isEnemy?2.5:3;
-    ctx.beginPath(); ctx.moveTo(tail.x,tail.y); ctx.lineTo(b.x,b.y); ctx.stroke();
-    ctx.strokeStyle='#ffffff'; ctx.lineWidth=isEnemy?1.2:1.5;
-    ctx.beginPath(); ctx.moveTo(tail.x,tail.y); ctx.lineTo(b.x,b.y); ctx.stroke();
-    ctx.shadowColor=color; ctx.shadowBlur=14;
-    const headR=isEnemy?2.5:3;
-    const gHead=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,headR*2);
-    gHead.addColorStop(0,'#ffffff'); gHead.addColorStop(0.4,color); gHead.addColorStop(1,color+'00');
-    ctx.fillStyle=gHead; ctx.beginPath(); ctx.arc(b.x,b.y,headR*2,0,Math.PI*2); ctx.fill();
+
+    if(wt==='LASER'||wt==='RAILGUN'||wt==='PHOTON'){
+      // Raio fino e longo que atravessa — linha brilhante com glow forte
+      const len=Math.min(spd*0.12,80);
+      const tx=b.x-(b.vx/spd)*len, ty=b.y-(b.vy/spd)*len;
+      ctx.shadowColor=color; ctx.shadowBlur=18;
+      ctx.strokeStyle=color+'55'; ctx.lineWidth=isEnemy?6:8; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(b.x,b.y); ctx.stroke();
+      ctx.strokeStyle=color+'cc'; ctx.lineWidth=isEnemy?2:2.5;
+      ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(b.x,b.y); ctx.stroke();
+      ctx.strokeStyle='#ffffff'; ctx.lineWidth=isEnemy?0.8:1;
+      ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(b.x,b.y); ctx.stroke();
+
+    } else if(wt==='PLASMA'||wt==='VOID_SHOT'){
+      // Bola pulsante lenta — orbe gordo com anéis de energia
+      const r=(isEnemy?5:7)+(Math.sin(Date.now()*0.01)*1.5);
+      ctx.shadowColor=color; ctx.shadowBlur=22;
+      const g=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,r*2.2);
+      g.addColorStop(0,'#ffffff'); g.addColorStop(0.3,color); g.addColorStop(1,color+'00');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(b.x,b.y,r*2.2,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle=color+'88'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(b.x,b.y,r*2.8,0,Math.PI*2); ctx.stroke();
+
+    } else if(wt==='EXPLOSIVE'||wt==='BURST'){
+      // Projétil gordinho com brilho quente — laranja/vermelho com rastro curto
+      const len=Math.min(spd*0.05,28);
+      const tx=b.x-(b.vx/spd)*len, ty=b.y-(b.vy/spd)*len;
+      ctx.shadowColor=color; ctx.shadowBlur=16;
+      ctx.strokeStyle=color+'44'; ctx.lineWidth=isEnemy?8:10; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(b.x,b.y); ctx.stroke();
+      ctx.strokeStyle=color+'bb'; ctx.lineWidth=isEnemy?3:4;
+      ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(b.x,b.y); ctx.stroke();
+      const gr=isEnemy?4:5;
+      const gHead=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,gr*2);
+      gHead.addColorStop(0,'#ffffaa'); gHead.addColorStop(0.4,color); gHead.addColorStop(1,color+'00');
+      ctx.fillStyle=gHead; ctx.beginPath(); ctx.arc(b.x,b.y,gr*2,0,Math.PI*2); ctx.fill();
+
+    } else if(wt==='CHAIN'){
+      // Raio elétrico — linha em zigue-zague
+      const len=Math.min(spd*0.07,50);
+      const tx=b.x-(b.vx/spd)*len, ty=b.y-(b.vy/spd)*len;
+      ctx.shadowColor=color; ctx.shadowBlur=20;
+      ctx.strokeStyle=color+'cc'; ctx.lineWidth=isEnemy?1.5:2; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(tx,ty);
+      const segs=5; for(let i=1;i<segs;i++){
+        const t=i/segs; const px=tx+(b.x-tx)*t, py=ty+(b.y-ty)*t;
+        const perp=(Math.random()-0.5)*8;
+        ctx.lineTo(px-(b.vy/spd)*perp, py+(b.vx/spd)*perp);
+      }
+      ctx.lineTo(b.x,b.y); ctx.stroke();
+      ctx.strokeStyle='#ffffff'; ctx.lineWidth=0.8;
+      ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(b.x,b.y); ctx.stroke();
+
+    } else if(wt==='TOXIC'){
+      // Bola verde escura pulsante com aura de veneno
+      const r=(isEnemy?4:5.5)+(Math.sin(Date.now()*0.008)*1);
+      ctx.shadowColor=color; ctx.shadowBlur=14;
+      const g=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,r*2);
+      g.addColorStop(0,'#ccffaa'); g.addColorStop(0.4,color); g.addColorStop(1,color+'00');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(b.x,b.y,r*2,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle=color+'55'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.arc(b.x,b.y,r*3.5,0,Math.PI*2); ctx.stroke();
+
+    } else if(wt==='GRAVITY'){
+      // Orbe roxo com espiral — projétil que puxa
+      const r=isEnemy?4:6;
+      ctx.shadowColor=color; ctx.shadowBlur=18;
+      const g=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,r*2.5);
+      g.addColorStop(0,'#ffffff'); g.addColorStop(0.3,color); g.addColorStop(0.7,color+'66'); g.addColorStop(1,'transparent');
+      ctx.fillStyle=g; ctx.beginPath(); ctx.arc(b.x,b.y,r*2.5,0,Math.PI*2); ctx.fill();
+      // anéis orbitais
+      for(let i=1;i<=2;i++){
+        ctx.strokeStyle=color+`${i===1?'88':'44'}`; ctx.lineWidth=0.8;
+        ctx.beginPath(); ctx.arc(b.x,b.y,r*(i+1.5),0,Math.PI*2); ctx.stroke();
+      }
+
+    } else if(wt==='QUANTUM'){
+      // Pisca entre magenta e branco — projétil teletransporta
+      const phase=Math.floor(Date.now()/120)%2===0;
+      const c2=phase?color:'#ffffff';
+      const r=isEnemy?3.5:5;
+      ctx.shadowColor=c2; ctx.shadowBlur=22;
+      ctx.fillStyle=c2; ctx.beginPath(); ctx.arc(b.x,b.y,r,0,Math.PI*2); ctx.fill();
+      ctx.strokeStyle=color+'88'; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.arc(b.x,b.y,r*2.5,0,Math.PI*2); ctx.stroke();
+
+    } else if(wt==='SNIPER'){
+      // Traço muito longo e fino como feixe de sniper
+      const len=Math.min(spd*0.18,120);
+      const tx=b.x-(b.vx/spd)*len, ty=b.y-(b.vy/spd)*len;
+      ctx.shadowColor=color; ctx.shadowBlur=12;
+      ctx.strokeStyle=color+'33'; ctx.lineWidth=isEnemy?4:5; ctx.lineCap='butt';
+      ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(b.x,b.y); ctx.stroke();
+      ctx.strokeStyle=color+'dd'; ctx.lineWidth=isEnemy?1:1.5;
+      ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(b.x,b.y); ctx.stroke();
+      ctx.strokeStyle='#ffffff'; ctx.lineWidth=0.6;
+      ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(b.x,b.y); ctx.stroke();
+
+    } else {
+      // Padrão — traço arcade com cabeça luminosa
+      const len=Math.min(spd*0.065,42);
+      const tx=b.x-(b.vx/spd)*len, ty=b.y-(b.vy/spd)*len;
+      ctx.strokeStyle=color+'22'; ctx.lineWidth=isEnemy?7:9; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(b.x,b.y); ctx.stroke();
+      ctx.strokeStyle=color+'aa'; ctx.lineWidth=isEnemy?2.5:3;
+      ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(b.x,b.y); ctx.stroke();
+      ctx.strokeStyle='#ffffff'; ctx.lineWidth=isEnemy?1.2:1.5;
+      ctx.beginPath(); ctx.moveTo(tx,ty); ctx.lineTo(b.x,b.y); ctx.stroke();
+      ctx.shadowColor=color; ctx.shadowBlur=14;
+      const headR=isEnemy?2.5:3;
+      const gHead=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,headR*2);
+      gHead.addColorStop(0,'#ffffff'); gHead.addColorStop(0.4,color); gHead.addColorStop(1,color+'00');
+      ctx.fillStyle=gHead; ctx.beginPath(); ctx.arc(b.x,b.y,headR*2,0,Math.PI*2); ctx.fill();
+    }
+
     ctx.shadowBlur=0; ctx.restore();
   }
 

@@ -65,9 +65,11 @@ export class UI {
   }
 
   // Lobby/fila do modo "Equipe Online" — mostrado enquanto aguarda match_start
-  showTeamLobby(text) {
+  showTeamLobby(text, modeTitle) {
     if (this._teamLobby) this._teamLobby.classList.add('show');
     if (this._teamLobbyCt && text) this._teamLobbyCt.textContent = text;
+    const titleEl = document.getElementById('tl-mode-title');
+    if (titleEl && modeTitle) titleEl.textContent = modeTitle;
   }
   hideTeamLobby() {
     if (this._teamLobby) this._teamLobby.classList.remove('show');

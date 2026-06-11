@@ -158,9 +158,10 @@ export class Game {
     this._tdQueuePos=-1;
     this._tdMatchEndReported=false;
     if (this._lobby) {
-      this.ui.showTeamLobby(mode==='tower_defense'
-        ? 'Entrando na fila do Torneio Tower Defense…'
-        : 'Procurando jogadores...');
+      this.ui.showTeamLobby(
+        mode==='tower_defense' ? '0 / 2' : '0 / 2',
+        mode==='tower_defense' ? 'TOWER DEFENSE' : 'EQUIPE ONLINE'
+      );
     }
 
     // Tela de carregamento — exibida desde já (com o que já sabemos: o
@@ -490,7 +491,7 @@ export class Game {
   _onTdQueueState(msg) {
     if (this.mode!=='tower_defense' || !this._lobby) return;
     const waiting = msg.matchActive ? ' — aguardando o turno atual terminar' : '';
-    this.ui.showTeamLobby(`Na fila do Torneio Tower Defense (${msg.queueLength}/8)${waiting}…`);
+    this.ui.showTeamLobby(`${msg.queueLength} / 8`, 'TOWER DEFENSE');
   }
 
   _onTdUnavailable(msg) {

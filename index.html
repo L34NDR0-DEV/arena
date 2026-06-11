@@ -225,23 +225,42 @@
 
 <!-- ═══ Lobby/fila do modo "Equipe Online" ═════════════════════ -->
 <div id="team-lobby">
-  <div class="tl-close" id="team-lobby-close" title="Cancelar busca e voltar ao menu" onclick="window.cancelOnlineQueue()">
+  <canvas class="tl-bg-canvas" id="tl-bg-canvas"></canvas>
+  <div class="tl-close" id="team-lobby-close" title="Cancelar" onclick="window.cancelOnlineQueue()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
       <line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/>
     </svg>
   </div>
-  <div class="tl-spinner"></div>
-  <div class="tl-title">EQUIPE ONLINE</div>
-  <div class="tl-sub">Procurando jogadores e formando as equipes...<br>Vagas restantes serão preenchidas com bots.</div>
-  <div class="tl-count" id="team-lobby-count">Aguardando...</div>
-  <div class="tl-cancel-hint">Toque no X para sair da fila</div>
+  <div class="tl-content">
+    <div class="tl-radar">
+      <div class="tl-radar-ring r1"></div>
+      <div class="tl-radar-ring r2"></div>
+      <div class="tl-radar-ring r3"></div>
+      <div class="tl-radar-sweep"></div>
+      <div class="tl-radar-dot center"></div>
+    </div>
+    <div class="tl-title" id="tl-mode-title">BUSCANDO PARTIDA</div>
+    <div class="tl-count" id="team-lobby-count">0 / 2</div>
+    <div class="tl-dots"><span></span><span></span><span></span></div>
+  </div>
 </div>
 
 <!-- ═══ Tela de carregamento de partida online (todos os modos) ═ -->
 <div id="match-loading">
-  <div class="ml-title">ENTRANDO NA PARTIDA...</div>
-  <div class="ml-roster" id="match-loading-roster"></div>
-  <div class="ml-ping" id="match-loading-ping">PING: <span>--</span> ms</div>
+  <canvas class="ml-bg-canvas" id="ml-bg-canvas"></canvas>
+  <div class="ml-content">
+    <div class="ml-vs-header">
+      <div class="ml-team-label red">TIME A</div>
+      <div class="ml-vs-badge">VS</div>
+      <div class="ml-team-label blue">TIME B</div>
+    </div>
+    <div class="ml-roster" id="match-loading-roster"></div>
+    <div class="ml-bottom">
+      <div class="ml-title">PREPARANDO ARENA</div>
+      <div class="ml-loadbar"><div class="ml-loadbar-fill"></div></div>
+      <div class="ml-ping" id="match-loading-ping"><span>--</span> ms</div>
+    </div>
+  </div>
 </div>
 
 <!-- ═══ Cards of Defense — overlay de escolha de carta ════════ -->
