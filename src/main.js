@@ -1204,272 +1204,627 @@ resizeLoginBg(); window.addEventListener('resize',resizeLoginBg);
   });
 })();
 
-// ── Modo Copa do Mundo: ativo por 2h a partir deste timestamp ─
-// Para reativar: troque pelo Date.now() no momento desejado.
-const COPA_START_TS = 1781197600000; // 2026-06-11 17:06 UTC — ativo agora por 2h
-const COPA_DURATION_MS = 2 * 60 * 60 * 1000; // 2 horas
-function _isCopaModeActive() {
-  const now = Date.now();
-  return now >= COPA_START_TS && now < COPA_START_TS + COPA_DURATION_MS;
+// ── Modo Copa do Mundo 2026: ativo até 13/06/2026 23:59 UTC ───
+const COPA_END_TS = new Date('2026-06-14T00:00:00Z').getTime();
+function _isCopaModeActive() { return Date.now() < COPA_END_TS; }
+
+// ── Gera pontos precisos dos contornos da bandeira do Brasil ──
+// Retorna 4 arrays de {x,y}: retângulo, losango, círculo, faixa
+function _buildBrazilPaths(cx, cy, fw, fh) {
+  // fw = largura total da bandeira, fh = altura total
+  const ox = cx - fw/2, oy = cy - fh/2;
+
+  // 1. Retângulo verde — perímetro externo
+  const N = 300, greenPts = [];
+  for (let i = 0; i < N; i++) {
+    const r = i / N;
+    if      (r < 0.25) greenPts.push({ x: ox + fw*(r/0.25),  y: oy });
+    else if (r < 0.5)  greenPts.push({ x: ox + fw,           y: oy + fh*((r-0.25)/0.25) });
+    else if (r < 0.75) greenPts.push({ x: ox + fw*(1-(r-0.5)/0.25), y: oy + fh });
+    else               greenPts.push({ x: ox,                y: oy + fh*(1-(r-0.75)/0.25) });
+  }
+
+  // 2. Losango amarelo — 4 lados do diamante
+  // Proporção real: losango ocupa ~83% largura, ~60% altura
+  const lw = fw * 0.83, lh = fh * 0.60;
+  const M = 300, yellowPts = [];
+  for (let i = 0; i < M; i++) {
+    const r = i / M;
+    if      (r < 0.25) yellowPts.push({ x: cx - lw/2 + lw/2*(r/0.25),  y: cy - lh/2*(1 - r/0.25) + lh/2*(r/0.25) - lh/2 + lh/2*(r/0.25)*2 });
+    else if (r < 0.5)  yellowPts.push({ x: cx + lw/2 - lw/2*((r-0.25)/0.25), y: cy + lh/2*((r-0.25)/0.25) });
+    else if (r < 0.75) yellowPts.push({ x: cx - lw/2*((r-0.5)/0.25),   y: cy + lh/2 - lh/2*((r-0.5)/0.25)*2 + lh/2*((r-0.5)/0.25) });
+    else               yellowPts.push({ x: cx - lw/2 + lw/2*((r-0.75)/0.25), y: cy - lh/2*((r-0.75)/0.25) });
+  }
+  // Recalcula losango de forma limpa
+  const yPts = [];
+  for (let i = 0; i < M; i++) {
+    const r = i / M;
+    // topo-esquerda → topo-direita → baixo-direita → baixo-esquerda → fecha
+    if (r < 0.25) {
+      const t2 = r / 0.25;
+      yPts.push({ x: cx - lw/2 + lw/2*t2, y: cy - lh/2*t2 + cy - cy + lh/2*(t2-1) + cy - lh/2*(1-t2) });
+    }
+  }
+  // Versão simplificada e correta do losango
+  const dPts = [];
+  const dN = 320;
+  for (let i = 0; i < dN; i++) {
+    const r = i / dN;
+    let x, y;
+    if (r < 0.25) {
+      const f = r / 0.25;
+      x = cx - lw/2 + (lw/2)*f;
+      y = cy           - (lh/2)*f;
+    } else if (r < 0.5) {
+      const f = (r - 0.25) / 0.25;
+      x = cx           + (lw/2)*(1-f);
+      y = cy - lh/2    + (lh/2)*f*2 - (lh/2)*(1-f);
+    } else if (r < 0.75) {
+      const f = (r - 0.5) / 0.25;
+      x = cx + lw/2    - (lw/2)*f;
+      y = cy           + (lh/2)*f;
+    } else {
+      const f = (r - 0.75) / 0.25;
+      x = cx           - (lw/2)*(1-f);
+      y = cy + lh/2    - (lh/2)*f*2 + (lh/2)*(1-f);
+    }
+    dPts.push({ x, y });
+  }
+
+  // Losango correto: 4 vértices + interpolação linear entre eles
+  const vTop   = { x: cx,        y: cy - lh/2 };
+  const vRight = { x: cx + lw/2, y: cy        };
+  const vBot   = { x: cx,        y: cy + lh/2 };
+  const vLeft  = { x: cx - lw/2, y: cy        };
+  const losVerts = [vTop, vRight, vBot, vLeft];
+  const losPts = [];
+  const losN = 320;
+  for (let i = 0; i < losN; i++) {
+    const r = i / losN * 4;
+    const si = Math.floor(r) % 4;
+    const f  = r - Math.floor(r);
+    const a  = losVerts[si], b = losVerts[(si+1)%4];
+    losPts.push({ x: a.x + (b.x-a.x)*f, y: a.y + (b.y-a.y)*f });
+  }
+
+  // 3. Círculo azul
+  const rBlue = fh * 0.255;
+  const cPts = [];
+  const cN = 280;
+  for (let i = 0; i < cN; i++) {
+    const a = (i / cN) * Math.PI * 2 - Math.PI/2; // começa no topo
+    cPts.push({ x: cx + Math.cos(a)*rBlue, y: cy + Math.sin(a)*rBlue });
+  }
+
+  // 4. Faixa branca — arco côncavo levemente inclinado
+  // Na bandeira real é uma faixa em arco cruzando o círculo de baixo-esquerda p/ cima-direita
+  const fPts = [];
+  const fN = 120;
+  for (let i = 0; i <= fN; i++) {
+    const f = i / fN;
+    // Arco suave atravessando o diâmetro do círculo com leve curva
+    const ax = cx - rBlue*0.92 + rBlue*1.84*f;
+    const ay = cy + rBlue*0.22 - rBlue*0.44*f + Math.sin(f*Math.PI)*rBlue*0.08;
+    fPts.push({ x: ax, y: ay });
+  }
+
+  return [
+    { pts: greenPts, color: '#009c3b' },
+    { pts: losPts,   color: '#ffdf00' },
+    { pts: cPts,     color: '#002776' },
+    { pts: fPts,     color: '#ffffff' },
+  ];
 }
 
-// Pré-calcula pontos do contorno da bandeira do Brasil em coordenadas normalizadas [0,1]
-// Retorna array de {x,y,color} — usado pelas naves para seguir o trajeto
-function _buildBrazilFlagPath(W, H) {
-  const paths = [];
-  const pw = W * 0.72, ph = H * 0.50;
-  const ox = (W - pw) / 2, oy = (H - ph) / 2 + H * 0.04;
+// ── Desenha a bandeira completa preenchida ────────────────────
+function _drawBrazilFlag(ctx, cx, cy, fw, fh, alpha, t) {
+  ctx.save();
+  ctx.globalAlpha = alpha;
 
-  // Retângulo verde externo
-  const greenPts = [];
-  const stepsRect = 220;
-  for (let i = 0; i <= stepsRect; i++) {
-    const r = i / stepsRect;
-    if (r < 0.25)       greenPts.push({ x: ox + (pw * r * 4),        y: oy,        color: '#009c3b' });
-    else if (r < 0.5)   greenPts.push({ x: ox + pw,                  y: oy + (ph * (r-0.25)*4), color: '#009c3b' });
-    else if (r < 0.75)  greenPts.push({ x: ox + pw - (pw * (r-0.5)*4), y: oy + ph,   color: '#009c3b' });
-    else                greenPts.push({ x: ox,                        y: oy + ph - (ph * (r-0.75)*4), color: '#009c3b' });
-  }
-  paths.push(greenPts);
+  const ox = cx - fw/2, oy = cy - fh/2;
+  const lw = fw * 0.83, lh = fh * 0.60;
+  const rBlue = fh * 0.255;
 
-  // Losango amarelo interno
-  const cx = ox + pw/2, cy = oy + ph/2;
-  const lw = pw * 0.82, lh = ph * 0.72;
-  const yellowPts = [];
-  const stepsLos = 220;
-  for (let i = 0; i <= stepsLos; i++) {
-    const r = i / stepsLos;
-    if (r < 0.25)       yellowPts.push({ x: cx - lw/2 + (lw/2 * r * 4),   y: cy - lh/2 + (lh/2 * r * 4),   color: '#ffdf00' });
-    else if (r < 0.5)   yellowPts.push({ x: cx + (lw/2 * (1-(r-0.25)*4)), y: cy + (lh/2 * (r-0.25)*4),      color: '#ffdf00' });
-    else if (r < 0.75)  yellowPts.push({ x: cx - (lw/2 * (r-0.5)*4),      y: cy + lh/2 - (lh/2*(r-0.5)*4), color: '#ffdf00' });
-    else                yellowPts.push({ x: cx - lw/2 + (lw/2*(r-0.75)*4), y: cy - (lh/2*(r-0.75)*4),       color: '#ffdf00' });
-  }
-  paths.push(yellowPts);
+  // Sombra geral
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 18;
+
+  // Retângulo verde
+  ctx.fillStyle = '#009c3b';
+  ctx.beginPath();
+  ctx.roundRect(ox, oy, fw, fh, 6);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Losango amarelo
+  ctx.fillStyle = '#ffdf00';
+  ctx.shadowColor = '#ffdf00'; ctx.shadowBlur = 12 * (0.5 + 0.5*Math.sin(t*1.5));
+  ctx.beginPath();
+  ctx.moveTo(cx,          cy - lh/2);
+  ctx.lineTo(cx + lw/2,   cy       );
+  ctx.lineTo(cx,          cy + lh/2);
+  ctx.lineTo(cx - lw/2,   cy       );
+  ctx.closePath();
+  ctx.fill();
+  ctx.shadowBlur = 0;
 
   // Círculo azul
-  const rBlue = ph * 0.26;
-  const bluePts = [];
-  const stepsCirc = 180;
-  for (let i = 0; i <= stepsCirc; i++) {
-    const a = (i / stepsCirc) * Math.PI * 2;
-    bluePts.push({ x: cx + Math.cos(a) * rBlue, y: cy + Math.sin(a) * rBlue, color: '#002776' });
-  }
-  paths.push(bluePts);
+  ctx.fillStyle = '#002776';
+  ctx.shadowColor = '#002776'; ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.arc(cx, cy, rBlue, 0, Math.PI*2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
 
-  // Faixa branca diagonal (atravessa o círculo)
-  const whitePts = [];
-  const stepsW = 100;
-  for (let i = 0; i <= stepsW; i++) {
-    const r = i / stepsW;
-    whitePts.push({ x: cx - rBlue*0.9 + rBlue*1.8*r, y: cy + rBlue*0.3 - rBlue*0.08*r, color: '#ffffff' });
-  }
-  paths.push(whitePts);
+  // Faixa branca (arco)
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = fh * 0.045;
+  ctx.lineCap = 'round';
+  ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 6;
+  ctx.beginPath();
+  ctx.moveTo(cx - rBlue*0.92, cy + rBlue*0.22);
+  ctx.quadraticCurveTo(cx, cy + rBlue*0.36, cx + rBlue*0.92, cy - rBlue*0.22);
+  ctx.stroke();
+  ctx.shadowBlur = 0;
 
-  return paths;
+  // Texto "ORDEM E PROGRESSO" na faixa branca — minúsculo e legível
+  ctx.save();
+  ctx.translate(cx, cy + rBlue*0.07);
+  ctx.rotate(-0.06);
+  ctx.font = `bold ${Math.max(7, fh*0.038)}px sans-serif`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#002776';
+  ctx.shadowBlur = 0;
+  ctx.fillText('ORDEM E PROGRESSO', 0, rBlue*0.07);
+  ctx.restore();
+
+  // Estrelas no círculo (padrão simplificado — 5 maiores + campo de 22)
+  const starData = [
+    // [angulo, dist_r, tamanho] — posições aproximadas do céu do Brasil
+    [0.5,  0.55, 0.06],[-0.3, 0.62, 0.05],[1.2,  0.48, 0.055],
+    [-1.1, 0.50, 0.05],[2.0,  0.40, 0.05],[-2.2, 0.45, 0.055],
+    [0.0,  0.30, 0.04],[0.9,  0.25, 0.04],[-0.6, 0.35, 0.04],
+    [1.6,  0.58, 0.04],[-1.7, 0.60, 0.04],[2.5,  0.30, 0.04],
+    [-2.8, 0.28, 0.04],[0.3,  0.68, 0.035],[-0.9,0.70, 0.035],
+    [1.0,  0.72, 0.035],[-1.4, 0.72, 0.035],[2.2,  0.65, 0.035],
+    [-2.5, 0.62, 0.035],[3.0,  0.18, 0.03],[-3.0,0.20, 0.03],
+    [0.5,  0.12, 0.05],  // estrela central grande
+  ];
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowColor = '#ffffff'; ctx.shadowBlur = 4;
+  for (const [ang, dist, sz] of starData) {
+    const sx = cx + Math.cos(ang - Math.PI/2) * dist * rBlue;
+    const sy = cy + Math.sin(ang - Math.PI/2) * dist * rBlue - rBlue*0.06;
+    const sr = sz * rBlue;
+    ctx.beginPath();
+    ctx.arc(sx, sy, sr, 0, Math.PI*2);
+    ctx.fill();
+  }
+  ctx.shadowBlur = 0;
+
+  // Borda fina dourada
+  ctx.strokeStyle = 'rgba(255,220,0,0.35)';
+  ctx.lineWidth = 2;
+  ctx.shadowBlur = 0;
+  ctx.beginPath();
+  ctx.roundRect(ox, oy, fw, fh, 6);
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+// ── Desenha o troféu FIFA em canvas ──────────────────────────
+function _drawFifaTrophy(ctx, cx, cy, scale, t) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  const s = scale;
+  const pulse = 0.92 + 0.08 * Math.sin(t * 1.8);
+
+  // Brilho dourado de fundo
+  const gGlow = ctx.createRadialGradient(0, -s*0.2, 0, 0, -s*0.2, s*1.1);
+  gGlow.addColorStop(0,   `rgba(255,200,0,${0.18*pulse})`);
+  gGlow.addColorStop(0.5, `rgba(200,140,0,${0.08*pulse})`);
+  gGlow.addColorStop(1,   'transparent');
+  ctx.fillStyle = gGlow;
+  ctx.beginPath(); ctx.arc(0, -s*0.1, s*1.1, 0, Math.PI*2); ctx.fill();
+
+  // Gradiente dourado para todo o troféu
+  const gold1 = (a) => `rgba(255,215,0,${a})`;
+  const gold2 = (a) => `rgba(218,165,32,${a})`;
+  const gold3 = (a) => `rgba(139,90,0,${a})`;
+  const darkG = (a) => `rgba(80,40,0,${a})`;
+
+  function goldGrad(x0,y0,x1,y1) {
+    const g = ctx.createLinearGradient(x0,y0,x1,y1);
+    g.addColorStop(0,   gold3(1));
+    g.addColorStop(0.2, gold1(1));
+    g.addColorStop(0.5, `rgba(255,240,150,1)`);
+    g.addColorStop(0.75,gold2(1));
+    g.addColorStop(1,   gold3(1));
+    return g;
+  }
+
+  ctx.shadowColor = 'rgba(255,180,0,0.7)';
+  ctx.shadowBlur = 30 * pulse;
+
+  // ── Base (pedestal) ──────────────────────────────────────
+  // Base inferior larga
+  ctx.fillStyle = goldGrad(-s*0.38, s*0.82, s*0.38, s*0.82);
+  ctx.beginPath();
+  ctx.moveTo(-s*0.38, s*0.96);
+  ctx.lineTo( s*0.38, s*0.96);
+  ctx.lineTo( s*0.32, s*0.82);
+  ctx.lineTo(-s*0.32, s*0.82);
+  ctx.closePath(); ctx.fill();
+
+  // Faixa verde na base
+  ctx.fillStyle = '#1a6e2e';
+  ctx.shadowBlur = 0;
+  ctx.beginPath();
+  ctx.moveTo(-s*0.30, s*0.865);
+  ctx.lineTo( s*0.30, s*0.865);
+  ctx.lineTo( s*0.28, s*0.835);
+  ctx.lineTo(-s*0.28, s*0.835);
+  ctx.closePath(); ctx.fill();
+  ctx.shadowColor = 'rgba(255,180,0,0.7)';
+  ctx.shadowBlur = 20 * pulse;
+
+  // Pedestal médio
+  ctx.fillStyle = goldGrad(-s*0.26, s*0.82, s*0.26, s*0.82);
+  ctx.beginPath();
+  ctx.moveTo(-s*0.28, s*0.82);
+  ctx.lineTo( s*0.28, s*0.82);
+  ctx.lineTo( s*0.18, s*0.68);
+  ctx.lineTo(-s*0.18, s*0.68);
+  ctx.closePath(); ctx.fill();
+
+  // Coluna central (pescoço)
+  ctx.fillStyle = goldGrad(-s*0.10, s*0.38, s*0.10, s*0.38);
+  ctx.beginPath();
+  ctx.moveTo(-s*0.12, s*0.68);
+  ctx.lineTo( s*0.12, s*0.68);
+  ctx.lineTo( s*0.08, s*0.35);
+  ctx.lineTo(-s*0.08, s*0.35);
+  ctx.closePath(); ctx.fill();
+
+  // Nó central (bulbo) — esfera achatada no meio do troféu
+  ctx.fillStyle = goldGrad(-s*0.22, s*0.42, s*0.22, s*0.52);
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.ellipse(0, s*0.47, s*0.22, s*0.13, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // ── Copa (parte superior) ─────────────────────────────────
+  // Corpo da taça — forma trapezoidal com curva no topo
+  ctx.fillStyle = goldGrad(-s*0.42, -s*0.55, s*0.42, s*0.35);
+  ctx.shadowBlur = 25 * pulse;
+  ctx.beginPath();
+  ctx.moveTo(-s*0.08, s*0.35);
+  ctx.lineTo(-s*0.32, s*0.10);
+  ctx.lineTo(-s*0.42, -s*0.10);
+  ctx.lineTo(-s*0.38, -s*0.35);
+  ctx.bezierCurveTo(-s*0.35, -s*0.60, -s*0.20, -s*0.68, 0, -s*0.70);
+  ctx.bezierCurveTo( s*0.20, -s*0.68,  s*0.35, -s*0.60,  s*0.38, -s*0.35);
+  ctx.lineTo( s*0.42, -s*0.10);
+  ctx.lineTo( s*0.32,  s*0.10);
+  ctx.lineTo( s*0.08,  s*0.35);
+  ctx.closePath();
+  ctx.fill();
+
+  // Reflexo claro na copa (brilho lateral esquerdo)
+  const rfl = ctx.createLinearGradient(-s*0.40, -s*0.20, -s*0.05, s*0.10);
+  rfl.addColorStop(0, 'rgba(255,255,200,0.45)');
+  rfl.addColorStop(1, 'rgba(255,255,200,0)');
+  ctx.fillStyle = rfl;
+  ctx.beginPath();
+  ctx.moveTo(-s*0.08, s*0.35);
+  ctx.lineTo(-s*0.32, s*0.10);
+  ctx.lineTo(-s*0.42, -s*0.10);
+  ctx.lineTo(-s*0.38, -s*0.35);
+  ctx.bezierCurveTo(-s*0.35,-s*0.55,-s*0.18,-s*0.62, 0,-s*0.58);
+  ctx.lineTo(-s*0.02, s*0.35);
+  ctx.closePath();
+  ctx.fill();
+
+  // Globo no topo (esfera com continentes esboçados)
+  ctx.fillStyle = goldGrad(-s*0.20, -s*0.92, s*0.20, -s*0.52);
+  ctx.shadowBlur = 18 * pulse;
+  ctx.beginPath();
+  ctx.arc(0, -s*0.72, s*0.20, 0, Math.PI*2);
+  ctx.fill();
+
+  // Linhas de latitude/longitude no globo
+  ctx.strokeStyle = gold3(0.6);
+  ctx.lineWidth = s*0.012;
+  ctx.shadowBlur = 0;
+  for (let i = -1; i <= 1; i++) {
+    ctx.beginPath();
+    ctx.ellipse(0, -s*0.72, s*0.20, s*0.08 + i*s*0.06, 0, 0, Math.PI*2);
+    ctx.stroke();
+  }
+  ctx.beginPath(); ctx.moveTo(0, -s*0.72-s*0.20); ctx.lineTo(0, -s*0.72+s*0.20); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(0, -s*0.72, s*0.10, s*0.20, Math.PI*0.4, 0, Math.PI*2); ctx.stroke();
+
+  // Mãos segurando o globo (simplificado como dois volumes curvos)
+  ctx.fillStyle = goldGrad(-s*0.28, -s*0.62, s*0.28, -s*0.48);
+  ctx.shadowBlur = 12;
+  ctx.shadowColor = 'rgba(255,180,0,0.5)';
+  // Mão esquerda
+  ctx.beginPath();
+  ctx.moveTo(-s*0.18, -s*0.50);
+  ctx.bezierCurveTo(-s*0.28, -s*0.54, -s*0.26, -s*0.66, -s*0.15, -s*0.68);
+  ctx.bezierCurveTo(-s*0.08, -s*0.70, -s*0.04, -s*0.64, -s*0.06, -s*0.56);
+  ctx.closePath(); ctx.fill();
+  // Mão direita
+  ctx.beginPath();
+  ctx.moveTo( s*0.18, -s*0.50);
+  ctx.bezierCurveTo( s*0.28, -s*0.54,  s*0.26, -s*0.66,  s*0.15, -s*0.68);
+  ctx.bezierCurveTo( s*0.08, -s*0.70,  s*0.04, -s*0.64,  s*0.06, -s*0.56);
+  ctx.closePath(); ctx.fill();
+
+  // Linha de borda decorativa na copa
+  ctx.strokeStyle = gold1(0.5);
+  ctx.lineWidth = s*0.018;
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  ctx.moveTo(-s*0.38, -s*0.35);
+  ctx.lineTo(-s*0.42, -s*0.10);
+  ctx.lineTo(-s*0.32,  s*0.10);
+  ctx.moveTo( s*0.38, -s*0.35);
+  ctx.lineTo( s*0.42, -s*0.10);
+  ctx.lineTo( s*0.32,  s*0.10);
+  ctx.stroke();
+
+  ctx.shadowBlur = 0;
+  ctx.restore();
+}
+
+// ── Gera caminhos para as naves: contornos da bandeira lado esquerdo ─
+function _buildCopaShipPaths(flagCx, flagCy, fw, fh) {
+  const lw = fw * 0.83, lh = fh * 0.60;
+  const rBlue = fh * 0.255;
+  const N = 280;
+
+  // Retângulo externo
+  const ox = flagCx - fw/2, oy = flagCy - fh/2;
+  const rectPts = [];
+  for (let i = 0; i < N; i++) {
+    const r = i / N;
+    if      (r < 0.25) rectPts.push({ x: ox + fw*(r/0.25),              y: oy });
+    else if (r < 0.5)  rectPts.push({ x: ox + fw,                       y: oy + fh*((r-0.25)/0.25) });
+    else if (r < 0.75) rectPts.push({ x: ox + fw*(1-(r-0.5)/0.25),      y: oy + fh });
+    else               rectPts.push({ x: ox,                             y: oy + fh*(1-(r-0.75)/0.25) });
+  }
+
+  // Losango
+  const vT={x:flagCx,y:flagCy-lh/2}, vR={x:flagCx+lw/2,y:flagCy}, vB={x:flagCx,y:flagCy+lh/2}, vL={x:flagCx-lw/2,y:flagCy};
+  const losPts = [];
+  for (let i = 0; i < N; i++) {
+    const r = (i/N)*4, si=Math.floor(r)%4, f=r-Math.floor(r);
+    const verts=[vT,vR,vB,vL];
+    const a=verts[si], b=verts[(si+1)%4];
+    losPts.push({ x: a.x+(b.x-a.x)*f, y: a.y+(b.y-a.y)*f });
+  }
+
+  // Círculo azul
+  const circPts = [];
+  for (let i = 0; i < N; i++) {
+    const a = (i/N)*Math.PI*2 - Math.PI/2;
+    circPts.push({ x: flagCx+Math.cos(a)*rBlue, y: flagCy+Math.sin(a)*rBlue });
+  }
+
+  return [
+    { pts: rectPts, color: '#009c3b', label: 'rect'  },
+    { pts: losPts,  color: '#ffdf00', label: 'losang' },
+    { pts: circPts, color: '#4466ff', label: 'circ'   },
+  ];
 }
 
 (function animateLoginBg(){
   try {
-    const ctx=loginBg.getContext('2d');
-    const W=loginBg.width||window.innerWidth, H=loginBg.height||window.innerHeight;
-    if(W<2||H<2){ requestAnimationFrame(animateLoginBg); return; }
-    const t=Date.now()/1000;
+    const ctx = loginBg.getContext('2d');
+    const W = loginBg.width||window.innerWidth, H = loginBg.height||window.innerHeight;
+    if (W<2||H<2) { requestAnimationFrame(animateLoginBg); return; }
+    const t = Date.now()/1000;
     const copaMode = _isCopaModeActive();
 
     // ── Fundo ──────────────────────────────────────────────────
     if (copaMode) {
-      // Fundo verde escuro Copa
-      ctx.fillStyle = '#011a06'; ctx.fillRect(0,0,W,H);
-      const gn = ctx.createRadialGradient(W/2, H*0.45, 0, W/2, H*0.45, Math.min(W,H)*0.6);
-      gn.addColorStop(0, 'rgba(0,80,30,0.22)');
-      gn.addColorStop(0.5, 'rgba(0,40,15,0.10)');
-      gn.addColorStop(1, 'transparent');
-      ctx.fillStyle = gn; ctx.fillRect(0,0,W,H);
+      ctx.fillStyle = '#020e04'; ctx.fillRect(0,0,W,H);
+      // Gradiente radial verde escuro centro
+      const g1 = ctx.createRadialGradient(W*0.25, H*0.5, 0, W*0.25, H*0.5, H*0.7);
+      g1.addColorStop(0, 'rgba(0,60,20,0.30)'); g1.addColorStop(1, 'transparent');
+      ctx.fillStyle = g1; ctx.fillRect(0,0,W,H);
+      // Gradiente dourado lado direito (troféu)
+      const g2 = ctx.createRadialGradient(W*0.78, H*0.5, 0, W*0.78, H*0.5, H*0.55);
+      g2.addColorStop(0, 'rgba(100,60,0,0.25)'); g2.addColorStop(1, 'transparent');
+      ctx.fillStyle = g2; ctx.fillRect(0,0,W,H);
     } else {
       ctx.fillStyle='#020508'; ctx.fillRect(0,0,W,H);
-      const cx=W/2, cy=H*0.42;
-      const gn=ctx.createRadialGradient(cx,cy,0,cx,cy,Math.min(W,H)*0.55);
-      gn.addColorStop(0,'rgba(0,80,120,0.18)');
-      gn.addColorStop(0.4,'rgba(0,40,80,0.08)');
-      gn.addColorStop(1,'transparent');
+      const gn=ctx.createRadialGradient(W/2,H*0.42,0,W/2,H*0.42,Math.min(W,H)*0.55);
+      gn.addColorStop(0,'rgba(0,80,120,0.18)'); gn.addColorStop(0.4,'rgba(0,40,80,0.08)'); gn.addColorStop(1,'transparent');
       ctx.fillStyle=gn; ctx.fillRect(0,0,W,H);
     }
 
-    // Grade neon pulsante
-    const gs=60, gridPulse=0.3+0.2*Math.sin(t*0.7);
-    ctx.strokeStyle= copaMode ? '#001a06' : '#001428';
-    ctx.lineWidth=0.6; ctx.globalAlpha=gridPulse;
+    // Grade neon
+    const gs=60, gp=0.3+0.2*Math.sin(t*0.7);
+    ctx.strokeStyle=copaMode?'#00180a':'#001428'; ctx.lineWidth=0.6; ctx.globalAlpha=gp;
     for (let x=0;x<W;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
     for (let y=0;y<H;y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
     ctx.globalAlpha=1;
 
     // Estrelas
-    if (!animateLoginBg._stars || animateLoginBg._starsW !== W){
-      animateLoginBg._starsW = W;
-      animateLoginBg._stars=Array.from({length:180},()=>({
-        x:Math.random()*W, y:Math.random()*H,
-        r:Math.random()*1.6+0.2,
-        a:Math.random()*0.7+0.1,
-        sp:0.4+Math.random()*1.4,
-        bk:Math.random()*Math.PI*2,
-        px:Math.random()<0.15,
+    if (!animateLoginBg._stars || animateLoginBg._starsW!==W) {
+      animateLoginBg._starsW=W;
+      animateLoginBg._stars=Array.from({length:160},()=>({
+        x:Math.random()*W,y:Math.random()*H,
+        r:Math.random()*1.5+0.2,a:Math.random()*0.6+0.1,
+        sp:0.3+Math.random()*1.2,bk:Math.random()*Math.PI*2,px:Math.random()<0.12,
       }));
     }
-    for (const s of animateLoginBg._stars){
+    for (const s of animateLoginBg._stars) {
       const a=s.a*(0.4+0.6*Math.sin(t*s.sp+s.bk));
-      ctx.fillStyle= copaMode ? `rgba(220,255,200,${a*0.7})` : `rgba(140,200,255,${a})`;
-      if(s.px){ctx.fillRect(s.x-s.r,s.y-s.r,s.r*2,s.r*2);}
-      else{ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();}
+      ctx.fillStyle=copaMode?`rgba(200,255,180,${a*0.6})`:`rgba(140,200,255,${a})`;
+      if(s.px) ctx.fillRect(s.x-s.r,s.y-s.r,s.r*2,s.r*2);
+      else { ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill(); }
     }
 
     if (copaMode) {
-      // ── MODO COPA: naves seguem o contorno da bandeira ─────
-      if (!animateLoginBg._flagPaths || animateLoginBg._flagW !== W) {
-        animateLoginBg._flagW = W;
-        animateLoginBg._flagPaths = _buildBrazilFlagPath(W, H);
-      }
-      const flagPaths = animateLoginBg._flagPaths;
+      // ── Dimensões dos elementos copa ───────────────────────
+      const isMobile = W < 600;
+      // Bandeira: lado esquerdo
+      const fw = Math.min(W*0.36, H*0.52, 260);
+      const fh = fw * 0.70; // proporção real da bandeira 10:7
+      const flagCx = W * (isMobile ? 0.25 : 0.22);
+      const flagCy = H * 0.50;
+      // Troféu: lado direito
+      const trophyScale = Math.min(H * 0.38, W * 0.18, 140);
+      const trophyCx = W * (isMobile ? 0.75 : 0.78);
+      const trophyCy = H * 0.50;
 
-      // Desenha a bandeira como "ghost" bem tenue no fundo
+      // ── Bandeira do Brasil ────────────────────────────────
+      _drawBrazilFlag(ctx, flagCx, flagCy, fw, fh, 0.82 + 0.06*Math.sin(t*0.8), t);
+
+      // Label abaixo da bandeira
       ctx.save();
-      ctx.globalAlpha = 0.06 + 0.02*Math.sin(t*0.5);
-      for (const pts of flagPaths) {
-        if (!pts.length) continue;
-        ctx.strokeStyle = pts[0].color;
-        ctx.lineWidth = pts === flagPaths[0] ? 8 : pts === flagPaths[1] ? 6 : 4;
-        ctx.shadowColor = pts[0].color; ctx.shadowBlur = 12;
-        ctx.beginPath();
-        ctx.moveTo(pts[0].x, pts[0].y);
-        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-        ctx.closePath(); ctx.stroke();
-      }
+      ctx.globalAlpha = 0.70 + 0.15*Math.sin(t*1.0);
+      ctx.font = `bold ${Math.max(8, fw*0.065)}px "Press Start 2P", monospace`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillStyle = '#ffdf00';
+      ctx.shadowColor = '#009c3b'; ctx.shadowBlur = 10;
+      ctx.fillText('BRASIL', flagCx, flagCy + fh/2 + 10);
       ctx.restore();
 
-      // Naves seguindo o contorno
+      // ── Troféu da Copa ────────────────────────────────────
+      _drawFifaTrophy(ctx, trophyCx, trophyCy, trophyScale, t);
+
+      // Label abaixo do troféu
+      ctx.save();
+      ctx.globalAlpha = 0.70 + 0.15*Math.sin(t*1.0 + 1);
+      ctx.font = `bold ${Math.max(7, trophyScale*0.095)}px "Press Start 2P", monospace`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillStyle = '#ffdf00';
+      ctx.shadowColor = 'rgba(200,120,0,0.8)'; ctx.shadowBlur = 10;
+      ctx.fillText('HEXA 2026', trophyCx, trophyCy + trophyScale + 8);
+      ctx.restore();
+
+      // ── Naves seguindo os contornos da bandeira (lentas) ──
+      if (!animateLoginBg._copaShipPaths || animateLoginBg._copaFW !== fw) {
+        animateLoginBg._copaFW = fw;
+        animateLoginBg._copaShipPaths = _buildCopaShipPaths(flagCx, flagCy, fw, fh);
+        animateLoginBg._copaShips = null; // força reinit
+      }
+      const shipPaths = animateLoginBg._copaShipPaths;
+
       if (!animateLoginBg._copaShips) {
         animateLoginBg._copaShips = [];
-        // Distribui naves pelos 4 caminhos da bandeira
-        const totalShips = Math.min(SKINS.length, 16);
-        for (let i = 0; i < totalShips; i++) {
-          const pathIdx = i % flagPaths.length;
-          const path = flagPaths[pathIdx];
-          const startPct = (i / totalShips) + (pathIdx / flagPaths.length) * 0.15;
-          animateLoginBg._copaShips.push({
-            pathIdx,
-            pct: (startPct % 1),
-            speed: 0.14 + Math.random() * 0.10, // % do caminho por segundo
-            skin: SKINS[i % SKINS.length],
-            trail: [],
-            depth: 0.6 + Math.random() * 0.4,
-            bob: Math.random() * Math.PI * 2,
-          });
+        // 3 naves por caminho = 9 naves total, espaçadas uniformemente
+        const perPath = 3;
+        for (let pi = 0; pi < shipPaths.length; pi++) {
+          for (let k = 0; k < perPath; k++) {
+            animateLoginBg._copaShips.push({
+              pathIdx: pi,
+              pct: k / perPath,           // espaçamento uniforme no caminho
+              speed: 0.032 + Math.random()*0.012, // muito lentas: ~3% do caminho/s
+              skin: SKINS[(pi*perPath+k) % SKINS.length],
+              trail: [],
+              depth: 0.65 + Math.random()*0.35,
+              bob: Math.random()*Math.PI*2,
+            });
+          }
         }
       }
 
-      const copaShips = animateLoginBg._copaShips;
-      const BRASIL_COLORS = ['#009c3b','#ffdf00','#002776','#ffffff','#009c3b','#ffdf00'];
+      for (const s of animateLoginBg._copaShips) {
+        const sp = shipPaths[s.pathIdx];
+        if (!sp || sp.pts.length < 2) continue;
 
-      for (const s of copaShips) {
-        const path = flagPaths[s.pathIdx];
-        if (!path || path.length < 2) continue;
+        s.pct = (s.pct + s.speed/60) % 1;
+        const raw = s.pct * sp.pts.length;
+        const i0 = Math.floor(raw) % sp.pts.length;
+        const i1 = (i0+1) % sp.pts.length;
+        const f  = raw - Math.floor(raw);
+        const px = sp.pts[i0].x + (sp.pts[i1].x - sp.pts[i0].x)*f;
+        const py = sp.pts[i0].y + (sp.pts[i1].y - sp.pts[i0].y)*f;
 
-        // Avança no caminho
-        s.pct = (s.pct + s.speed * (1/60)) % 1;
-        const rawIdx = s.pct * (path.length - 1);
-        const idx0 = Math.floor(rawIdx), idx1 = Math.min(idx0 + 1, path.length - 1);
-        const frac = rawIdx - idx0;
-        const px = path[idx0].x + (path[idx1].x - path[idx0].x) * frac;
-        const py = path[idx0].y + (path[idx1].y - path[idx0].y) * frac;
-        const bobY = Math.sin(t * 2 + s.bob) * 3;
+        // Ângulo de direção
+        const i2 = (i0+3) % sp.pts.length;
+        const angle = Math.atan2(sp.pts[i2].y - sp.pts[i0].y, sp.pts[i2].x - sp.pts[i0].x) + Math.PI/2;
 
-        // Calcula ângulo de direção
-        const nx = path[Math.min(idx0+2, path.length-1)].x - path[idx0].x;
-        const ny = path[Math.min(idx0+2, path.length-1)].y - path[idx0].y;
-        const angle = Math.atan2(ny, nx) + Math.PI/2;
+        // Micro-balanço vertical
+        const bobY = Math.sin(t*1.4 + s.bob) * 2;
 
-        // Rastro colorido da bandeira
+        // Rastro
         s.trail.push({ x: px, y: py + bobY });
-        if (s.trail.length > 28) s.trail.shift();
+        if (s.trail.length > 22) s.trail.shift();
 
-        const hue = BRASIL_COLORS[s.pathIdx % BRASIL_COLORS.length];
+        const hue = sp.color;
         ctx.save();
         for (let k = 0; k < s.trail.length; k++) {
           const p = s.trail[k];
           const a = (k / s.trail.length);
-          const sz = 18 * s.depth * a;
-          ctx.globalAlpha = (0.4 * s.depth + 0.1) * a * 0.6;
+          ctx.globalAlpha = (0.28*s.depth) * a * 0.7;
           ctx.fillStyle = hue;
-          ctx.shadowColor = hue; ctx.shadowBlur = sz * 0.8;
-          ctx.beginPath(); ctx.arc(p.x, p.y, Math.max(0.5, sz * 0.35), 0, Math.PI*2); ctx.fill();
+          ctx.shadowColor = hue; ctx.shadowBlur = 5;
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, Math.max(0.5, 6*s.depth*a), 0, Math.PI*2);
+          ctx.fill();
         }
         ctx.restore();
 
         // Nave
-        const sz = 18 * s.depth;
+        const sz = 14*s.depth;
         ctx.save();
-        ctx.translate(px, py + bobY);
+        ctx.translate(px, py+bobY);
         ctx.rotate(angle);
-        ctx.globalAlpha = 0.42 * s.depth + 0.20;
-        ctx.shadowColor = hue; ctx.shadowBlur = 14 * s.depth;
-        s.skin.drawPreview(ctx, (sz * 2) / s.skin._size);
-        ctx.restore();
-        ctx.globalAlpha = 1;
-      }
-
-      // Badge Copa no canto
-      ctx.save();
-      ctx.globalAlpha = 0.55 + 0.15 * Math.sin(t * 1.2);
-      ctx.font = 'bold 11px "Press Start 2P", monospace';
-      ctx.textAlign = 'right'; ctx.textBaseline = 'bottom';
-      ctx.fillStyle = '#ffdf00';
-      ctx.shadowColor = '#009c3b'; ctx.shadowBlur = 8;
-      ctx.fillText('COPA DO MUNDO 2026', W - 14, H - 14);
-      ctx.globalAlpha = 1;
-      ctx.restore();
-
-    } else {
-      // ── MODO NORMAL: naves aleatórias ───────────────────────
-      if (!animateLoginBg._ships) animateLoginBg._ships = [];
-      const ships = animateLoginBg._ships;
-      if (Math.random() < 0.012 && ships.length < 4 && SKINS.length) {
-        const dir = Math.random()<0.5 ? 1 : -1;
-        const depth = 0.5 + Math.random()*0.9;
-        ships.push({
-          x: dir>0 ? -70 : W+70,
-          y: H*(0.12+Math.random()*0.6),
-          dir, depth,
-          speed: (40+Math.random()*70)*dir,
-          skin: SKINS[Math.floor(Math.random()*SKINS.length)],
-          bob: Math.random()*Math.PI*2,
-          trail: [],
-        });
-      }
-      for (let i=ships.length-1;i>=0;i--){
-        const s = ships[i];
-        s.x += s.speed * (1/60);
-        const yy = s.y + Math.sin(t*1.6+s.bob)*6;
-        const sz = 15*s.depth;
-        s.trail.push({x:s.x,y:yy});
-        if (s.trail.length>16) s.trail.shift();
-        const hue = s.skin.color || '#5be8ff';
-        ctx.save();
-        for (let k=0;k<s.trail.length;k++){
-          const p=s.trail[k];
-          const a=(k/s.trail.length);
-          ctx.fillStyle=hue;
-          ctx.globalAlpha=(0.3*s.depth+0.12)*a*0.5;
-          ctx.beginPath(); ctx.arc(p.x - s.dir*sz*0.9, p.y, sz*0.32*a, 0, Math.PI*2); ctx.fill();
-        }
-        ctx.restore();
-        ctx.save();
-        ctx.translate(s.x, yy);
-        ctx.rotate(s.dir>0 ? Math.PI/2 : -Math.PI/2);
-        ctx.globalAlpha = 0.32*s.depth + 0.16;
-        ctx.shadowColor = hue; ctx.shadowBlur = 9*s.depth;
+        ctx.globalAlpha = 0.38*s.depth + 0.18;
+        ctx.shadowColor = hue; ctx.shadowBlur = 10*s.depth;
         s.skin.drawPreview(ctx, (sz*2)/s.skin._size);
         ctx.restore();
         ctx.globalAlpha = 1;
-        if ((s.dir>0 && s.x > W+90) || (s.dir<0 && s.x < -90)) ships.splice(i,1);
+      }
+
+      // ── Badge Copa no topo centro ─────────────────────────
+      ctx.save();
+      const badgePulse = 0.75 + 0.25*Math.sin(t*1.5);
+      ctx.globalAlpha = badgePulse;
+      ctx.font = `bold ${Math.max(9, W*0.018)}px "Press Start 2P", monospace`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+      ctx.fillStyle = '#ffdf00';
+      ctx.shadowColor = '#009c3b'; ctx.shadowBlur = 14;
+      ctx.fillText('COPA DO MUNDO FIFA 2026', W/2, 18);
+      ctx.restore();
+
+    } else {
+      // ── MODO NORMAL ────────────────────────────────────────
+      if (!animateLoginBg._ships) animateLoginBg._ships = [];
+      const ships = animateLoginBg._ships;
+      if (Math.random()<0.012 && ships.length<4 && SKINS.length) {
+        const dir=Math.random()<0.5?1:-1, depth=0.5+Math.random()*0.9;
+        ships.push({ x:dir>0?-70:W+70, y:H*(0.12+Math.random()*0.6), dir, depth,
+          speed:(40+Math.random()*70)*dir, skin:SKINS[Math.floor(Math.random()*SKINS.length)],
+          bob:Math.random()*Math.PI*2, trail:[] });
+      }
+      for (let i=ships.length-1;i>=0;i--) {
+        const s=ships[i];
+        s.x+=s.speed*(1/60);
+        const yy=s.y+Math.sin(t*1.6+s.bob)*6, sz=15*s.depth;
+        s.trail.push({x:s.x,y:yy}); if(s.trail.length>16) s.trail.shift();
+        const hue=s.skin.color||'#5be8ff';
+        ctx.save();
+        for (let k=0;k<s.trail.length;k++){
+          const p=s.trail[k],a=(k/s.trail.length);
+          ctx.fillStyle=hue; ctx.globalAlpha=(0.3*s.depth+0.12)*a*0.5;
+          ctx.beginPath(); ctx.arc(p.x-s.dir*sz*0.9,p.y,sz*0.32*a,0,Math.PI*2); ctx.fill();
+        }
+        ctx.restore();
+        ctx.save();
+        ctx.translate(s.x,yy); ctx.rotate(s.dir>0?Math.PI/2:-Math.PI/2);
+        ctx.globalAlpha=0.32*s.depth+0.16;
+        ctx.shadowColor=hue; ctx.shadowBlur=9*s.depth;
+        s.skin.drawPreview(ctx,(sz*2)/s.skin._size);
+        ctx.restore(); ctx.globalAlpha=1;
+        if((s.dir>0&&s.x>W+90)||(s.dir<0&&s.x<-90)) ships.splice(i,1);
       }
     }
 
@@ -1477,9 +1832,7 @@ function _buildBrazilFlagPath(W, H) {
     ctx.globalAlpha=0.03; ctx.fillStyle='#000';
     for (let y=0;y<H;y+=3) ctx.fillRect(0,y,W,1);
     ctx.globalAlpha=1;
-  } catch(e) {
-    console.warn('[Login BG]', e);
-  }
+  } catch(e) { console.warn('[Login BG]',e); }
   requestAnimationFrame(animateLoginBg);
 })();
 
