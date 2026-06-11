@@ -1647,29 +1647,16 @@ function _buildCopaShipPaths(flagCx, flagCy, fw, fh) {
     const W = loginBg.width||window.innerWidth, H = loginBg.height||window.innerHeight;
     if (W<2||H<2) { requestAnimationFrame(animateLoginBg); return; }
     const t = Date.now()/1000;
-    const copaMode = _isCopaModeActive();
 
     // ── Fundo ──────────────────────────────────────────────────
-    if (copaMode) {
-      ctx.fillStyle = '#020e04'; ctx.fillRect(0,0,W,H);
-      // Gradiente radial verde escuro centro
-      const g1 = ctx.createRadialGradient(W*0.25, H*0.5, 0, W*0.25, H*0.5, H*0.7);
-      g1.addColorStop(0, 'rgba(0,60,20,0.30)'); g1.addColorStop(1, 'transparent');
-      ctx.fillStyle = g1; ctx.fillRect(0,0,W,H);
-      // Gradiente dourado lado direito (troféu)
-      const g2 = ctx.createRadialGradient(W*0.78, H*0.5, 0, W*0.78, H*0.5, H*0.55);
-      g2.addColorStop(0, 'rgba(100,60,0,0.25)'); g2.addColorStop(1, 'transparent');
-      ctx.fillStyle = g2; ctx.fillRect(0,0,W,H);
-    } else {
-      ctx.fillStyle='#020508'; ctx.fillRect(0,0,W,H);
-      const gn=ctx.createRadialGradient(W/2,H*0.42,0,W/2,H*0.42,Math.min(W,H)*0.55);
-      gn.addColorStop(0,'rgba(0,80,120,0.18)'); gn.addColorStop(0.4,'rgba(0,40,80,0.08)'); gn.addColorStop(1,'transparent');
-      ctx.fillStyle=gn; ctx.fillRect(0,0,W,H);
-    }
+    ctx.fillStyle='#020508'; ctx.fillRect(0,0,W,H);
+    const gn=ctx.createRadialGradient(W/2,H*0.42,0,W/2,H*0.42,Math.min(W,H)*0.55);
+    gn.addColorStop(0,'rgba(0,80,120,0.18)'); gn.addColorStop(0.4,'rgba(0,40,80,0.08)'); gn.addColorStop(1,'transparent');
+    ctx.fillStyle=gn; ctx.fillRect(0,0,W,H);
 
     // Grade neon
     const gs=60, gp=0.3+0.2*Math.sin(t*0.7);
-    ctx.strokeStyle=copaMode?'#00180a':'#001428'; ctx.lineWidth=0.6; ctx.globalAlpha=gp;
+    ctx.strokeStyle='#001428'; ctx.lineWidth=0.6; ctx.globalAlpha=gp;
     for (let x=0;x<W;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
     for (let y=0;y<H;y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
     ctx.globalAlpha=1;
@@ -1685,214 +1672,46 @@ function _buildCopaShipPaths(flagCx, flagCy, fw, fh) {
     }
     for (const s of _loginBgState.stars) {
       const a=s.a*(0.4+0.6*Math.sin(t*s.sp+s.bk));
-      ctx.fillStyle=copaMode?`rgba(200,255,180,${a*0.6})`:`rgba(140,200,255,${a})`;
+      ctx.fillStyle=`rgba(140,200,255,${a})`;
       if(s.px) ctx.fillRect(s.x-s.r,s.y-s.r,s.r*2,s.r*2);
       else { ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,Math.PI*2); ctx.fill(); }
     }
 
-    if (copaMode) {
-      // ── Dimensões dos elementos copa ───────────────────────
-      const isMobile = W < 760;
-      // No mobile o canvas tem altura reduzida (~42vw), centraliza verticalmente
-      const centerY = H * 0.50;
-      // Bandeira: lado esquerdo
-      const fw = isMobile ? Math.min(W*0.38, H*0.80, 180) : Math.min(W*0.36, H*0.52, 260);
-      const fh = fw * 0.70;
-      const flagCx = W * (isMobile ? 0.25 : 0.22);
-      const flagCy = centerY;
-      // Troféu: lado direito
-      const trophyScale = isMobile ? Math.min(H*0.55, W*0.18, 100) : Math.min(H*0.38, W*0.18, 140);
-      const trophyCx = W * (isMobile ? 0.75 : 0.78);
-      const trophyCy = centerY;
-
-      // ── Bandeira do Brasil ────────────────────────────────
-      _drawBrazilFlag(ctx, flagCx, flagCy, fw, fh, 0.82 + 0.06*Math.sin(t*0.8), t);
-
-      // Label abaixo da bandeira
+    // ── Naves passando ────────────────────────────────────────
+    if (!_loginBgState.ships) _loginBgState.ships = [];
+    const ships = _loginBgState.ships;
+    if (Math.random()<0.012 && ships.length<4 && SKINS.length) {
+      const dir=Math.random()<0.5?1:-1, depth=0.5+Math.random()*0.9;
+      ships.push({ x:dir>0?-70:W+70, y:H*(0.12+Math.random()*0.6), dir, depth,
+        speed:(40+Math.random()*70)*dir, skin:SKINS[Math.floor(Math.random()*SKINS.length)],
+        bob:Math.random()*Math.PI*2, trail:[] });
+    }
+    for (let i=ships.length-1;i>=0;i--) {
+      const s=ships[i];
+      s.x+=s.speed*(1/60);
+      const yy=s.y+Math.sin(t*1.6+s.bob)*6, sz=15*s.depth;
+      s.trail.push({x:s.x,y:yy}); if(s.trail.length>16) s.trail.shift();
+      const hue=s.skin.color||'#5be8ff';
       ctx.save();
-      ctx.globalAlpha = 0.70 + 0.15*Math.sin(t*1.0);
-      ctx.font = `bold ${Math.max(8, fw*0.065)}px "Press Start 2P", monospace`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-      ctx.fillStyle = '#ffdf00';
-      ctx.shadowColor = '#009c3b'; ctx.shadowBlur = 10;
-      ctx.fillText('BRASIL', flagCx, flagCy + fh/2 + 10);
+      for (let k=0;k<s.trail.length;k++){
+        const p=s.trail[k],a=(k/s.trail.length);
+        ctx.fillStyle=hue; ctx.globalAlpha=(0.3*s.depth+0.12)*a*0.5;
+        ctx.beginPath(); ctx.arc(p.x-s.dir*sz*0.9,p.y,sz*0.32*a,0,Math.PI*2); ctx.fill();
+      }
       ctx.restore();
-
-      // ── Troféu da Copa — imagem PNG ──────────────────────
-      if (!_loginBgState.trophyImg) {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload  = () => { _loginBgState.trophyLoaded = true; };
-        img.onerror = () => { _loginBgState.trophyFailed = true; };
-        img.src = './src/sprites/trofy_copa.png';
-        _loginBgState.trophyImg    = img;
-        _loginBgState.trophyLoaded = false;
-        _loginBgState.trophyFailed = false;
-      }
-      const timg = _loginBgState.trophyImg;
-      const tH_base = Math.min(H * 0.72, W * 0.30, 380);
-      // Glow dourado sempre visível
-      {
-        const gGlow = ctx.createRadialGradient(trophyCx, trophyCy, 0, trophyCx, trophyCy, tH_base * 0.65);
-        const gp2 = 0.5 + 0.5*Math.sin(t*1.6);
-        gGlow.addColorStop(0,   `rgba(255,200,0,${0.28*gp2})`);
-        gGlow.addColorStop(0.5, `rgba(180,100,0,${0.12*gp2})`);
-        gGlow.addColorStop(1,   'transparent');
-        ctx.save();
-        ctx.fillStyle = gGlow;
-        ctx.beginPath(); ctx.arc(trophyCx, trophyCy, tH_base * 0.65, 0, Math.PI*2); ctx.fill();
-        ctx.restore();
-      }
-      if (_loginBgState.trophyLoaded) {
-        const tH = tH_base;
-        const tW = tH * (timg.naturalWidth / timg.naturalHeight);
-        const tx = trophyCx - tW/2;
-        const ty = trophyCy - tH * 0.52;
-        // 1ª passada: glow dourado sobre a silhueta (source-over normal)
-        ctx.save();
-        ctx.shadowColor = `rgba(255,200,0,${0.7 + 0.2*Math.sin(t*1.8)})`;
-        ctx.shadowBlur = 36;
-        ctx.globalAlpha = 0.18;
-        ctx.drawImage(timg, tx, ty, tW, tH);
-        ctx.restore();
-        // 2ª passada: imagem real com multiply para remover fundo branco
-        ctx.save();
-        ctx.globalCompositeOperation = 'multiply';
-        ctx.globalAlpha = 1.0;
-        ctx.drawImage(timg, tx, ty, tW, tH);
-        ctx.restore();
-      } else if (!_loginBgState.trophyFailed) {
-        // Enquanto carrega: ícone de espera (anel dourado girando)
-        ctx.save();
-        ctx.strokeStyle = '#ffdf00'; ctx.lineWidth = 4;
-        ctx.globalAlpha = 0.6;
-        ctx.beginPath();
-        ctx.arc(trophyCx, trophyCy, 30, t*3, t*3 + Math.PI*1.4);
-        ctx.stroke();
-        ctx.restore();
-      } else {
-        // Fallback: troféu desenhado em canvas
-        _drawFifaTrophy(ctx, trophyCx, trophyCy, trophyScale, t);
-      }
-
-      // Label abaixo do troféu
       ctx.save();
-      const tH2 = Math.min(H*0.72, W*0.30, 380);
-      ctx.globalAlpha = 0.80 + 0.15*Math.sin(t*1.0 + 1);
-      ctx.font = `bold ${Math.max(8, trophyScale*0.10)}px "Press Start 2P", monospace`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-      ctx.fillStyle = '#ffdf00';
-      ctx.shadowColor = 'rgba(200,120,0,0.9)'; ctx.shadowBlur = 12;
-      ctx.fillText('HEXA 2026', trophyCx, trophyCy + tH2*0.48 + 10);
+      ctx.translate(s.x,yy); ctx.rotate(s.dir>0?Math.PI/2:-Math.PI/2);
+      ctx.globalAlpha=0.18*s.depth;
+      ctx.shadowColor=hue; ctx.shadowBlur=14*s.depth;
+      s.skin.drawPreview(ctx,(sz*2)/s.skin._size);
       ctx.restore();
-
-      // ── Naves Ponta BR passando normalmente (horizontal) ──
-      if (!_loginBgState.copaShips) _loginBgState.copaShips = [];
-      const copaShips = _loginBgState.copaShips;
-      const pontaSkin = SKINS[1] || SKINS[0]; // Ponta BR
-      // Spawna mais naves — máximo 10, probabilidade alta
-      if (Math.random() < 0.045 && copaShips.length < 10) {
-        const dir   = Math.random() < 0.5 ? 1 : -1;
-        const depth = 0.45 + Math.random() * 0.85;
-        copaShips.push({
-          x:     dir > 0 ? -80 : W + 80,
-          y:     H * (0.08 + Math.random() * 0.84),
-          dir, depth,
-          speed: (35 + Math.random() * 55) * dir,
-          bob:   Math.random() * Math.PI * 2,
-          trail: [],
-        });
-      }
-      for (let i = copaShips.length - 1; i >= 0; i--) {
-        const s = copaShips[i];
-        s.x += s.speed * (1/60);
-        const yy = s.y + Math.sin(t * 1.5 + s.bob) * 5;
-        const sz  = 16 * s.depth;
-        const hue = '#ffdd00';
-        s.trail.push({ x: s.x, y: yy });
-        if (s.trail.length > 18) s.trail.shift();
-        // Rastro verde/amarelo Copa
-        ctx.save();
-        for (let k = 0; k < s.trail.length; k++) {
-          const p = s.trail[k], a = k / s.trail.length;
-          ctx.globalAlpha = (0.28*s.depth + 0.08) * a * 0.55;
-          ctx.fillStyle = k % 2 === 0 ? '#009c3b' : '#ffdf00';
-          ctx.shadowColor = hue; ctx.shadowBlur = 4;
-          ctx.beginPath();
-          ctx.arc(p.x - s.dir*sz*0.85, p.y, sz*0.30*a, 0, Math.PI*2);
-          ctx.fill();
-        }
-        ctx.restore();
-        // Nave Ponta BR — glow
-        ctx.save();
-        ctx.translate(s.x, yy);
-        ctx.rotate(s.dir > 0 ? Math.PI/2 : -Math.PI/2);
-        ctx.globalAlpha = 0.18*s.depth;
-        ctx.shadowColor = hue; ctx.shadowBlur = 14*s.depth;
-        pontaSkin.drawPreview(ctx, (sz*2) / pontaSkin._size);
-        ctx.restore();
-        // multiply para remover fundo branco
-        ctx.save();
-        ctx.translate(s.x, yy);
-        ctx.rotate(s.dir > 0 ? Math.PI/2 : -Math.PI/2);
-        ctx.globalCompositeOperation = 'multiply';
-        ctx.globalAlpha = 0.55*s.depth + 0.25;
-        pontaSkin.drawPreview(ctx, (sz*2) / pontaSkin._size);
-        ctx.restore();
-        ctx.globalAlpha = 1;
-        if ((s.dir>0 && s.x > W+100) || (s.dir<0 && s.x < -100)) copaShips.splice(i, 1);
-      }
-
-      // ── Badge Copa no topo centro ─────────────────────────
       ctx.save();
-      const badgePulse = 0.75 + 0.25*Math.sin(t*1.5);
-      ctx.globalAlpha = badgePulse;
-      ctx.font = `bold ${Math.max(9, W*0.018)}px "Press Start 2P", monospace`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-      ctx.fillStyle = '#ffdf00';
-      ctx.shadowColor = '#009c3b'; ctx.shadowBlur = 14;
-      ctx.fillText('COPA DO MUNDO FIFA 2026', W/2, 18);
-      ctx.restore();
-
-    } else {
-      // ── MODO NORMAL ────────────────────────────────────────
-      if (!_loginBgState.ships) _loginBgState.ships = [];
-      const ships = _loginBgState.ships;
-      if (Math.random()<0.012 && ships.length<4 && SKINS.length) {
-        const dir=Math.random()<0.5?1:-1, depth=0.5+Math.random()*0.9;
-        ships.push({ x:dir>0?-70:W+70, y:H*(0.12+Math.random()*0.6), dir, depth,
-          speed:(40+Math.random()*70)*dir, skin:SKINS[Math.floor(Math.random()*SKINS.length)],
-          bob:Math.random()*Math.PI*2, trail:[] });
-      }
-      for (let i=ships.length-1;i>=0;i--) {
-        const s=ships[i];
-        s.x+=s.speed*(1/60);
-        const yy=s.y+Math.sin(t*1.6+s.bob)*6, sz=15*s.depth;
-        s.trail.push({x:s.x,y:yy}); if(s.trail.length>16) s.trail.shift();
-        const hue=s.skin.color||'#5be8ff';
-        ctx.save();
-        for (let k=0;k<s.trail.length;k++){
-          const p=s.trail[k],a=(k/s.trail.length);
-          ctx.fillStyle=hue; ctx.globalAlpha=(0.3*s.depth+0.12)*a*0.5;
-          ctx.beginPath(); ctx.arc(p.x-s.dir*sz*0.9,p.y,sz*0.32*a,0,Math.PI*2); ctx.fill();
-        }
-        ctx.restore();
-        // glow atrás da nave
-        ctx.save();
-        ctx.translate(s.x,yy); ctx.rotate(s.dir>0?Math.PI/2:-Math.PI/2);
-        ctx.globalAlpha=0.18*s.depth;
-        ctx.shadowColor=hue; ctx.shadowBlur=14*s.depth;
-        s.skin.drawPreview(ctx,(sz*2)/s.skin._size);
-        ctx.restore();
-        // nave com multiply para remover fundo branco do PNG
-        ctx.save();
-        ctx.translate(s.x,yy); ctx.rotate(s.dir>0?Math.PI/2:-Math.PI/2);
-        ctx.globalCompositeOperation='multiply';
-        ctx.globalAlpha=0.55*s.depth+0.25;
-        s.skin.drawPreview(ctx,(sz*2)/s.skin._size);
-        ctx.restore(); ctx.globalAlpha=1;
-        if((s.dir>0&&s.x>W+90)||(s.dir<0&&s.x<-90)) ships.splice(i,1);
-      }
+      ctx.translate(s.x,yy); ctx.rotate(s.dir>0?Math.PI/2:-Math.PI/2);
+      ctx.globalCompositeOperation='multiply';
+      ctx.globalAlpha=0.55*s.depth+0.25;
+      s.skin.drawPreview(ctx,(sz*2)/s.skin._size);
+      ctx.restore(); ctx.globalAlpha=1;
+      if((s.dir>0&&s.x>W+90)||(s.dir<0&&s.x<-90)) ships.splice(i,1);
     }
 
     // Scanlines
