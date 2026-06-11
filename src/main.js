@@ -1164,16 +1164,20 @@ function resizeLoginBg(){
       loginBg.width  = loginBg.offsetWidth  || window.innerWidth;
       loginBg.height = loginBg.offsetHeight || Math.round(window.innerWidth * 0.42);
       // reseta naves para recalcular com novo tamanho
-      animateLoginBg._copaShips = null;
+      _loginBgState.copaShips = null;
     });
   } else {
     screen.classList.remove('copa-mobile');
     loginBg.width  = window.innerWidth;
     loginBg.height = window.innerHeight;
-    animateLoginBg._copaShips = null;
+    _loginBgState.copaShips = null;
   }
 }
 resizeLoginBg(); window.addEventListener('resize',resizeLoginBg);
+
+// Estado compartilhado da animação de fundo (acessível antes da IIFE)
+const _loginBgState = { copaShips: null, ships: null, stars: null, starsW: 0,
+  trophyImg: null, trophyLoaded: false, trophyFailed: false };
 
 // ── Música da tela inicial: toca 1 vez por sessão/carregamento ─
 (function initLoginMusic(){
@@ -1673,15 +1677,15 @@ function _buildCopaShipPaths(flagCx, flagCy, fw, fh) {
     ctx.globalAlpha=1;
 
     // Estrelas
-    if (!animateLoginBg._stars || animateLoginBg._starsW!==W) {
-      animateLoginBg._starsW=W;
-      animateLoginBg._stars=Array.from({length:160},()=>({
+    if (!_loginBgState.stars || _loginBgState.starsW!==W) {
+      _loginBgState.starsW=W;
+      _loginBgState.stars=Array.from({length:160},()=>({
         x:Math.random()*W,y:Math.random()*H,
         r:Math.random()*1.5+0.2,a:Math.random()*0.6+0.1,
         sp:0.3+Math.random()*1.2,bk:Math.random()*Math.PI*2,px:Math.random()<0.12,
       }));
     }
-    for (const s of animateLoginBg._stars) {
+    for (const s of _loginBgState.stars) {
       const a=s.a*(0.4+0.6*Math.sin(t*s.sp+s.bk));
       ctx.fillStyle=copaMode?`rgba(200,255,180,${a*0.6})`:`rgba(140,200,255,${a})`;
       if(s.px) ctx.fillRect(s.x-s.r,s.y-s.r,s.r*2,s.r*2);
@@ -1717,17 +1721,17 @@ function _buildCopaShipPaths(flagCx, flagCy, fw, fh) {
       ctx.restore();
 
       // ── Troféu da Copa — imagem PNG ──────────────────────
-      if (!animateLoginBg._trophyImg) {
+      if (!_loginBgState.trophyImg) {
         const img = new Image();
         img.crossOrigin = 'anonymous';
-        img.onload  = () => { animateLoginBg._trophyLoaded = true; };
-        img.onerror = () => { animateLoginBg._trophyFailed = true; };
+        img.onload  = () => { _loginBgState.trophyLoaded = true; };
+        img.onerror = () => { _loginBgState.trophyFailed = true; };
         img.src = './src/sprites/trofy_copa.png';
-        animateLoginBg._trophyImg    = img;
-        animateLoginBg._trophyLoaded = false;
-        animateLoginBg._trophyFailed = false;
+        _loginBgState.trophyImg    = img;
+        _loginBgState.trophyLoaded = false;
+        _loginBgState.trophyFailed = false;
       }
-      const timg = animateLoginBg._trophyImg;
+      const timg = _loginBgState.trophyImg;
       const tH_base = Math.min(H * 0.72, W * 0.30, 380);
       // Glow dourado sempre visível
       {
@@ -1741,7 +1745,7 @@ function _buildCopaShipPaths(flagCx, flagCy, fw, fh) {
         ctx.beginPath(); ctx.arc(trophyCx, trophyCy, tH_base * 0.65, 0, Math.PI*2); ctx.fill();
         ctx.restore();
       }
-      if (animateLoginBg._trophyLoaded) {
+      if (_loginBgState.trophyLoaded) {
         const tH = tH_base;
         const tW = tH * (timg.naturalWidth / timg.naturalHeight);
         const tx = trophyCx - tW/2;
@@ -1759,7 +1763,7 @@ function _buildCopaShipPaths(flagCx, flagCy, fw, fh) {
         ctx.globalAlpha = 1.0;
         ctx.drawImage(timg, tx, ty, tW, tH);
         ctx.restore();
-      } else if (!animateLoginBg._trophyFailed) {
+      } else if (!_loginBgState.trophyFailed) {
         // Enquanto carrega: ícone de espera (anel dourado girando)
         ctx.save();
         ctx.strokeStyle = '#ffdf00'; ctx.lineWidth = 4;
@@ -1785,8 +1789,8 @@ function _buildCopaShipPaths(flagCx, flagCy, fw, fh) {
       ctx.restore();
 
       // ── Naves Ponta BR passando normalmente (horizontal) ──
-      if (!animateLoginBg._copaShips) animateLoginBg._copaShips = [];
-      const copaShips = animateLoginBg._copaShips;
+      if (!_loginBgState.copaShips) _loginBgState.copaShips = [];
+      const copaShips = _loginBgState.copaShips;
       const pontaSkin = SKINS[1] || SKINS[0]; // Ponta BR
       // Spawna mais naves — máximo 10, probabilidade alta
       if (Math.random() < 0.045 && copaShips.length < 10) {
@@ -1854,8 +1858,8 @@ function _buildCopaShipPaths(flagCx, flagCy, fw, fh) {
 
     } else {
       // ── MODO NORMAL ────────────────────────────────────────
-      if (!animateLoginBg._ships) animateLoginBg._ships = [];
-      const ships = animateLoginBg._ships;
+      if (!_loginBgState.ships) _loginBgState.ships = [];
+      const ships = _loginBgState.ships;
       if (Math.random()<0.012 && ships.length<4 && SKINS.length) {
         const dir=Math.random()<0.5?1:-1, depth=0.5+Math.random()*0.9;
         ships.push({ x:dir>0?-70:W+70, y:H*(0.12+Math.random()*0.6), dir, depth,
