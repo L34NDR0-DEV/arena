@@ -186,6 +186,7 @@ function profileFor(user) {
 function startSessionAndRespond(res, status, userId) {
   const signed = auth.startSession(userId);
   setSessionCookie(res, signed);
+  db.updateLastSeen?.run(userId);
   const user = db.findUserById.get(userId);
   sendJson(res, status, { user: publicUser(user) });
 }
@@ -299,7 +300,7 @@ const ROUTES = [
       const users = db.listUsers.all().map(u => ({
         id: u.id, email: u.email, name: u.display_name,
         credits: u.credits, blocked: !!u.blocked,
-        online: isOnline(u.id), createdAt: u.created_at,
+        online: isOnline(u.id), createdAt: u.created_at, lastSeenAt: u.last_seen_at,
       }));
       sendJson(res, 200, { total, users });
     },
@@ -661,7 +662,7 @@ const ROUTES = [
       const users = db.adminSearch.all(q, q).map(u => ({
         id: u.id, email: u.email, name: u.display_name,
         credits: u.credits, blocked: !!u.blocked,
-        online: isOnline(u.id), createdAt: u.created_at,
+        online: isOnline(u.id), createdAt: u.created_at, lastSeenAt: u.last_seen_at,
       }));
       sendJson(res, 200, { users });
     },

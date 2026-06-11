@@ -10,72 +10,75 @@
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
   :root{
-    --bg:#02050d;--panel:#080f1a;--panel2:#0b1525;
-    --border:#00d4ff18;--border2:#00d4ff44;--border3:#00d4ff88;
-    --cyan:#00d4ff;--gold:#ffcc44;--red:#ff4455;--green:#00ffaa;
-    --text:#c8d8e8;--text2:#4a7a9a;
+    --bg:#02040d;--panel:#0a0814;--panel2:#100b1e;
+    --border:#9b5cff18;--border2:#9b5cff44;--border3:#9b5cff88;
+    --accent:#9b5cff;--orange:#ff8c00;--gold:#ffcc44;--red:#ff4455;--green:#00ffaa;
+    --text:#d0c8e8;--text2:#5a4a7a;
+    /* aliases para compatibilidade com código existente */
+    --cyan:var(--accent);
   }
   body{
     background:var(--bg);color:var(--text);
     font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh;
-    background-image:radial-gradient(ellipse at 20% 50%,#00d4ff06 0%,transparent 60%),
-                     radial-gradient(ellipse at 80% 20%,#00448808 0%,transparent 50%);
+    background-image:radial-gradient(ellipse at 20% 50%,#9b5cff06 0%,transparent 60%),
+                     radial-gradient(ellipse at 80% 20%,#ff8c0008 0%,transparent 50%);
   }
 
   /* ── Layout ── */
   #app{display:none;flex-direction:column;min-height:100vh;}
 
   #header{
-    background:linear-gradient(90deg,#040c18,#080f1a,#040c18);
+    background:linear-gradient(90deg,#08041a,#0f0822,#08041a);
     border-bottom:1px solid var(--border2);
-    padding:0 24px;height:56px;
+    padding:0 28px;height:62px;
     display:flex;align-items:center;justify-content:space-between;gap:16px;
     position:sticky;top:0;z-index:50;
-    box-shadow:0 2px 20px #00d4ff0a;
+    box-shadow:0 2px 24px #9b5cff0e;
   }
   #header-left{display:flex;align-items:center;gap:14px;}
   #header-logo{
-    font-family:'Orbitron',sans-serif;font-size:13px;font-weight:900;
-    color:var(--cyan);letter-spacing:3px;
-    text-shadow:0 0 20px #00d4ff66;
+    font-family:'Press Start 2P',monospace;font-size:11px;font-weight:900;
+    color:var(--orange);letter-spacing:2px;
+    text-shadow:0 0 18px #ff8c0066;
   }
-  #header-logo span{color:#ffffff55;font-size:10px;letter-spacing:1px;margin-left:6px;}
-  #header-right{display:flex;align-items:center;gap:10px;}
+  #header-logo span{color:var(--accent);font-size:9px;letter-spacing:1px;margin-left:8px;
+    text-shadow:0 0 10px #9b5cff88;}
+  #header-right{display:flex;align-items:center;gap:12px;}
   #admin-badge{
-    font-size:11px;color:var(--cyan);background:#00d4ff0a;
-    padding:5px 12px;border-radius:20px;border:1px solid var(--border2);
-    letter-spacing:.5px;
+    font-size:11px;color:var(--orange);background:#ff8c000a;
+    padding:6px 14px;border-radius:20px;border:1px solid #ff8c0033;
+    letter-spacing:.5px;font-family:'Press Start 2P',monospace;font-size:9px;
   }
 
   #main{display:flex;flex:1;}
 
   /* ── Sidebar ── */
   #sidebar{
-    width:200px;min-width:200px;
-    background:linear-gradient(180deg,#060d18,#040a14);
+    width:210px;min-width:210px;
+    background:linear-gradient(180deg,#0a0618,#070412);
     border-right:1px solid var(--border);
     padding:20px 10px;display:flex;flex-direction:column;gap:4px;
-    position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto;
+    position:sticky;top:62px;height:calc(100vh - 62px);overflow-y:auto;
   }
   .nav-section{font-family:'Press Start 2P',monospace;font-size:7px;
-    color:#1a4a6a;letter-spacing:2px;padding:12px 12px 6px;text-transform:uppercase;}
+    color:#4a2a6a;letter-spacing:2px;padding:14px 12px 6px;text-transform:uppercase;}
   .nav-btn{
     background:none;border:none;color:var(--text2);font-size:12px;text-align:left;
     padding:10px 14px;border-radius:6px;cursor:pointer;transition:.15s;width:100%;
     display:flex;align-items:center;gap:10px;letter-spacing:.3px;
   }
-  .nav-btn:hover{background:#00d4ff08;color:var(--text);}
+  .nav-btn:hover{background:#9b5cff08;color:var(--text);}
   .nav-btn.active{
-    background:linear-gradient(90deg,#00d4ff15,#00d4ff05);
-    color:var(--cyan);border-left:2px solid var(--cyan);
+    background:linear-gradient(90deg,#9b5cff18,#9b5cff05);
+    color:var(--orange);border-left:2px solid var(--orange);
     padding-left:12px;
   }
   .nav-btn svg{flex-shrink:0;opacity:.7;}
-  .nav-btn.active svg{opacity:1;}
+  .nav-btn.active svg{opacity:1;color:var(--orange);}
   .nav-sep{height:1px;background:var(--border);margin:8px 10px;}
 
   /* ── Content ── */
-  #content{flex:1;padding:24px;overflow-y:auto;max-height:calc(100vh - 56px);}
+  #content{flex:1;padding:24px;overflow-y:auto;max-height:calc(100vh - 62px);}
   .page{display:none;}
   .page.active{display:block;animation:fadeIn .2s ease;}
   @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
@@ -88,14 +91,14 @@
     box-shadow:0 4px 24px #00000044;
   }
   .card-title{
-    font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;
-    color:var(--cyan);letter-spacing:3px;text-transform:uppercase;
+    font-family:'Press Start 2P',monospace;font-size:9px;font-weight:700;
+    color:var(--orange);letter-spacing:2px;text-transform:uppercase;
     margin-bottom:16px;padding-bottom:10px;
     border-bottom:1px solid var(--border);
     display:flex;align-items:center;gap:8px;
   }
-  .card-title::before{content:'';width:3px;height:14px;background:var(--cyan);
-    border-radius:2px;box-shadow:0 0 8px var(--cyan);}
+  .card-title::before{content:'';width:3px;height:14px;background:var(--orange);
+    border-radius:2px;box-shadow:0 0 8px #ff8c0088;}
 
   /* ── Stats ── */
   .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:20px;}
@@ -111,7 +114,7 @@
   }
   .stat-box:hover{border-color:var(--border2);transform:translateY(-2px);}
   .stat-val{font-family:'Orbitron',sans-serif;font-size:26px;font-weight:900;
-    color:var(--cyan);text-shadow:0 0 20px #00d4ff44;position:relative;}
+    color:var(--orange);text-shadow:0 0 20px #ff8c0044;position:relative;}
   .stat-lbl{font-size:9px;color:var(--text2);margin-top:6px;
     text-transform:uppercase;letter-spacing:2px;position:relative;}
 
@@ -196,9 +199,12 @@
     padding:9px 18px;border-radius:6px;border:none;cursor:pointer;font-size:11px;
     font-weight:700;letter-spacing:.5px;transition:.15s;white-space:nowrap;
   }
-  .btn-cyan{background:linear-gradient(135deg,#00d4ff,#0088cc);color:#020a14;
-    box-shadow:0 2px 12px #00d4ff33;}
-  .btn-cyan:hover{box-shadow:0 4px 20px #00d4ff55;transform:translateY(-1px);}
+  .btn-cyan{background:linear-gradient(135deg,#ff8c00,#cc6600);color:#0a0500;
+    box-shadow:0 2px 12px #ff8c0033;}
+  .btn-cyan:hover{box-shadow:0 4px 20px #ff8c0055;transform:translateY(-1px);}
+  .btn-purple{background:linear-gradient(135deg,#9b5cff,#6633cc);color:#fff;
+    box-shadow:0 2px 12px #9b5cff33;}
+  .btn-purple:hover{box-shadow:0 4px 20px #9b5cff55;transform:translateY(-1px);}
   .btn-red{background:linear-gradient(135deg,#ff4455,#cc2233);color:#fff;
     box-shadow:0 2px 12px #ff445533;}
   .btn-red:hover{box-shadow:0 4px 20px #ff445555;transform:translateY(-1px);}
@@ -224,7 +230,7 @@
     margin-bottom:18px;flex-wrap:wrap;gap:10px;
     padding-bottom:14px;border-bottom:1px solid var(--border);}
   .detail-name{font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;
-    color:var(--cyan);text-shadow:0 0 16px #00d4ff44;}
+    color:var(--orange);text-shadow:0 0 16px #ff8c0044;}
   .detail-email{font-size:11px;color:var(--text2);margin-top:4px;}
   .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
   .detail-section{background:#040c18;border:1px solid var(--border);border-radius:8px;padding:14px;}
@@ -254,25 +260,35 @@
   #login-overlay{
     position:fixed;inset:0;z-index:100;display:flex;
     align-items:center;justify-content:center;
-    background:radial-gradient(ellipse at center,#040c18,#02050d);
+    background:#02040d;
+    overflow:hidden;
   }
-  #login-overlay::before{
-    content:'';position:absolute;inset:0;
-    background:radial-gradient(ellipse at 50% 30%,#00d4ff08,transparent 60%);
-  }
+  #login-canvas{position:absolute;inset:0;width:100%;height:100%;}
   .login-box{
-    background:linear-gradient(160deg,#0d1e30,#060e18);
-    border:1px solid var(--border2);border-radius:14px;
-    padding:40px 36px;text-align:center;max-width:380px;width:90%;
-    box-shadow:0 0 60px #00d4ff0a,0 20px 60px #00000066;
+    background:linear-gradient(160deg,#12082a,#080414);
+    border:1px solid #9b5cff44;border-radius:14px;
+    padding:40px 36px;text-align:center;max-width:400px;width:90%;
+    box-shadow:0 0 80px #9b5cff12,0 0 0 1px #9b5cff22,0 20px 60px #00000088;
     position:relative;z-index:1;
   }
-  .login-box h2{
-    font-family:'Orbitron',sans-serif;font-size:14px;font-weight:900;
-    color:var(--cyan);letter-spacing:3px;margin-bottom:6px;
-    text-shadow:0 0 20px #00d4ff66;
+  .login-title-main{
+    font-family:'Press Start 2P',monospace;font-size:10px;
+    color:var(--orange);letter-spacing:2px;
+    text-shadow:0 0 24px #ff8c00aa;
+    margin-bottom:4px;
   }
-  .login-box p{color:var(--text2);font-size:11px;margin-bottom:24px;letter-spacing:1px;}
+  .login-title-sub{
+    font-family:'Press Start 2P',monospace;font-size:16px;font-weight:900;
+    color:#fff;letter-spacing:1px;
+    text-shadow:0 0 30px #9b5cffaa;
+    margin-bottom:4px;
+  }
+  .login-title-label{
+    font-family:'Press Start 2P',monospace;font-size:8px;
+    color:var(--accent);letter-spacing:3px;
+    text-shadow:0 0 12px #9b5cff88;
+    margin-bottom:28px;display:block;
+  }
   .login-box input{margin-bottom:12px;}
   #login-error{color:var(--red);font-size:11px;margin-top:10px;min-height:16px;}
 
@@ -290,9 +306,11 @@
 <body>
 
 <div id="login-overlay">
+  <canvas id="login-canvas"></canvas>
   <div class="login-box">
-    <h2>PAINEL ADMIN</h2>
-    <p>Tower Defense on the Space</p>
+    <div class="login-title-main">ARCADE SPACE</div>
+    <div class="login-title-sub">TOWER DEFENSE</div>
+    <span class="login-title-label">— PAINEL ADMIN —</span>
     <div id="g_id_signin_container" style="display:flex;justify-content:center;margin-bottom:16px;"></div>
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
       <div style="flex:1;height:1px;background:var(--border);"></div>
@@ -309,7 +327,11 @@
 <div id="app">
   <div id="header">
     <div id="header-left">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter:drop-shadow(0 0 6px #00d4ff88)"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" style="filter:drop-shadow(0 0 8px #ff8c0088)">
+        <polygon points="12,2 16,18 12,15 8,18" fill="#ff8c00" opacity=".9"/>
+        <polygon points="12,2 16,18 12,15 8,18" fill="none" stroke="#ffcc44" stroke-width=".6"/>
+        <ellipse cx="12" cy="14" rx="4" ry="2" fill="#9b5cff" opacity=".5"/>
+      </svg>
       <div id="header-logo">TOWER DEFENSE <span>/ ADMIN</span></div>
     </div>
     <div id="header-right">
@@ -327,6 +349,12 @@
       <button class="nav-btn" onclick="showPage('users',this)">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         Usuarios
+      </button>
+      <div class="nav-sep"></div>
+      <div class="nav-section">Jogo</div>
+      <button class="nav-btn" onclick="showPage('modes',this)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 19 7 19 17 12 22 5 17 5 7"/><line x1="12" y1="2" x2="12" y2="22"/><line x1="5" y1="7" x2="19" y2="7"/><line x1="5" y1="17" x2="19" y2="17"/></svg>
+        Modos de Jogo
       </button>
       <div class="nav-sep"></div>
       <div class="nav-section">Financeiro</div>
@@ -407,7 +435,7 @@
             <table id="users-table">
               <thead><tr>
                 <th>ID</th><th>Nome</th><th>E-mail</th><th>Creditos</th>
-                <th>Status</th><th>Cadastro</th><th>Acoes</th>
+                <th>Status</th><th>Cadastro</th><th>Ultimo Acesso</th><th>Acoes</th>
               </tr></thead>
               <tbody id="users-tbody"></tbody>
             </table>
@@ -484,6 +512,21 @@
         </div>
       </div>
 
+      <!-- MODOS DE JOGO -->
+      <div class="page" id="page-modes">
+        <div class="card">
+          <div class="card-title">Modos de Jogo</div>
+          <p style="font-size:12px;color:var(--text2);margin-bottom:20px;line-height:1.7;">
+            Ative ou desative modos. A mudanca e salva no servidor e entra em vigor imediatamente para todos os jogadores.
+          </p>
+          <div id="modes-grid-page" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:20px;"></div>
+          <div style="display:flex;gap:10px;align-items:center;">
+            <button class="btn btn-cyan" onclick="saveModes()">Salvar Modos</button>
+            <span id="modes-save-status" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .3s;"></span>
+          </div>
+        </div>
+      </div>
+
       <!-- LOJA -->
       <div class="page" id="page-shop">
         <div class="card" style="margin-bottom:16px;">
@@ -527,17 +570,6 @@
           </div>
         </div>
 
-        <div class="card">
-          <div class="card-title">Modos de Jogo</div>
-          <p style="font-size:11px;color:var(--text2);margin-bottom:16px;line-height:1.6;">
-            Modos desativados ficam bloqueados para todos os jogadores. A mudanca entra em vigor em ate 30 segundos.
-          </p>
-          <div id="modes-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:16px;"></div>
-          <div style="display:flex;gap:10px;align-items:center;">
-            <button class="btn btn-cyan" onclick="saveModes()">Salvar Modos</button>
-            <span id="modes-save-status" style="font-size:11px;color:var(--green);opacity:0;transition:opacity .3s;"></span>
-          </div>
-        </div>
       </div>
 
       <!-- TOP COMPRADORES -->
@@ -623,6 +655,17 @@ function fmtDate(s) {
   });
 }
 
+// Retorna HTML com data e hora separados e coloridos
+function fmtDateHtml(s, opts={}) {
+  if (!s) return '<span style="color:#3a2a5a;">Nunca</span>';
+  const d = new Date(s);
+  const date = d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const time = d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const dateColor = opts.dateColor || '#c8a0ff';
+  const timeColor = opts.timeColor || '#ff8c00';
+  return `<span style="color:${dateColor};font-size:11px;">${date}</span><br><span style="color:${timeColor};font-size:11px;font-weight:700;">${time}</span>`;
+}
+
 function fmtCents(c) {
   return (c/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 }
@@ -684,6 +727,12 @@ function showPage(id, btn) {
   if (id === 'users')  loadAllUsers();
   if (id === 'shop')   loadShopPage();
   if (id === 'buyers') loadTopBuyers();
+  if (id === 'modes')  loadModesPage();
+}
+
+async function loadModesPage() {
+  const data = await api('GET', '/api/server/status');
+  renderModesGrid(data.disabledModes || []);
 }
 
 // ── Top Compradores ──────────────────────────────────────────────
@@ -850,10 +899,11 @@ function buildUsersTableRows(users, actions) {
         &nbsp;${esc(u.name)}
       </td>
       <td style="color:var(--text2);font-size:11px;">${esc(u.email)}</td>
-      <td style="color:var(--cyan);font-weight:700;">${u.credits}</td>
+      <td style="color:var(--orange);font-weight:700;">${u.credits}</td>
       ${actions ? `<td>${u.blocked ? '<span class="badge-blocked">Bloqueado</span>' : '<span class="badge-ok">Ativo</span>'}</td>` : ''}
-      <td style="color:var(--text2);font-size:11px;">${fmtDate(u.createdAt)}</td>
-      ${actions ? `<td><button class="btn btn-ghost btn-sm" onclick="openDetail(${u.id})">Detalhes</button></td>` : ''}
+      <td style="line-height:1.6;">${fmtDateHtml(u.createdAt,{dateColor:'#c8a0ff',timeColor:'#9b5cff'})}</td>
+      ${actions ? `<td style="line-height:1.6;">${fmtDateHtml(u.lastSeenAt,{dateColor:'#ffd080',timeColor:'#ff8c00'})}</td>` : ''}
+      ${actions ? `<td><button class="btn btn-purple btn-sm" onclick="openDetail(${u.id})">Detalhes</button></td>` : ''}
     </tr>
   `).join('');
 }
@@ -1109,26 +1159,25 @@ async function loadShopPage() {
   document.getElementById('promo-start-input').value = toLocalDT(promo.startsAt);
   document.getElementById('promo-end-input').value   = toLocalDT(promo.endsAt);
 
-  // Modos
-  renderModesGrid(data.disabledModes || []);
 }
 
 // ── Modos de Jogo ─────────────────────────────────────────────────
 const ALL_MODES = [
-  { id:'contra1',       label:'Contra 1',              icon:'🎯' },
-  { id:'contra2',       label:'Contra 2',              icon:'🎮' },
-  { id:'equipe_online', label:'Equipe Online',         icon:'⚔' },
-  { id:'livre',         label:'Livre',                 icon:'🌐' },
-  { id:'teste',         label:'Teste',                 icon:'🧪' },
-  { id:'tower_defense', label:'Tower Defense',         icon:'🏆' },
-  { id:'survivor',      label:'Survivor',              icon:'💀' },
+  { id:'contra1',       label:'Contra 1'      },
+  { id:'contra2',       label:'Contra 2'      },
+  { id:'equipe_online', label:'Equipe Online' },
+  { id:'livre',         label:'Livre'         },
+  { id:'teste',         label:'Teste'         },
+  { id:'tower_defense', label:'Tower Defense' },
+  { id:'cards',         label:'Cards of Defense' },
 ];
 
 let _disabledModes = [];
 
 function renderModesGrid(disabled) {
   _disabledModes = disabled || [];
-  const el = document.getElementById('modes-grid');
+  const el = document.getElementById('modes-grid-page') || document.getElementById('modes-grid');
+  if (!el) return;
   el.innerHTML = ALL_MODES.map(m => {
     const off = _disabledModes.includes(m.id);
     return `
@@ -1412,6 +1461,134 @@ async function handleGoogleCredential(response) {
     errEl.textContent = 'Erro de conexao: ' + e.message;
   }
 }
+
+// ── Canvas de naves animado na tela de login ──────────────────────
+(function initLoginCanvas() {
+  const canvas = document.getElementById('login-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  let W, H;
+  const SHIPS = [], PARTICLES = [], STARS = [];
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Estrelas de fundo
+  for (let i = 0; i < 180; i++) {
+    STARS.push({ x: Math.random(), y: Math.random(), r: Math.random() * 1.4 + .3, a: Math.random() });
+  }
+
+  // Naves
+  const COLORS = ['#ff8c00','#9b5cff','#ffcc44','#ff4488','#00ffaa'];
+  for (let i = 0; i < 7; i++) {
+    SHIPS.push({
+      x: Math.random() * 1, y: Math.random() * 1,
+      vx: (Math.random() - .5) * .0012,
+      vy: (Math.random() - .5) * .0008 + .0004,
+      angle: Math.random() * Math.PI * 2,
+      va: (Math.random() - .5) * .012,
+      scale: .6 + Math.random() * 1.4,
+      color: COLORS[i % COLORS.length],
+      trail: [],
+    });
+  }
+
+  function drawShip(ctx, color, scale) {
+    const s = scale * 14;
+    ctx.save();
+    // Chama (rastro de fogo)
+    const g = ctx.createLinearGradient(0, 0, 0, s * 1.4);
+    g.addColorStop(0, color + 'cc');
+    g.addColorStop(1, 'transparent');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(0, s * .6);
+    ctx.lineTo(-s * .18, s * 1.4);
+    ctx.lineTo(s * .18, s * 1.4);
+    ctx.closePath();
+    ctx.fill();
+    // Corpo
+    ctx.fillStyle = color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 14;
+    ctx.beginPath();
+    ctx.moveTo(0, -s);
+    ctx.lineTo(s * .42, s * .7);
+    ctx.lineTo(0, s * .38);
+    ctx.lineTo(-s * .42, s * .7);
+    ctx.closePath();
+    ctx.fill();
+    // Núcleo brilhante
+    ctx.fillStyle = '#fff';
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, s * .12, s * .22, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  let t = 0;
+  function frame() {
+    requestAnimationFrame(frame);
+    ctx.clearRect(0, 0, W, H);
+
+    // Fundo
+    ctx.fillStyle = '#02040d';
+    ctx.fillRect(0, 0, W, H);
+
+    // Estrelas piscando
+    t += .016;
+    for (const s of STARS) {
+      const a = .2 + .6 * Math.abs(Math.sin(t * .8 + s.a * 10));
+      ctx.globalAlpha = a;
+      ctx.fillStyle = '#c8a0ff';
+      ctx.beginPath();
+      ctx.arc(s.x * W, s.y * H, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // Naves
+    for (const ship of SHIPS) {
+      ship.x += ship.vx; ship.y += ship.vy; ship.angle += ship.va;
+      if (ship.x < -.1) ship.x = 1.1;
+      if (ship.x > 1.1) ship.x = -.1;
+      if (ship.y < -.1) ship.y = 1.1;
+      if (ship.y > 1.1) ship.y = -.1;
+
+      // Rastro de partículas
+      if (Math.random() < .35) {
+        PARTICLES.push({ x: ship.x * W, y: ship.y * H, vx: (Math.random()-.5)*.6, vy: -.4 - Math.random()*.8, life: 1, color: ship.color, r: 1.5 + Math.random() * 2 });
+      }
+
+      ctx.save();
+      ctx.translate(ship.x * W, ship.y * H);
+      ctx.rotate(ship.angle);
+      ctx.globalAlpha = .85;
+      drawShip(ctx, ship.color, ship.scale);
+      ctx.restore();
+      ctx.globalAlpha = 1;
+    }
+
+    // Partículas
+    for (let i = PARTICLES.length - 1; i >= 0; i--) {
+      const p = PARTICLES[i];
+      p.x += p.vx; p.y += p.vy; p.life -= .025;
+      if (p.life <= 0) { PARTICLES.splice(i, 1); continue; }
+      ctx.globalAlpha = p.life * .7;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+  frame();
+})();
 
 async function setupGoogleSignIn() {
   const res  = await fetch('/api/config');

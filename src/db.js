@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS users (
   reward_modes_seen     TEXT NOT NULL DEFAULT '[]',
   reward_hour_count     INTEGER NOT NULL DEFAULT 0,
   reward_hour_started   TEXT,
-  created_at            TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at            TEXT NOT NULL DEFAULT (datetime('now')),
+  last_seen_at          TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_users_email     ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
@@ -136,16 +137,21 @@ const matchColumns = db.prepare(`PRAGMA table_info(matches)`).all().map(c => c.n
 if (!matchColumns.includes('details')) {
   db.exec(`ALTER TABLE matches ADD COLUMN details TEXT`);
 }
+const userColumns = db.prepare(`PRAGMA table_info(users)`).all().map(c => c.name);
+if (!userColumns.includes('last_seen_at')) {
+  db.exec(`ALTER TABLE users ADD COLUMN last_seen_at TEXT`);
+}
 
 const stmts = {
-  listUsers:            db.prepare(`SELECT id, email, display_name, credits, blocked, created_at FROM users ORDER BY created_at DESC LIMIT 200`),
+  listUsers:            db.prepare(`SELECT id, email, display_name, credits, blocked, created_at, last_seen_at FROM users ORDER BY created_at DESC LIMIT 200`),
   adminFindUser:        db.prepare(`SELECT * FROM users WHERE id = ?`),
   adminSetCredits:      db.prepare(`UPDATE users SET credits = ? WHERE id = ?`),
   adminSetBlocked:      db.prepare(`UPDATE users SET blocked = ? WHERE id = ?`),
   adminRemoveSkin:      db.prepare(`DELETE FROM owned_skins WHERE user_id = ? AND skin_id = ?`),
   adminRemoveAllSkins:  db.prepare(`DELETE FROM owned_skins WHERE user_id = ?`),
   adminUserOrders:      db.prepare(`SELECT * FROM credit_orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 20`),
-  adminSearch:          db.prepare(`SELECT id, email, display_name, credits, blocked, created_at FROM users WHERE email LIKE ? OR display_name LIKE ? ORDER BY created_at DESC LIMIT 50`),
+  adminSearch:          db.prepare(`SELECT id, email, display_name, credits, blocked, created_at, last_seen_at FROM users WHERE email LIKE ? OR display_name LIKE ? ORDER BY created_at DESC LIMIT 50`),
+  updateLastSeen:       db.prepare(`UPDATE users SET last_seen_at = datetime('now') WHERE id = ?`),
   countUsers:           db.prepare(`SELECT COUNT(*) AS total FROM users`),
   insertUser:           db.prepare(`INSERT INTO users (email, display_name, password_hash, google_id) VALUES (?, ?, ?, ?)`),
   findUserByEmail:      db.prepare(`SELECT * FROM users WHERE email = ?`),
