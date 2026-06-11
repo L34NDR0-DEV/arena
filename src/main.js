@@ -1695,93 +1695,95 @@ function _buildCopaShipPaths(flagCx, flagCy, fw, fh) {
       ctx.fillText('BRASIL', flagCx, flagCy + fh/2 + 10);
       ctx.restore();
 
-      // ── Troféu da Copa ────────────────────────────────────
-      _drawFifaTrophy(ctx, trophyCx, trophyCy, trophyScale, t);
+      // ── Troféu da Copa — imagem PNG ──────────────────────
+      if (!animateLoginBg._trophyImg) {
+        const img = new Image();
+        img.src = './src/sprites/trofy_copa.png';
+        animateLoginBg._trophyImg = img;
+      }
+      const timg = animateLoginBg._trophyImg;
+      if (timg.complete && timg.naturalWidth > 0) {
+        // Proporção original da imagem (aprox quadrado, troféu ocupa ~80% da altura)
+        const tH = Math.min(H * 0.72, W * 0.30, 380);
+        const tW = tH * (timg.naturalWidth / timg.naturalHeight);
+        const tx = trophyCx - tW/2;
+        const ty = trophyCy - tH * 0.52;
+        // Brilho dourado pulsante atrás
+        const glowR = tW * 0.7;
+        const gGlow = ctx.createRadialGradient(trophyCx, trophyCy - tH*0.1, 0, trophyCx, trophyCy - tH*0.1, glowR);
+        const gp2 = 0.5 + 0.5*Math.sin(t*1.6);
+        gGlow.addColorStop(0,   `rgba(255,200,0,${0.22*gp2})`);
+        gGlow.addColorStop(0.5, `rgba(180,100,0,${0.10*gp2})`);
+        gGlow.addColorStop(1,   'transparent');
+        ctx.save();
+        ctx.fillStyle = gGlow;
+        ctx.beginPath(); ctx.arc(trophyCx, trophyCy - tH*0.1, glowR, 0, Math.PI*2); ctx.fill();
+        // Imagem com leve sombra dourada
+        ctx.shadowColor = `rgba(255,180,0,${0.55 + 0.2*Math.sin(t*1.8)})`;
+        ctx.shadowBlur = 28;
+        ctx.globalAlpha = 0.90 + 0.06*Math.sin(t*0.9);
+        ctx.drawImage(timg, tx, ty, tW, tH);
+        ctx.restore();
+      }
 
       // Label abaixo do troféu
       ctx.save();
-      ctx.globalAlpha = 0.70 + 0.15*Math.sin(t*1.0 + 1);
-      ctx.font = `bold ${Math.max(7, trophyScale*0.095)}px "Press Start 2P", monospace`;
+      const tH2 = Math.min(H*0.72, W*0.30, 380);
+      ctx.globalAlpha = 0.80 + 0.15*Math.sin(t*1.0 + 1);
+      ctx.font = `bold ${Math.max(8, trophyScale*0.10)}px "Press Start 2P", monospace`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'top';
       ctx.fillStyle = '#ffdf00';
-      ctx.shadowColor = 'rgba(200,120,0,0.8)'; ctx.shadowBlur = 10;
-      ctx.fillText('HEXA 2026', trophyCx, trophyCy + trophyScale + 8);
+      ctx.shadowColor = 'rgba(200,120,0,0.9)'; ctx.shadowBlur = 12;
+      ctx.fillText('HEXA 2026', trophyCx, trophyCy + tH2*0.48 + 10);
       ctx.restore();
 
-      // ── Naves seguindo os contornos da bandeira (lentas) ──
-      if (!animateLoginBg._copaShipPaths || animateLoginBg._copaFW !== fw) {
-        animateLoginBg._copaFW = fw;
-        animateLoginBg._copaShipPaths = _buildCopaShipPaths(flagCx, flagCy, fw, fh);
-        animateLoginBg._copaShips = null; // força reinit
+      // ── Naves Ponta BR passando normalmente (horizontal) ──
+      if (!animateLoginBg._copaShips) animateLoginBg._copaShips = [];
+      const copaShips = animateLoginBg._copaShips;
+      const pontaSkin = SKINS[1] || SKINS[0]; // Ponta BR
+      // Spawna mais naves — máximo 10, probabilidade alta
+      if (Math.random() < 0.045 && copaShips.length < 10) {
+        const dir   = Math.random() < 0.5 ? 1 : -1;
+        const depth = 0.45 + Math.random() * 0.85;
+        copaShips.push({
+          x:     dir > 0 ? -80 : W + 80,
+          y:     H * (0.08 + Math.random() * 0.84),
+          dir, depth,
+          speed: (35 + Math.random() * 55) * dir,
+          bob:   Math.random() * Math.PI * 2,
+          trail: [],
+        });
       }
-      const shipPaths = animateLoginBg._copaShipPaths;
-
-      if (!animateLoginBg._copaShips) {
-        animateLoginBg._copaShips = [];
-        // 3 naves por caminho = 9 naves total, espaçadas uniformemente
-        const perPath = 3;
-        for (let pi = 0; pi < shipPaths.length; pi++) {
-          for (let k = 0; k < perPath; k++) {
-            animateLoginBg._copaShips.push({
-              pathIdx: pi,
-              pct: k / perPath,           // espaçamento uniforme no caminho
-              speed: 0.032 + Math.random()*0.012, // muito lentas: ~3% do caminho/s
-              skin: SKINS[(pi*perPath+k) % SKINS.length],
-              trail: [],
-              depth: 0.65 + Math.random()*0.35,
-              bob: Math.random()*Math.PI*2,
-            });
-          }
-        }
-      }
-
-      for (const s of animateLoginBg._copaShips) {
-        const sp = shipPaths[s.pathIdx];
-        if (!sp || sp.pts.length < 2) continue;
-
-        s.pct = (s.pct + s.speed/60) % 1;
-        const raw = s.pct * sp.pts.length;
-        const i0 = Math.floor(raw) % sp.pts.length;
-        const i1 = (i0+1) % sp.pts.length;
-        const f  = raw - Math.floor(raw);
-        const px = sp.pts[i0].x + (sp.pts[i1].x - sp.pts[i0].x)*f;
-        const py = sp.pts[i0].y + (sp.pts[i1].y - sp.pts[i0].y)*f;
-
-        // Ângulo de direção
-        const i2 = (i0+3) % sp.pts.length;
-        const angle = Math.atan2(sp.pts[i2].y - sp.pts[i0].y, sp.pts[i2].x - sp.pts[i0].x) + Math.PI/2;
-
-        // Micro-balanço vertical
-        const bobY = Math.sin(t*1.4 + s.bob) * 2;
-
-        // Rastro
-        s.trail.push({ x: px, y: py + bobY });
-        if (s.trail.length > 22) s.trail.shift();
-
-        const hue = sp.color;
+      for (let i = copaShips.length - 1; i >= 0; i--) {
+        const s = copaShips[i];
+        s.x += s.speed * (1/60);
+        const yy = s.y + Math.sin(t * 1.5 + s.bob) * 5;
+        const sz  = 16 * s.depth;
+        const hue = '#ffdd00';
+        s.trail.push({ x: s.x, y: yy });
+        if (s.trail.length > 18) s.trail.shift();
+        // Rastro verde/amarelo Copa
         ctx.save();
         for (let k = 0; k < s.trail.length; k++) {
-          const p = s.trail[k];
-          const a = (k / s.trail.length);
-          ctx.globalAlpha = (0.28*s.depth) * a * 0.7;
-          ctx.fillStyle = hue;
-          ctx.shadowColor = hue; ctx.shadowBlur = 5;
+          const p = s.trail[k], a = k / s.trail.length;
+          ctx.globalAlpha = (0.28*s.depth + 0.08) * a * 0.55;
+          ctx.fillStyle = k % 2 === 0 ? '#009c3b' : '#ffdf00';
+          ctx.shadowColor = hue; ctx.shadowBlur = 4;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, Math.max(0.5, 6*s.depth*a), 0, Math.PI*2);
+          ctx.arc(p.x - s.dir*sz*0.85, p.y, sz*0.30*a, 0, Math.PI*2);
           ctx.fill();
         }
         ctx.restore();
-
-        // Nave
-        const sz = 14*s.depth;
+        // Nave Ponta BR
         ctx.save();
-        ctx.translate(px, py+bobY);
-        ctx.rotate(angle);
-        ctx.globalAlpha = 0.38*s.depth + 0.18;
+        ctx.translate(s.x, yy);
+        ctx.rotate(s.dir > 0 ? Math.PI/2 : -Math.PI/2);
+        ctx.globalAlpha = 0.35*s.depth + 0.18;
         ctx.shadowColor = hue; ctx.shadowBlur = 10*s.depth;
-        s.skin.drawPreview(ctx, (sz*2)/s.skin._size);
+        pontaSkin.drawPreview(ctx, (sz*2) / pontaSkin._size);
         ctx.restore();
         ctx.globalAlpha = 1;
+        if ((s.dir>0 && s.x > W+100) || (s.dir<0 && s.x < -100)) copaShips.splice(i, 1);
       }
 
       // ── Badge Copa no topo centro ─────────────────────────
