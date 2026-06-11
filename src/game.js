@@ -74,6 +74,8 @@ export class Game {
     } else {
       this.portalMgr = null;
     }
+    // Conecta portalMgr ao combat para reflexão de balas em buracos negros
+    if (this.portalMgr) this.combat.setPortalManager(this.portalMgr);
 
     // Torres Astrais — disponíveis no modo Teste
     this.towerMgr = mode==='teste' ? new TowerManager() : null;

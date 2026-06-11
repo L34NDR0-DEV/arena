@@ -20,6 +20,7 @@ export class CombatSystem {
   setShakeCallback(fn) { this._shake=fn; }
   setHitStopCallback(fn) { this._hitStop=fn; }
   setWallDropCallback(fn) { this._wallDropCallback=fn; }
+  setPortalManager(pm) { this._portalMgr=pm; }
 
   // Contexto do modo "Equipe Online" (PvP): jogadores remotos, bots locais,
   // time do jogador local e referência de rede para reportar abates.
@@ -469,6 +470,27 @@ export class CombatSystem {
           if (dot<0) { e.vx-=dot*nx*1.3; e.vy-=dot*ny*1.3; }
         }
       }
+    }
+
+    // ── Buracos negros refletem dano ─────────────────────────
+    // Balas do player que entram na zona de influência são refletidas de volta
+    if (this._portalMgr) {
+      const bhs = this._portalMgr.blackHoles || [];
+      this.bullets = this.bullets.filter(b => {
+        if (b.owner!=='player' || b._reflected) return true;
+        for (const bh of bhs) {
+          const d = Math.hypot(b.x-bh.x, b.y-bh.y);
+          if (d < bh.r * 1.4) {
+            // Reflete a direção (inverte ambos os componentes — burst para fora do centro)
+            b.vx *= -1; b.vy *= -1;
+            b.owner = 'enemy'; // agora é uma bala inimiga
+            b._reflected = true;
+            b.owner_color = '#8844ff';
+            return true;
+          }
+        }
+        return true;
+      });
     }
 
     // Adiciona balas geradas por efeitos especiais (chain, quantum)
