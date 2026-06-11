@@ -19,7 +19,7 @@ export class CombatSystem {
   setAudio(audio) { this._audio=audio; }
   setShakeCallback(fn) { this._shake=fn; }
   setHitStopCallback(fn) { this._hitStop=fn; }
-  setWallDropCallback(fn) { this._wallDropCallback=fn; }
+  setWallDropCallback(fn) { this._wallDropCallback=fn; this._wallDropCd=0; }
   setPortalManager(pm) { this._portalMgr=pm; }
   setVoiceCallbacks(onKill, onPlayerDeath) { this._voiceOnKill=onKill; this._voiceOnPlayerDeath=onPlayerDeath; }
 
@@ -432,11 +432,15 @@ export class CombatSystem {
         if (o) {
           this._impactSpark(b,b.x,b.y,'#4488aa'); this.spawnExplosion(b.x,b.y,8,'#4488aa');
           if (b.owner==='player' && b._player) {
-            // +HP e +XP por acertar parede
             b._player.heal(4);
             b._player.addXP(2);
-            // 20% de chance de dropar item aleatório
-            if (Math.random()<0.20) this._wallDropCallback?.(b.x,b.y);
+            // Drop com cooldown: no máximo 1 item a cada 4s para evitar flood
+            const now = performance.now();
+            if (!this._wallDropCd) this._wallDropCd = 0;
+            if (Math.random() < 0.20 && now - this._wallDropCd > 4000) {
+              this._wallDropCd = now;
+              this._wallDropCallback?.(b.x, b.y);
+            }
           }
           return false;
         }

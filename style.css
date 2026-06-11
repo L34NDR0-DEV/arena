@@ -891,10 +891,24 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   font-size:5px;color:rgba(255,100,100,.7);font-family:'Press Start 2P',monospace;white-space:nowrap;}
 .ws-slot.ws-extra.ws-has-weapon .ws-drop-hint{display:block;}
 .ws-weapon-label{
-  position:absolute;top:-14px;left:50%;transform:translateX(-50%);
-  font-size:5px;color:rgba(255,200,100,.8);font-family:'Press Start 2P',monospace;
-  white-space:nowrap;pointer-events:none;
+  position:absolute;bottom:1px;left:0;right:0;text-align:center;
+  font-size:4px;color:rgba(255,200,100,.7);font-family:'Press Start 2P',monospace;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;
 }
+
+/* Tooltip de itens/armas */
+#hud-tooltip{
+  position:fixed;z-index:9999;pointer-events:none;
+  background:rgba(8,4,20,0.97);border:1px solid rgba(155,92,255,0.7);
+  border-radius:5px;padding:7px 10px;min-width:110px;max-width:180px;
+  box-shadow:0 0 14px rgba(155,92,255,0.35);
+  font-family:'Press Start 2P',monospace;
+  opacity:0;transition:opacity .15s ease;
+  display:none;
+}
+#hud-tooltip.visible{opacity:1;display:block;}
+#hud-tooltip .tt-name{font-size:6px;color:#ff8c00;margin-bottom:5px;line-height:1.4;}
+#hud-tooltip .tt-desc{font-size:5px;color:rgba(220,200,255,0.85);line-height:1.6;}
 
 #powerup-slots{display:flex;gap:5px;}
 .pu-slot{

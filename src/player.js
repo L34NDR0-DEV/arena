@@ -1116,112 +1116,149 @@ export class Player {
     const wt = this.activeWeaponType;
 
     if (wt === 'LASER') {
-      // Raio contínuo: bala rápida, fina, que perfura
-      _spawnBullet(mx,my, baseDmg*0.7, 0, {speed:1200, life:0.9, color:'#ff0088', piercing:true, size:3});
+      // Cadência altíssima (shootCd 0.06), bala fina que atravessa tudo — DPS por sustain
+      this.shootCd = 0.06;
+      _spawnBullet(mx,my, baseDmg*0.55, 0, {speed:1300, life:0.85, color:'#ff0088', piercing:true, size:2.5});
       return;
     }
     if (wt === 'SHOTGUN') {
-      // 5 projéteis em leque, dano menor
-      for (let i=-2;i<=2;i++) _spawnBullet(mx,my, baseDmg*0.55, i*0.18, {speed:580, life:0.8, color:'#ff5500'});
+      // 7 projéteis em cone largo, recarga lenta (shootCd 0.7) — devastador de perto
+      this.shootCd = 0.7;
+      for (let i=-3;i<=3;i++) _spawnBullet(mx,my, baseDmg*0.7, i*0.16, {speed:560+Math.random()*60, life:0.65, color:'#ff5500', size:i===0?5:4});
       return;
     }
     if (wt === 'SNIPER') {
-      // 1 projétil enorme, lento de recarga, muito dano
-      _spawnBullet(mx,my, baseDmg*3.5, 0, {speed:900, life:2.2, color:'#00ffcc', size:9, piercing:true});
+      // 1 tiro por vez, cooldown enorme (1.4s), dano massivo, perfura
+      this.shootCd = 1.4;
+      _spawnBullet(mx,my, baseDmg*4.5, 0, {speed:1600, life:1.8, color:'#00ffcc', size:8, piercing:true});
+      // Flash de muzzle: bala menor atrás
+      setTimeout(()=>{ if(!this.dead) _spawnBullet(mx,my, 0, 0, {speed:800, life:0.15, color:'#aaffee', size:3, piercing:true}); }, 0);
       return;
     }
     if (wt === 'BOUNCER') {
-      // Bala que quica nas paredes (lógica em combat.js via bounces)
-      _spawnBullet(mx,my, baseDmg*1.1, 0, {speed:500, life:3, color:'#ffee00', bounces:5});
+      // 2 balas com 8 bounces cada — ricocheteiam pelo mapa
+      this.shootCd = 0.45;
+      _spawnBullet(mx,my, baseDmg*1.0, 0,    {speed:480, life:4, color:'#ffee00', bounces:8});
+      _spawnBullet(mx,my, baseDmg*1.0, 0.25, {speed:480, life:4, color:'#ffcc00', bounces:8});
       return;
     }
     if (wt === 'FLAMETHROWER') {
-      // Rajada de 4 projéteis em cone de fogo
-      for (let i=-1;i<=2;i++) {
-        const off=(Math.random()-0.5)*0.4;
-        _spawnBullet(mx,my, baseDmg*0.45, off, {speed:400+Math.random()*100, life:0.65, color:'#ff3300', size:7+Math.random()*5});
+      // Cone denso de 6 projéteis curtos com tamanho aleatório — área de negação
+      this.shootCd = 0.09;
+      for (let i=0;i<3;i++) {
+        const off=(Math.random()-0.5)*0.55;
+        _spawnBullet(mx,my, baseDmg*0.38, off, {speed:320+Math.random()*120, life:0.55, color:i%2?'#ff6600':'#ff2200', size:8+Math.random()*8});
       }
       return;
     }
     if (wt === 'PLASMA') {
-      // Bola lenta e pesada com área de explosão
-      _spawnBullet(mx,my, baseDmg*1.8, 0, {speed:340, life:2.5, color:'#aa00ff', size:14, explosive:true});
+      // Orbe lento que explode em área grande — cooldown 1.1s
+      this.shootCd = 1.1;
+      _spawnBullet(mx,my, baseDmg*2.5, 0, {speed:260, life:3, color:'#aa00ff', size:18, explosive:true});
       return;
     }
     if (wt === 'RAILGUN') {
-      // Penetração total, muito rápido
-      _spawnBullet(mx,my, baseDmg*2.2, 0, {speed:1400, life:1.2, color:'#00ff88', size:5, piercing:true});
+      // Dispara 3 raios seguidos (burst), cada um atravessa — cooldown 0.9s
+      this.shootCd = 0.9;
+      for (let i=0;i<3;i++) {
+        setTimeout(()=>{ if(!this.dead) _spawnBullet(mx,my, baseDmg*1.8, 0, {speed:1600, life:1.0, color:'#00ff88', size:5, piercing:true}); }, i*80);
+      }
       return;
     }
     if (wt === 'HOMING') {
-      // Projétil teleguiado
-      _spawnBullet(mx,my, baseDmg*0.9, 0, {speed:380, life:3.5, color:'#ff44aa', homing:true});
+      // 2 mísseis teleguiados por tiro — sempre encontram o alvo
+      this.shootCd = 0.55;
+      _spawnBullet(mx,my, baseDmg*1.0, 0.12, {speed:340, life:4, color:'#ff44aa', homing:true});
+      _spawnBullet(mx,my, baseDmg*1.0,-0.12, {speed:340, life:4, color:'#ff66cc', homing:true});
       return;
     }
     if (wt === 'BURST') {
-      // 3 rajadas rápidas (implementadas via redução temporária do shootCd)
-      _spawnBullet(mx,my, baseDmg*0.75, 0, {color:'#ffbb00'});
-      _spawnBullet(mx,my, baseDmg*0.75, 0.06, {color:'#ffbb00', speed:560});
-      _spawnBullet(mx,my, baseDmg*0.75,-0.06, {color:'#ffbb00', speed:560});
+      // Rajada de 5 balas rápidas, ângulo levemente variado — spray controlado
+      this.shootCd = 0.5;
+      for (let i=0;i<5;i++) {
+        const off=(i-2)*0.05 + (Math.random()-0.5)*0.04;
+        setTimeout(()=>{ if(!this.dead) _spawnBullet(mx,my, baseDmg*0.72, off, {speed:580+i*20, color:'#ffbb00'}); }, i*40);
+      }
       return;
     }
     if (wt === 'BOOMERANG') {
-      // Volta para o dono (lógica em combat.js via bounces+return)
-      _spawnBullet(mx,my, baseDmg*1.3, 0, {speed:440, life:2, color:'#00eeff', bounces:1});
+      // Bala que vai e volta — bounces 2, vida longa
+      this.shootCd = 0.6;
+      _spawnBullet(mx,my, baseDmg*1.6, 0, {speed:500, life:2.5, color:'#00eeff', bounces:2, size:8});
       return;
     }
     if (wt === 'GRAVITY') {
-      // Puxa inimigos ao acertar
-      _spawnBullet(mx,my, baseDmg*0.8, 0, {speed:420, life:2, color:'#8844ff', gravityPull:200, size:10});
+      // Orbe que puxa todos os inimigos próximos em área grande
+      this.shootCd = 0.8;
+      _spawnBullet(mx,my, baseDmg*0.9, 0, {speed:380, life:2.2, color:'#8844ff', gravityPull:350, size:14});
       return;
     }
     if (wt === 'EXPLOSIVE') {
-      // Explosão em área ao contato
-      _spawnBullet(mx,my, baseDmg*1.5, 0, {speed:460, life:2, color:'#ff6600', size:10, explosive:true});
+      // Projétil que explode E spawna 4 fragmentos em X ao impacto
+      this.shootCd = 0.65;
+      _spawnBullet(mx,my, baseDmg*1.8, 0, {speed:420, life:1.8, color:'#ff6600', size:12, explosive:true});
+      // fragmentos na direção perpendicular (efeito de fragmentação)
+      const perp = baseAngle + Math.PI/2;
+      const px=Math.cos(perp), py=Math.sin(perp);
+      for(let s of [-1,1]) {
+        bullets.push({x:nozzle.x,y:nozzle.y,vx:px*s*300,vy:py*s*300,damage:baseDmg*0.5,owner:'player',life:0.6,owner_color:'#ff8800',_player:this,dirX:px*s,dirY:py*s,weaponType:wt,size:6,explosive:false});
+      }
       return;
     }
     if (wt === 'CHAIN') {
-      // Raio que salta para inimigos próximos (lógica em combat.js via chainTarget)
-      _spawnBullet(mx,my, baseDmg*0.85, 0, {speed:650, life:1.2, color:'#55aaff', chainTarget:3});
+      // Raio elétrico que salta entre 4 inimigos
+      this.shootCd = 0.35;
+      _spawnBullet(mx,my, baseDmg*0.9, 0, {speed:700, life:1.0, color:'#55aaff', chainTarget:4});
       return;
     }
     if (wt === 'STORM') {
-      // Barreira de 5 projéteis em leque amplo
-      for (let i=-2;i<=2;i++) _spawnBullet(mx,my, baseDmg*0.5, i*0.3, {speed:520, color:'#ccaaff'});
+      // Dispara em 8 direções ao mesmo tempo — 360°
+      this.shootCd = 1.0;
+      for (let i=0;i<8;i++) _spawnBullet(mx,my, baseDmg*0.6, i*Math.PI/4, {speed:480, color:'#ccaaff', life:1.4});
       return;
     }
     if (wt === 'VOID_SHOT') {
-      // Bala que drena mana
-      _spawnBullet(mx,my, baseDmg*1.4, 0, {speed:520, life:2, color:'#220044', size:12, drainMana:40, piercing:true});
+      // Bala negra que drena mana E cura o jogador ao acertar
+      this.shootCd = 0.5;
+      _spawnBullet(mx,my, baseDmg*1.6, 0, {speed:480, life:2.2, color:'#8800cc', size:13, drainMana:60, piercing:true});
       return;
     }
     if (wt === 'PHOTON') {
-      // 4 projéteis em X (diagonais)
-      for (let i=0;i<4;i++) _spawnBullet(mx,my, baseDmg*0.7, i*Math.PI/2, {speed:700, life:1, color:'#ffffff', size:4});
+      // Tiro em X (4 direções) + 1 central — cobre toda a área ao redor
+      this.shootCd = 0.45;
+      _spawnBullet(mx,my, baseDmg*0.9, 0, {speed:900, life:0.9, color:'#ffffff', size:4, piercing:true});
+      for (let i=1;i<4;i++) _spawnBullet(mx,my, baseDmg*0.6, i*Math.PI/2, {speed:700, life:0.9, color:'#eeeeff', size:3});
       return;
     }
     if (wt === 'DUAL') {
-      // Dois canos paralelos
+      // Dois canos paralelos com cadência alta — DPS duplo
+      this.shootCd = 0.18;
       const perp = baseAngle + Math.PI/2;
-      const off = 10;
+      const off = 12;
       const ox = Math.cos(perp)*off, oy = Math.sin(perp)*off;
-      bullets.push({ x:nozzle.x+ox, y:nozzle.y+oy, vx:(mx/Math.hypot(mx,my)||0)*600, vy:(my/Math.hypot(mx,my)||0)*600, damage:baseDmg*0.9, owner:'player', life:1.5, owner_color:'#ff8844', _player:this, dirX:mx/(Math.hypot(mx,my)||1), dirY:my/(Math.hypot(mx,my)||1) });
-      bullets.push({ x:nozzle.x-ox, y:nozzle.y-oy, vx:(mx/Math.hypot(mx,my)||0)*600, vy:(my/Math.hypot(mx,my)||0)*600, damage:baseDmg*0.9, owner:'player', life:1.5, owner_color:'#ff8844', _player:this, dirX:mx/(Math.hypot(mx,my)||1), dirY:my/(Math.hypot(mx,my)||1) });
+      const d = Math.hypot(mx,my)||1;
+      bullets.push({x:nozzle.x+ox,y:nozzle.y+oy,vx:(mx/d)*640,vy:(my/d)*640,damage:baseDmg*0.85,owner:'player',life:1.3,owner_color:'#ff8844',_player:this,dirX:mx/d,dirY:my/d,weaponType:wt});
+      bullets.push({x:nozzle.x-ox,y:nozzle.y-oy,vx:(mx/d)*640,vy:(my/d)*640,damage:baseDmg*0.85,owner:'player',life:1.3,owner_color:'#ffaa66',_player:this,dirX:mx/d,dirY:my/d,weaponType:wt});
       return;
     }
     if (wt === 'SPREAD') {
-      // 7 projéteis em leque largo
-      for (let i=-3;i<=3;i++) _spawnBullet(mx,my, baseDmg*0.42, i*0.22, {speed:540, color:'#ffcc44'});
+      // 9 projéteis em leque completo — controle de multidão
+      this.shootCd = 0.6;
+      for (let i=-4;i<=4;i++) _spawnBullet(mx,my, baseDmg*0.5, i*0.19, {speed:500+Math.abs(i)*10, color:'#ffcc44', life:0.9});
       return;
     }
     if (wt === 'TOXIC') {
-      // Projétil venenoso com DoT
-      _spawnBullet(mx,my, baseDmg*0.65, 0, {speed:380, life:2.5, color:'#66ff00', size:11, toxicDot:true});
+      // Projétil que deixa nuvem de veneno ao impactar (toxicDot nos inimigos que tocarem)
+      this.shootCd = 0.35;
+      _spawnBullet(mx,my, baseDmg*0.7, 0, {speed:340, life:2.8, color:'#66ff00', size:13, toxicDot:true});
+      // segundo projétil tóxico menor em ligeiro offset
+      _spawnBullet(mx,my, baseDmg*0.4, (Math.random()-0.5)*0.3, {speed:300, life:2, color:'#44cc00', size:8, toxicDot:true});
       return;
     }
     if (wt === 'QUANTUM') {
-      // Projétil que se divide em 3 ao acertar
-      _spawnBullet(mx,my, baseDmg*1.1, 0, {speed:500, life:2, color:'#ff00ff', quantumSplit:true});
+      // Ao acertar, divide em 3 que vão para lados diferentes
+      this.shootCd = 0.55;
+      _spawnBullet(mx,my, baseDmg*1.3, 0, {speed:520, life:2.2, color:'#ff00ff', quantumSplit:true, size:9});
       return;
     }
 

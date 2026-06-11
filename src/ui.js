@@ -2,6 +2,47 @@
 import { ITEM_DEFS } from './items.js';
 import { drawProfileIcon } from './profileIcons.js';
 
+const WEAPON_TOOLTIP = {
+  LASER:       {name:'LASER',        desc:'Cadência extrema.\nBala fina que atravessa tudo.'},
+  SHOTGUN:     {name:'SHOTGUN',      desc:'7 projéteis em cone.\nDestruição a curta distância.'},
+  SNIPER:      {name:'SNIPER',       desc:'1 tiro massivo.\nPerfura inimigos. Recarga lenta.'},
+  BOUNCER:     {name:'BOUNCER',      desc:'Balas que ricocheteiam\n8x nas paredes.'},
+  FLAMETHROWER:{name:'FLAMETHROWER', desc:'Cone de fogo contínuo.\nArea de negação próxima.'},
+  PLASMA:      {name:'PLASMA',       desc:'Orbe lento explosivo.\nDano em área ao impacto.'},
+  RAILGUN:     {name:'RAILGUN',      desc:'3 raios em rajada rápida.\nPerfura tudo no caminho.'},
+  HOMING:      {name:'HOMING',       desc:'2 mísseis teleguiados.\nSempre encontram o alvo.'},
+  BURST:       {name:'BURST',        desc:'Rajada de 5 balas rápidas.\nSpray controlado.'},
+  BOOMERANG:   {name:'BOOMERANG',    desc:'Bala que volta para você.\nAtinge 2x no mesmo tiro.'},
+  GRAVITY:     {name:'GRAVITY',      desc:'Puxa inimigos em área grande\npara o ponto de impacto.'},
+  EXPLOSIVE:   {name:'EXPLOSIVE',    desc:'Explosão + fragmentos laterais.\nDano em área.'},
+  CHAIN:       {name:'CHAIN',        desc:'Raio que salta entre\n4 inimigos próximos.'},
+  STORM:       {name:'STORM',        desc:'Dispara em 8 direções\nao mesmo tempo.'},
+  VOID_SHOT:   {name:'VOID SHOT',    desc:'Drena mana inimiga.\nCura ao acertar. Perfura.'},
+  PHOTON:      {name:'PHOTON',       desc:'Tiro central + 3 laterais.\nCobre 360° ao redor.'},
+  DUAL:        {name:'DUAL',         desc:'Dois canos paralelos.\nCadência alta, DPS duplo.'},
+  SPREAD:      {name:'SPREAD',       desc:'9 projéteis em leque.\nControle de multidão.'},
+  TOXIC:       {name:'TOXIC',        desc:'Nuvem tóxica persistente.\nVeneno por contato.'},
+  QUANTUM:     {name:'QUANTUM',      desc:'Ao acertar, divide em 3\nprojéteis em X.'},
+};
+
+const ITEM_TOOLTIP = {
+  HEALTH:  {name:'Kit de Cura',     desc:'Restaura HP instantaneamente.'},
+  SHIELD:  {name:'Escudo',          desc:'Absorve dano antes do HP.'},
+  MANA:    {name:'Mana',            desc:'Restaura mana para habilidades.'},
+  RAPID:   {name:'Recarga Rapida',  desc:'Reduz cooldown de tiro por 8s.'},
+  MAGNET:  {name:'Ima',             desc:'Atrai itens e XP proximos.'},
+  BOOST:   {name:'Impulso',         desc:'Aumenta velocidade por 6s.'},
+  MINE:    {name:'Mina',            desc:'Explode ao contato inimigo.'},
+  FREEZE:  {name:'Congelamento',    desc:'Congela inimigos em area.'},
+  SLOW:    {name:'Desacelerador',   desc:'Reduz velocidade inimiga.'},
+  DRAIN:   {name:'Dreno',           desc:'Drena HP dos inimigos proximos.'},
+  BLIND:   {name:'Cegueira',        desc:'Cega inimigos temporariamente.'},
+  NOVA:    {name:'Nova',            desc:'Explosao de energia em toda area.'},
+  REGEN:   {name:'Regeneracao',     desc:'Regenera HP ao longo do tempo.'},
+  SHIELD_BIG:{name:'Mega Escudo',   desc:'Escudo massivo temporario.'},
+  RAPID_CHARGE:{name:'Sobrecarga',  desc:'Tiro muito rapido por 6s.'},
+};
+
 // Desenha ícone de item num canvas pequeno
 function _drawItemIconSmall(ctx, type, W, H) {
   ctx.clearRect(0, 0, W, H);
@@ -116,11 +157,72 @@ export class UI {
     this._wsExtra      = document.getElementById('ws-extra');
     this._notTO  = null;
     this._lastMode = null;
+    this._tooltip  = document.getElementById('hud-tooltip');
+    this._ttName   = document.getElementById('tt-name');
+    this._ttDesc   = document.getElementById('tt-desc');
+    this._tooltipTO = null;
+    this._setupTooltips();
     this._teamLobby   = document.getElementById('team-lobby');
     this._teamLobbyCt = document.getElementById('team-lobby-count');
     this._matchLoading     = document.getElementById('match-loading');
     this._matchLoadingRoster = document.getElementById('match-loading-roster');
     this._matchLoadingPing   = document.getElementById('match-loading-ping');
+  }
+
+  _setupTooltips() {
+    if (!this._tooltip) return;
+    const tip = this._tooltip;
+    const show = (el, data, e) => {
+      if (!data) return;
+      this._ttName.textContent = data.name;
+      this._ttDesc.textContent = data.desc.replace(/\\n/g, '\n');
+      tip.style.display = 'block';
+      requestAnimationFrame(() => tip.classList.add('visible'));
+      this._moveTooltip(e);
+    };
+    const hide = () => {
+      tip.classList.remove('visible');
+      clearTimeout(this._tooltipTO);
+      this._tooltipTO = setTimeout(() => { tip.style.display='none'; }, 160);
+    };
+    const onMove = (e) => this._moveTooltip(e);
+
+    // Weapon slots
+    const allWs = [...(this._wsSlots||[]), this._wsExtra].filter(Boolean);
+    allWs.forEach(slot => {
+      slot.addEventListener('mouseenter', e => {
+        const wt = slot.dataset.weaponType;
+        if (!wt) return;
+        show(slot, WEAPON_TOOLTIP[wt], e);
+      });
+      slot.addEventListener('mousemove', onMove);
+      slot.addEventListener('mouseleave', hide);
+    });
+
+    // Powerup slots (incluindo extra)
+    const allPu = [...([0,1,2,3,4].map(i=>document.getElementById('pu'+i))), document.getElementById('pu-extra'), document.getElementById('pu-x')].filter(Boolean);
+    allPu.forEach(slot => {
+      slot.addEventListener('mouseenter', e => {
+        const it = slot.dataset.itemType;
+        if (!it) return;
+        const info = ITEM_TOOLTIP[it] || {name: it, desc: ITEM_DEFS[it]?.label || ''};
+        show(slot, info, e);
+      });
+      slot.addEventListener('mousemove', onMove);
+      slot.addEventListener('mouseleave', hide);
+    });
+  }
+
+  _moveTooltip(e) {
+    if (!this._tooltip) return;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    let x = e.clientX + 14, y = e.clientY - 8;
+    const tw = this._tooltip.offsetWidth || 150;
+    const th = this._tooltip.offsetHeight || 60;
+    if (x + tw > vw - 8) x = e.clientX - tw - 14;
+    if (y + th > vh - 8) y = e.clientY - th - 8;
+    this._tooltip.style.left = x + 'px';
+    this._tooltip.style.top  = y + 'px';
   }
 
   // Lobby/fila do modo "Equipe Online" — mostrado enquanto aguarda match_start
@@ -235,6 +337,7 @@ export class UI {
         const isActive = player.activeWeaponSlot === i;
         slot.classList.toggle('ws-has-weapon', !!wt);
         slot.classList.toggle('ws-active', isActive);
+        slot.dataset.weaponType = wt || '';
         if (cv) {
           const ctx = cv.getContext('2d');
           ctx.clearRect(0,0,cv.width,cv.height);
@@ -253,6 +356,7 @@ export class UI {
         const isActive = player.activeWeaponSlot === 5;
         this._wsExtra.classList.toggle('ws-has-weapon', !!wt);
         this._wsExtra.classList.toggle('ws-active', isActive);
+        this._wsExtra.dataset.weaponType = wt || '';
         if (cv) {
           const ctx = cv.getContext('2d');
           ctx.clearRect(0,0,cv.width,cv.height);
@@ -275,12 +379,12 @@ export class UI {
         if (item) {
           slot.classList.add('has-item');
           slot.classList.remove('harmful-item');
+          slot.dataset.itemType = item.type;
           if (cv) _drawItemIconSmall(cv.getContext('2d'), item.type, cv.width, cv.height);
-          slot.title = item.def.label + ': ' + item.def.desc;
         } else {
           slot.classList.remove('has-item','harmful-item');
+          slot.dataset.itemType = '';
           if (cv) cv.getContext('2d').clearRect(0,0,cv.width,cv.height);
-          slot.title = '';
         }
       });
 
@@ -292,11 +396,12 @@ export class UI {
         if (ex) {
           extraSlot.classList.add('has-item','extra-slot-active');
           extraSlot.classList.remove('hidden-slot');
+          extraSlot.dataset.itemType = ex.type;
           if (cv) _drawItemIconSmall(cv.getContext('2d'), ex.type, cv.width, cv.height);
-          extraSlot.title = '[X] ' + ex.def.label + ' (BÔNUS +50%)';
         } else {
           extraSlot.classList.remove('has-item','extra-slot-active');
           extraSlot.classList.add('hidden-slot');
+          extraSlot.dataset.itemType = '';
           if (cv) cv.getContext('2d').clearRect(0,0,cv.width,cv.height);
         }
       }
