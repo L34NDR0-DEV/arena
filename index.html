@@ -858,14 +858,14 @@
 <script>
 // ── Recuperação de senha ──────────────────────────────────────
 function showForgotPassword() {
-  document.getElementById('forgot-modal').style.display = 'flex';
+  document.getElementById('forgot-modal').classList.add('open');
   document.getElementById('forgot-step-email').style.display = 'block';
   document.getElementById('forgot-step-sent').style.display  = 'none';
   document.getElementById('forgot-email-error').style.display = 'none';
   document.getElementById('forgot-email-input').value = '';
 }
 function hideForgotPassword() {
-  document.getElementById('forgot-modal').style.display = 'none';
+  document.getElementById('forgot-modal').classList.remove('open');
 }
 async function submitForgotEmail() {
   const email = document.getElementById('forgot-email-input').value.trim();
@@ -921,7 +921,7 @@ async function submitResetPassword() {
 window.addEventListener('DOMContentLoaded', () => {
   const token = new URLSearchParams(window.location.search).get('reset');
   if (token) {
-    document.getElementById('reset-modal').style.display = 'flex';
+    document.getElementById('reset-modal').classList.add('open');
   }
 });
 
@@ -941,7 +941,7 @@ window._showForgotLink = (show) => {
 </script>
 
 <!-- ═══ MODAL: Esqueci minha senha ════════════════════════════ -->
-<div id="forgot-modal" class="arcade-modal-overlay" style="display:none;">
+<div id="forgot-modal" class="arcade-modal-overlay">
   <div class="arcade-modal-box">
     <div class="arcade-modal-corner-tl"></div>
     <div class="arcade-modal-corner-tr"></div>
@@ -967,7 +967,7 @@ window._showForgotLink = (show) => {
 </div>
 
 <!-- ═══ MODAL: Redefinir senha (via link do email) ════════════ -->
-<div id="reset-modal" class="arcade-modal-overlay" style="display:none;">
+<div id="reset-modal" class="arcade-modal-overlay">
   <div class="arcade-modal-box">
     <div class="arcade-modal-corner-tl"></div>
     <div class="arcade-modal-corner-tr"></div>
