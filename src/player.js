@@ -922,19 +922,23 @@ export class Player {
     // ── Rastro visual cosmético ──────────────────────────────
     const trailDef = TRAILS[this.equippedTrailId];
     if (trailDef && trailDef.style !== 'none') {
-      const spd = Math.hypot(this.vx, this.vy);
-      if (spd > 5) {
+      // Usa deslocamento real (inclui dash e movimento normal)
+      const dx = this.x - (this._trailLastX ?? this.x);
+      const dy = this.y - (this._trailLastY ?? this.y);
+      const moved = Math.hypot(dx, dy);
+      if (moved > 0.5) {
         this._trailTimer -= dt;
         if (this._trailTimer <= 0) {
           const spacing = trailDef.style === 'smoke' ? 0.045 : 0.025;
           this._trailTimer = spacing;
-          // Emite atrás da nave usando o ângulo de movimento
-          const ang = Math.atan2(this.vy, this.vx);
-          const offset = 20;
+          const ang = Math.atan2(dy, dx);
+          const offset = 18;
           spawnTrailPoint(this.trail, this.x - Math.cos(ang) * offset, this.y - Math.sin(ang) * offset);
         }
       }
     }
+    this._trailLastX = this.x;
+    this._trailLastY = this.y;
     this.trail = updateTrail(this.trail, dt);
 
     const spd=Math.hypot(this.vx,this.vy);
