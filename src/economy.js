@@ -54,7 +54,9 @@ try {
 // 21/06/2026 — depois desse prazo o modo desaparece da seleção (mas o
 // código permanece, pronto para reativação futura) e o modo "Teste" volta
 // a ocupar o mesmo slot no menu.
-const TOURNAMENT_SKIN_ID   = 10; // "Hex Champion" — recompensa exclusiva do torneio
+const MAX_SKIN_ID          = 16;
+const REWARD_ONLY_SKIN_IDS = [4, 10, 12];
+const TOURNAMENT_SKIN_ID   = 4; // "Stealwing" — recompensa exclusiva do torneio
 const TOURNAMENT_STARTS_AT = Date.parse('2026-06-07T00:00:00Z');
 const TOURNAMENT_ENDS_AT   = Date.parse('2026-06-21T23:59:59Z');
 
@@ -69,6 +71,7 @@ const CUSTOM_SKIN_PRICES = {
   13: 550, // Amarela — equivalente ao pacote de R$10 (550 créditos)
   14: 100, // Arcade Branca — equivalente ao pacote de R$1 (100 créditos)
   15: 100, // Arcade Vermelha — equivalente ao pacote de R$1 (100 créditos)
+  16: 100, // Gioloff Purple — UFO roxo econômico
 };
 
 // Preço efetivo de uma skin: promo admin > promo código > preço admin > preço fixo > padrão
@@ -153,6 +156,6 @@ module.exports = {
   get PROMO_ENDS_AT()   { return PROMO_ENDS_AT; },
   isPromoActive, skinPriceFor,
   getPromoSkinIds, getPromoPrice, getPromoStartsAt, getPromoEndsAt,
-  TOURNAMENT_SKIN_ID, TOURNAMENT_STARTS_AT, TOURNAMENT_ENDS_AT, isTournamentActive,
+  MAX_SKIN_ID, REWARD_ONLY_SKIN_IDS, TOURNAMENT_SKIN_ID, TOURNAMENT_STARTS_AT, TOURNAMENT_ENDS_AT, isTournamentActive,
   applyAdminPrices, applyAdminPromo,
 };

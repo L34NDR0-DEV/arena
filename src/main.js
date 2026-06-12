@@ -12,6 +12,7 @@ let pilotName='JOGADOR';
 // ── Conta / perfil (autenticação, créditos, skins) ────────────
 const SHOP_PRICE = 500;
 const economy_FREE_SKIN_ID = 6;
+const FIXED_SKIN_PRICES = { 13:550, 14:100, 15:100, 16:100 };
 let currentUser = null; // {id,email,displayName,credits,equippedSkin}
 let profile     = null; // {user,ownedSkins,equippedSkin,rewardProgress,promo}
 
@@ -42,6 +43,7 @@ function shopPriceFor(skinId){
   }
   const custom = profile?.customPrices;
   if (custom && custom[skinId] != null) return custom[skinId];
+  if (FIXED_SKIN_PRICES[skinId] != null) return FIXED_SKIN_PRICES[skinId];
   return SHOP_PRICE;
 }
 function shopIsPromo(skinId){
@@ -830,7 +832,7 @@ const NEW_MODE_ANNOUNCEMENTS = [
     id: 'tower_defense_v1',
     mode: 'tower_defense',
     title: 'Torneio Tower Defense chegou!',
-    text: 'Um novo modo por tempo limitado: equipes 2x2 online disputam o controle de uma torre central. Destrua a torre do adversário antes que destruam a sua — e quem vencer leva a skin exclusiva "Hex Champion"!',
+    text: 'Um novo modo por tempo limitado: equipes 2x2 online disputam o controle de uma torre central. Destrua a torre do adversário antes que destruam a sua — e quem vencer leva a skin exclusiva "Stealwing"!',
     icon: '<path d="M12 2 L20 7 L20 14 L12 21 L4 14 L4 7 Z"/><path d="M12 2 L12 21 M4 7 L20 14 M20 7 L4 14" opacity=".55"/><circle cx="12" cy="11" r="2.6" fill="currentColor" stroke="none"/>',
   },
 ];
@@ -1068,7 +1070,7 @@ const MODE_TIPS={
   equipe_online: 'EQUIPE ONLINE — PvP em times (até 6, 3x3). Primeira equipe a 200 abates vence!',
   livre:   'LIVRE — SEM TIMER. PRATIQUE À VONTADE.',
   teste:   'TESTE — INIMIGOS NÃO ATACAM.',
-  tower_defense: 'TORNEIO TOWER DEFENSE — destrua a torre central para conquistá-la! 2x2 online, vencedores ganham a skin exclusiva "Hex Champion".',
+  tower_defense: 'TORNEIO TOWER DEFENSE — destrua a torre central para conquistá-la! 2x2 online, vencedores ganham a skin exclusiva "Stealwing".',
   cards: 'CARDS OF DEFENSE — PvE cooperativo até 5. Escolha cartas a cada level, sobreviva com suas 9 vidas!',
 };
 
@@ -1750,11 +1752,18 @@ function renderSkinGrid(){
     drawCard();
     const info=document.createElement('div');
     info.className='skin-info';
+    const isRewardOnly = REWARD_ONLY_SKIN_IDS.includes(skin.id);
     info.innerHTML = isOwned
       ? `<div class="skin-name">${skin.name}</div><div class="skin-sub">${skin.color.toUpperCase()}</div>`
-      : `<div class="skin-name">${skin.name}</div><div class="skin-sub skin-price">${SHOP_PRICE} CR</div>`;
+      : isRewardOnly
+        ? `<div class="skin-name">${skin.name}</div><div class="skin-sub skin-price">EXCLUSIVA</div>`
+        : `<div class="skin-name">${skin.name}</div><div class="skin-sub skin-price">${shopPriceFor(skin.id)} CR</div>`;
     card.append(cv,info);
-    card.onclick=()=> isOwned ? equipSkin(skin.id) : openShopAt(skin.id);
+    card.onclick=()=> {
+      if (isOwned) return equipSkin(skin.id);
+      if (isRewardOnly) return showNotify('Skin exclusiva de evento');
+      openShopAt(skin.id);
+    };
     grid.appendChild(card);
   });
 }
@@ -1863,7 +1872,7 @@ function shopOwnedSet(){
 
 function shopAvailableSkins(){
   // A vitrine só mostra naves que o piloto ainda não possui — comprar o que já se tem não faz sentido.
-  // Skins de recompensa (ex.: "Hex Champion" do torneio) nunca aparecem para compra.
+  // Skins de recompensa/evento nunca aparecem para compra.
   const owned = shopOwnedSet();
   return SKINS.filter(s=>!owned.has(s.id) && !REWARD_ONLY_SKIN_IDS.includes(s.id));
 }
@@ -3308,7 +3317,7 @@ window.showGameOver=function(data){
     const teamLabel = t => t==='red' ? 'Time Vermelho' : 'Time Azul';
     document.getElementById('go-title').textContent = data.win ? 'TORRE CONQUISTADA!' : 'TORRE PERDIDA';
     document.getElementById('go-sub').textContent = data.win
-      ? `Seu time destruiu a torre central e venceu o confronto! ${(profile&&profile.tournament&&profile.tournament.active) ? 'Você desbloqueou a skin exclusiva "Hex Champion"!' : ''}`
+      ? `Seu time destruiu a torre central e venceu o confronto! ${(profile&&profile.tournament&&profile.tournament.active) ? 'Você desbloqueou a skin exclusiva "Stealwing"!' : ''}`
       : `${teamLabel(data.teamWinner)} destruiu a torre central primeiro. Tente novamente na fila do torneio!`;
   } else if (data.mode === 'cards' || selectedMode === 'cards') {
     document.getElementById('go-title').textContent = `LEVEL ${data.level || 1} ATINGIDO`;
@@ -3562,7 +3571,7 @@ document.addEventListener('DOMContentLoaded', () => {
   startCardsMiniRankingPolling();
 });
 
-// ── Carta de revelação da skin de recompensa do torneio (Hex Champion) ──
+// ── Carta de revelação da skin de recompensa do torneio (Stealwing) ──
 window.closeSkinReveal=function(ev){
   if (ev && ev.target && ev.target.closest && ev.target.closest('#sr-card') && !ev.target.closest('.sr-card-front')) return;
   const el=document.getElementById('skin-reveal');
@@ -3615,7 +3624,7 @@ function _skinPromoPrice(skin) {
 function _skinPromoNextBatch() {
   // Skins disponíveis para compra (não possui, não é reward-only, não é gratuita)
   const owned    = profile?.ownedSkins || [];
-  const EXCL     = [6, 10, 12]; // gratuita + reward-only
+  const EXCL     = [economy_FREE_SKIN_ID, ...REWARD_ONLY_SKIN_IDS]; // gratuita + reward-only
   const available = SKINS.filter(s => !owned.includes(s.id) && !EXCL.includes(s.id));
   if (available.length === 0) return [];
 
@@ -3639,7 +3648,7 @@ function _skinPromoNextBatch() {
 function maybeShowSkinPromo() {
   if (!profile || !currentUser) return;
   const owned = profile.ownedSkins || [];
-  const EXCL  = [6, 10, 12];
+  const EXCL  = [economy_FREE_SKIN_ID, ...REWARD_ONLY_SKIN_IDS];
   const hasUnowned = SKINS.some(s => !owned.includes(s.id) && !EXCL.includes(s.id));
   if (!hasUnowned) return; // já tem tudo
 

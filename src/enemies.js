@@ -512,7 +512,7 @@ const TEAM_COLORS = { red:'#ff4d6a', blue:'#4da6ff' };
 // Assim o 1º bot que entra numa partida é sempre "BOT-Falcão", o 2º sempre
 // "BOT-Centinela" etc — reconhecível e repetível, sem precisar de hash/BD.
 //
-// skinIndex evita ids "somente recompensa" (REWARD_ONLY_SKIN_IDS = [10,12]
+// skinIndex evita ids "somente recompensa" (REWARD_ONLY_SKIN_IDS = [4,10,12]
 // em skins.js) — estes nunca são sorteados para bots.
 export const BOT_PROFILES = [
   { name:'BOT-Falcão',    skinIndex:0,  traits:{ aggression:1.35, flankBias:0.65, retreatThreshold:0.15, approachRange:620 } },

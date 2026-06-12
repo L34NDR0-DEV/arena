@@ -399,7 +399,7 @@ export class Game {
         onTdMatchStart: msg=>this._onTdMatchStart(msg),
         onTdRewardGranted: msg=>{
           const skin = SkinsModule.SKINS.find(s=>s.id===msg.skinId);
-          const skinName = skin ? skin.name : 'Hex Champion';
+          const skinName = skin ? skin.name : 'Stealwing';
           this.ui.notify(`Recompensa do torneio: skin "${skinName}" desbloqueada!`, '#ffcf4d');
           window._showSkinReveal?.(skinName);
         },

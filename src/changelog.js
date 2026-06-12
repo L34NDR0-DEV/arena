@@ -38,7 +38,7 @@ export const CHANGELOG = [
     date: '2026-06-08',
     changes: [
       'Novo modo "Equipe Online": PvP em times, até 6 jogadores (3x3), primeira equipe a 200 abates vence',
-      'Torneio Tower Defense: dispute o controle da torre central em duplas e ganhe a skin exclusiva "Hex Champion"',
+      'Torneio Tower Defense: dispute o controle da torre central em duplas e ganhe a skin exclusiva "Stealwing"',
       'Corrigido: fila do Equipe Online e do Tower Defense agora forma as partidas corretamente (antes travava sem encontrar ninguém)',
       'Botão "X" para cancelar a busca por partida e sair da fila a qualquer momento',
       'Corrigida a chama do propulsor das naves, que aparecia na frente em vez de atrás',

@@ -23,7 +23,7 @@ const ROOT = __dirname;
 // roda a IA, o cliente anfitrião) — módulo ESM que este arquivo CommonJS não
 // importa (mesmo motivo do antigo BOT_SKIN_POOL: client-side, usa Image/canvas).
 // MANTER EM SINCRONIA com BOT_PROFILES em src/enemies.js: mesma ORDEM, mesmos
-// `name` e `skinIndex` (nenhum deve estar em REWARD_ONLY_SKIN_IDS=[10,12]).
+// `name` e `skinIndex` (nenhum deve estar em REWARD_ONLY_SKIN_IDS=[4,10,12]).
 const BOT_PROFILES = [
   { name:'BOT-Falcão',    skinIndex:0  },
   { name:'BOT-Centinela', skinIndex:3  },
@@ -403,7 +403,7 @@ function tdEndMatch(roomId, winnerTeam) {
         if (!db.ownsSkin.get(info.userId, economy.TOURNAMENT_SKIN_ID)) {
           db.grantSkin.run(info.userId, economy.TOURNAMENT_SKIN_ID);
           wsSend(p.socket, JSON.stringify({ type: 'td_reward_granted', skinId: economy.TOURNAMENT_SKIN_ID }));
-          console.log(`[TORNEIO] ${info.name} (time ${winnerTeam}) recebeu a skin "Hex Champion" pela vitória no Tower Defense`);
+          console.log(`[TORNEIO] ${info.name} (time ${winnerTeam}) recebeu a skin "Stealwing" pela vitoria no Tower Defense`);
         }
       } catch (e) {
         console.error('[TORNEIO] Falha ao conceder skin de recompensa:', e.message);

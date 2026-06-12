@@ -173,7 +173,7 @@ const skinAzul = makeSprite(3, 'Valkyrie Azul', '#0088ff', 'Azul.png', {
 });
 
 // Stealthwing — triângulo giratório (spinsOnAxis)
-const skinTriangulo = makeSprite(4, 'Stealthwing', '#8899aa', 'Triangulo.png', {
+const skinTriangulo = makeSprite(4, 'Stealwing', '#8899aa', 'Triangulo.png', {
   size: 80,
   nozzle: { x:0, y:-0.72 },
   engines: [
@@ -243,9 +243,8 @@ const skinRosaNeon = makeSprite(9, 'Nebula Rosa', '#ff3d9a', 'Rosa.png', {
   ],
 });
 
-// Hex Champion — recompensa exclusiva do Torneio Tower Defense (não é vendida
-// na loja, só concedida pelo servidor a quem vencer durante a janela ativa).
-// Reaproveita a silhueta angular do Stealthwing sob um tom dourado de campeão.
+// Hex Champion — skin exclusiva de evento (não é vendida na loja).
+// Reaproveita a silhueta angular do Stealwing sob um tom dourado de campeão.
 const skinHexChampion = makeSprite(10, 'Hex Champion', '#ffcf4d', 'Triangulo.png', {
   size: 80,
   nozzle: { x:0, y:-0.72 },
@@ -317,6 +316,21 @@ const skinArcadeVermelha = makeSprite(15, 'Arcade Vermelha', '#cc3322', 'Acadeve
   isArcade: true,
 });
 
+// Gioloff Purple â€” UFO alien roxo, nave premium econÃ´mica da loja.
+const skinGioloffPurple = makeSprite(16, 'Gioloff Purple', '#9b5cff', 'skinroxaalienufo.png', {
+  size: 84,
+  nozzle: { x:0, y:0 },
+  engines: [{ x:0, y:0.18 }],
+  isAlien: true,
+  noThruster: true,
+  effectPalette: {
+    flameColors:['#f7e7ff', '#9b5cff', '#31105f'],
+    shieldColor:'#c69cff',
+    dashColor:'#e0b8ff',
+    deathColor:'#9b5cff',
+  },
+});
+
 export const SKINS = [
   skinVermelho,
   skinPonta,
@@ -334,9 +348,10 @@ export const SKINS = [
   skinAmarela,
   skinArcadeBranca,
   skinArcadeVermelha,
+  skinGioloffPurple,
 ];
 
 // IDs de skins que NUNCA aparecem na loja para compra — concedidas apenas
 // por eventos especiais (ex.: recompensa do Torneio Tower Defense) ou
 // presenteadas individualmente a contas específicas (ex.: UFO Dourado).
-export const REWARD_ONLY_SKIN_IDS = [10, 12];
+export const REWARD_ONLY_SKIN_IDS = [4, 10, 12];

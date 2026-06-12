@@ -380,9 +380,10 @@ const ROUTES = [
     rateLimit: rateLimited('shop_buy', 5, 10_000, (req, { user }) => user.id),
     handler: (req, res, { body, user }) => {
       const skinId = Number(body.skinId);
-      if (!Number.isInteger(skinId) || skinId < 0 || skinId > 15) {
+      if (!Number.isInteger(skinId) || skinId < 0 || skinId > economy.MAX_SKIN_ID) {
         return sendJson(res, 400, { error: 'invalid_skin' });
       }
+      if (economy.REWARD_ONLY_SKIN_IDS.includes(skinId)) return sendJson(res, 403, { error: 'reward_only_skin' });
       if (db.ownsSkin.get(user.id, skinId)) return sendJson(res, 409, { error: 'already_owned' });
 
       // Preço considera a promoção por tempo limitado (Ponta BR / Alien Disc) —
@@ -409,7 +410,7 @@ const ROUTES = [
     rateLimit: rateLimited('shop_equip', 5, 10_000, (req, { user }) => user.id),
     handler: (req, res, { body, user }) => {
       const skinId = Number(body.skinId);
-      if (!Number.isInteger(skinId) || skinId < 0 || skinId > 15) {
+      if (!Number.isInteger(skinId) || skinId < 0 || skinId > economy.MAX_SKIN_ID) {
         return sendJson(res, 400, { error: 'invalid_skin' });
       }
       if (!db.ownsSkin.get(user.id, skinId)) return sendJson(res, 403, { error: 'not_owned' });
