@@ -55,7 +55,7 @@ try {
 // código permanece, pronto para reativação futura) e o modo "Teste" volta
 // a ocupar o mesmo slot no menu.
 const MAX_SKIN_ID          = 16;
-const REWARD_ONLY_SKIN_IDS = [4, 10, 12];
+const REWARD_ONLY_SKIN_IDS = [4];
 const TOURNAMENT_SKIN_ID   = 4; // "Stealwing" — recompensa exclusiva do torneio
 const TOURNAMENT_STARTS_AT = Date.parse('2026-06-07T00:00:00Z');
 const TOURNAMENT_ENDS_AT   = Date.parse('2026-06-21T23:59:59Z');
