@@ -384,20 +384,22 @@ const ROUTES = [
         return sendJson(res, 400, { error: 'invalid_skin' });
       }
       if (economy.REWARD_ONLY_SKIN_IDS.includes(skinId)) return sendJson(res, 403, { error: 'reward_only_skin' });
-      if (db.ownsSkin.get(user.id, skinId)) return sendJson(res, 409, { error: 'already_owned' });
 
-      // Preço considera a promoção por tempo limitado (Ponta BR / Alien Disc) —
-      // calculado no servidor para não confiar em valor enviado pelo client.
+      // Preço calculado no servidor — considera promoção global, individual e preços fixos.
       const owned = db.listOwnedSkins.all(user.id).map(r => r.skin_id);
-      const price = economy.skinPriceFor(skinId, owned);
+      let userPromo = null;
+      try { userPromo = user.user_promo ? JSON.parse(user.user_promo) : null; } catch {}
+      const price = economy.skinPriceFor(skinId, owned, userPromo);
 
-      const ok = db.transaction(() => {
+      // Checagem de posse e débito dentro da mesma transação — evita double-spend por race condition.
+      const buyResult = db.transaction(() => {
+        if (db.ownsSkin.get(user.id, skinId)) return 'already_owned';
         const result = db.spendCredits.run(price, user.id, price);
-        if (result.changes === 0) return false;
+        if (result.changes === 0) return 'insufficient_credits';
         db.grantSkin.run(user.id, skinId);
-        return true;
+        return 'ok';
       });
-      if (!ok) return sendJson(res, 409, { error: 'insufficient_credits' });
+      if (buyResult !== 'ok') return sendJson(res, 409, { error: buyResult });
 
       const fresh = db.findUserById.get(user.id);
       sendJson(res, 200, profileFor(fresh));

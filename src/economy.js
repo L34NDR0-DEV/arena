@@ -74,8 +74,16 @@ const CUSTOM_SKIN_PRICES = {
   16: 100, // Gioloff Purple — UFO roxo econômico
 };
 
-// Preço efetivo de uma skin: promo admin > promo código > preço admin > preço fixo > padrão
-function skinPriceFor(skinId, ownedSkinIds) {
+// Preço efetivo de uma skin: userPromo > promo global > preço admin > preço fixo > padrão
+function skinPriceFor(skinId, ownedSkinIds, userPromo) {
+  // Promoção individual do usuário (admin pode dar desconto pessoal)
+  if (userPromo && userPromo.skinIds && userPromo.skinIds.includes(skinId) && userPromo.discountPct > 0) {
+    const endsAt = userPromo.endsAt ? Date.parse(userPromo.endsAt) : null;
+    if (!endsAt || Date.now() < endsAt) {
+      const base = CUSTOM_SKIN_PRICES[skinId] ?? SKIN_PRICE;
+      return Math.max(0, Math.round(base * (1 - userPromo.discountPct / 100)));
+    }
+  }
   if (PROMO_SKIN_IDS.includes(skinId) && isPromoActive()) {
     // Promoção exclusiva: só vale se o usuário não tiver outra skin da mesma promo
     const others = PROMO_SKIN_IDS.filter(id => id !== skinId);
