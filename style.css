@@ -956,6 +956,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .ws-slot.ws-active{
   border-color:#ff8c00;box-shadow:0 0 10px #ff8c0055,inset 0 0 6px #ff8c0022;
 }
+.ws-slot.pressed{transform:scale(.94);filter:brightness(1.25);}
 .ws-slot.ws-has-weapon{border-color:rgba(255,140,0,.6);}
 .ws-slot.ws-extra{border-style:dashed;border-color:rgba(155,92,255,.35);margin-left:6px;}
 .ws-slot.ws-extra.ws-active{border-color:#9b5cff;box-shadow:0 0 10px #9b5cff55;}
@@ -1496,7 +1497,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 }
 .touch-btn:active,.touch-btn.pressed{transform:scale(.93);filter:brightness(1.18);}
 .touch-btn:active::after,.touch-btn.pressed::after{border-color:var(--accent);box-shadow:0 0 18px var(--accent), inset 0 0 18px var(--accent-soft);}
-.touch-btn-fire{width:84px;height:84px;--accent:var(--touch-orange);}
+.touch-btn-fire{width:72px;height:72px;--accent:var(--touch-orange);}
 .touch-btn-dash{width:68px;height:68px;--accent:var(--touch-violet);--accent-soft:rgba(155,92,255,.44);--accent-border:rgba(155,92,255,.74);--accent-core:#1a0c30;}
 .touch-icon-fire{
   width:0;height:0;margin-left:5px;
@@ -1539,12 +1540,17 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   box-shadow:0 0 10px rgba(155,92,255,.34), inset 0 0 10px rgba(0,0,0,.78);
 }
 .touch-slot span{position:relative;z-index:2;color:#e8d4ff;text-shadow:0 0 8px rgba(155,92,255,.9);}
+.touch-slot.touch-slot-weapon::before{background:conic-gradient(from 24deg,#0a0810 0 26deg,#6b3a10 26deg 56deg,#0e0c1a 56deg 142deg,var(--touch-orange) 142deg 152deg,#2c1608 152deg 236deg,#704018 236deg 266deg,#0a0810 266deg 360deg);}
+.touch-slot.touch-slot-weapon::after{border-color:rgba(255,140,0,.62);box-shadow:0 0 14px rgba(255,140,0,.42), inset 0 0 10px rgba(0,0,0,.78);}
+.touch-slot.touch-slot-weapon span{color:#ffd8a6;text-shadow:0 0 8px rgba(255,140,0,.9);}
+.touch-slot.touch-slot-active{filter:brightness(1.22);}
+.touch-slot.touch-slot-active::after{border-color:var(--touch-orange);box-shadow:0 0 18px var(--touch-orange), inset 0 0 14px rgba(255,140,0,.25);}
 .touch-slot:active,.touch-slot.pressed{transform:scale(.93);filter:brightness(1.18);}
 .touch-slot:active::after,.touch-slot.pressed::after{border-color:var(--touch-violet);box-shadow:0 0 16px var(--touch-violet), inset 0 0 12px rgba(155,92,255,.22);}
 /* Canvas de item dentro do slot — dimensão maior */
 .touch-slot canvas{position:relative;z-index:2;}
 @media (orientation:landscape) and (max-height:520px){
-  .touch-btn-fire{width:68px;height:68px;}
+  .touch-btn-fire{width:60px;height:60px;}
   .touch-btn-dash{width:56px;height:56px;}
   .touch-stick-zone{width:120px;height:120px;}
   .touch-stick-zone::after{inset:15px;}
@@ -1758,6 +1764,34 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 #maint-banner.maint-banner-locked .maint-banner-sub{color:#a05060;}
 @keyframes maintBannerIn{from{opacity:0;transform:translateY(-100%)}to{opacity:1;transform:none}}
 @keyframes maintPulse{0%,100%{box-shadow:0 0 10px #ffaa4444}50%{box-shadow:0 0 22px #ffaa44aa}}
+@media (max-width:760px) and (orientation:landscape){
+  #maint-banner{
+    left:50%;right:auto;top:calc(8px + env(safe-area-inset-top));
+    width:min(520px,72vw);transform:translateX(-50%);
+    border:1px solid #ffaa44;border-radius:8px;
+    background:rgba(22,8,0,.88);
+  }
+  #maint-banner.maint-banner-locked{background:rgba(18,0,28,.88);}
+  .maint-banner-inner{padding:6px 10px;gap:8px;max-width:none;}
+  .maint-banner-icon{width:26px;height:26px;}
+  .maint-banner-title{font-size:7px;letter-spacing:1px;}
+  .maint-banner-sub{font-size:9px;line-height:1.25;}
+}
+@media (max-width:760px) and (orientation:portrait){
+  #maint-banner.maint-banner-locked{
+    inset:0;width:auto;border:0;border-radius:0;
+    display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 28%,#240035,#040008 70%);
+  }
+  #maint-banner.maint-banner-locked .maint-banner-inner{
+    width:min(340px,86vw);padding:22px 18px;max-width:none;
+    border:1px solid #ff4455;border-radius:8px;background:rgba(6,0,16,.92);
+    box-shadow:0 0 24px #ff445544;flex-direction:column;text-align:center;
+  }
+  #maint-banner.maint-banner-locked .maint-banner-icon{width:48px;height:48px;}
+  #maint-banner.maint-banner-locked .maint-banner-title{font-size:10px;line-height:1.7;}
+  #maint-banner.maint-banner-locked .maint-banner-sub{font-size:11px;line-height:1.6;}
+}
 
 /* ══ Cards of Defense — botão na grade de modos ══════════════════ */
 .mode-cards{

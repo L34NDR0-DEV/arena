@@ -59,6 +59,7 @@ function drawHitFlash(ctx, entity, radius=null) {
 
 const ENEMY_SHIP_IMG    = loadEnemyImg('skininimiga.png');
 const ENEMY_DISC_IMG    = loadEnemyImg('skininimigas.png');
+const ENEMY_SHIP_VARIANTS = [ENEMY_SHIP_IMG, ENEMY_DISC_IMG];
 
 // ── Combustão na popa — estilo arcade: núcleo alongado + faíscas ──
 // `angle` é o ângulo de VOO (bico); a chama sempre sai pela popa (oposto).
@@ -251,6 +252,7 @@ export class SmartEnemy {
     this.color='#ff3355';
     this.dead=false; this._age=0;
     this.isAlien=false; this._alienAngle=0;
+    this.spriteImg=ENEMY_SHIP_VARIANTS[Math.floor(Math.random()*ENEMY_SHIP_VARIANTS.length)];
     this.shards=[]; this._dying=false; this._dyingAge=0;
 
     // Respawn flash após perder vida
@@ -471,7 +473,7 @@ export class SmartEnemy {
 
     // Nave — sprite exclusivo de inimigo (caça alienígena angular roxo/verde),
     // nunca disponível como skin de jogador.
-    drawEnemySprite(ctx, ENEMY_SHIP_IMG, this.r*2.4, 0);
+    drawEnemySprite(ctx, this.spriteImg || ENEMY_SHIP_IMG, this.r*2.4, 0);
     ctx.restore();
     drawHitFlash(ctx, this, this.r);
 

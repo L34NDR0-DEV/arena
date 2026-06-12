@@ -155,6 +155,7 @@ export class UI {
     this._effectsCanvas= document.getElementById('active-effects-canvas');
     this._wsSlots      = [0,1,2,3,4].map(i=>document.getElementById('ws'+i));
     this._wsExtra      = document.getElementById('ws-extra');
+    this._touchSlots   = [...document.querySelectorAll('#touch-controls .touch-slot')];
     this._notTO  = null;
     this._lastMode = null;
     this._tooltip  = document.getElementById('hud-tooltip');
@@ -370,6 +371,25 @@ export class UI {
     }
 
     // Slots de inventário (5 slots + extra X)
+    if (this._touchSlots?.length) {
+      this._touchSlots.forEach((slot, i) => {
+        const isExtra = slot.dataset.slot === 'x';
+        const item = isExtra ? player.inventory?.extraSlot : player.inventory?.slots?.[i];
+        const cv = slot.querySelector('.touch-slot-icon');
+        const label = slot.querySelector('span');
+        slot.classList.remove('touch-slot-weapon','touch-slot-active');
+        slot.classList.toggle('touch-slot-item', !!item);
+        slot.dataset.weaponType = '';
+        slot.dataset.itemType = item ? item.type : '';
+        if (label) label.textContent = isExtra ? 'X' : String(i+1);
+        if (cv) {
+          const cctx = cv.getContext('2d');
+          cctx.clearRect(0,0,cv.width,cv.height);
+          if (item) _drawItemIconSmall(cctx, item.type, cv.width, cv.height);
+        }
+      });
+    }
+
     if (this._puSlots && player.inventory) {
       // Slots 0-4
       this._puSlots.forEach((slot, i) => {
@@ -644,7 +664,19 @@ export class UI {
     ctx.fillStyle='#04080fcc'; ctx.fillRect(0,0,MW,MH);
     ctx.strokeStyle='#1a3a5a'; ctx.lineWidth=1; ctx.strokeRect(0,0,MW,MH);
     for (const it of items){ctx.fillStyle=it.def.color;ctx.fillRect(it.x*sx-1,it.y*sy-1,2.5,2.5);}
-    for (const e of enemies){if(e.dead)continue;ctx.fillStyle=e.color;ctx.beginPath();ctx.arc(e.x*sx,e.y*sy,2.5,0,Math.PI*2);ctx.fill();}
+    const pulse = 0.65 + 0.35 * Math.sin(Date.now() * 0.01);
+    for (const e of enemies){
+      if(e.dead)continue;
+      const ex=e.x*sx, ey=e.y*sy;
+      ctx.fillStyle=e.color||'#ff3355';
+      ctx.shadowColor=e.color||'#ff3355';
+      ctx.shadowBlur=5;
+      ctx.beginPath();ctx.arc(ex,ey,2.8,0,Math.PI*2);ctx.fill();
+      ctx.shadowBlur=0;
+      ctx.strokeStyle='rgba(255,80,100,'+(0.45+0.35*pulse)+')';
+      ctx.lineWidth=1;
+      ctx.beginPath();ctx.arc(ex,ey,5.2,0,Math.PI*2);ctx.stroke();
+    }
     if (!player.rebuilding){
       ctx.fillStyle='#00d4ff'; ctx.shadowColor='#00d4ff'; ctx.shadowBlur=6;
       ctx.beginPath(); ctx.arc(player.x*sx,player.y*sy,3.5,0,Math.PI*2); ctx.fill();

@@ -240,7 +240,9 @@ function drawFlames(ctx, flames) {
     const dark  = colors[2] || mid;
     const t=f.life/f.maxLife;
     const fk=0.7+0.3*Math.sin(f.flicker*40+Date.now()*0.03);
-    ctx.save(); ctx.globalAlpha=Math.min(1,t*1.3)*fk;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha=Math.min(1,t*1.35)*fk;
     if (f.kind==='spark') {
       // Faísca: traço curto na direção do movimento — reforça sensação de jato.
       const len=f.size*3*t+2;
@@ -251,17 +253,23 @@ function drawFlames(ctx, flames) {
       ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-len,0); ctx.stroke();
     } else {
       // Núcleo: gota alongada na direção da popa — gradiente quente→frio.
-      const len=f.size*(1.8+t), wid=f.size*t*0.85;
+      const len=f.size*(2.4+t*1.4), wid=f.size*(0.28+t*0.5);
       ctx.translate(f.x,f.y); ctx.rotate(f.angle);
       const g=ctx.createLinearGradient(0,0,-len,0);
       g.addColorStop(0,colorWithAlpha(light,1));
-      g.addColorStop(0.28,colorWithAlpha(light,0.95));
-      g.addColorStop(0.6,colorWithAlpha(mid,0.8));
+      g.addColorStop(0.22,colorWithAlpha(light,0.95));
+      g.addColorStop(0.58,colorWithAlpha(mid,0.78));
       g.addColorStop(1,colorWithAlpha(dark,0));
       ctx.fillStyle=g;
+      ctx.shadowColor=mid;
+      ctx.shadowBlur=9*t;
       ctx.beginPath();
-      ctx.ellipse(-len*0.5,0,len*0.5,wid,0,0,Math.PI*2);
+      ctx.moveTo(0,0);
+      ctx.quadraticCurveTo(-len*0.34,-wid*1.15,-len,0);
+      ctx.quadraticCurveTo(-len*0.34,wid*1.15,0,0);
+      ctx.closePath();
       ctx.fill();
+      ctx.shadowBlur=0;
     }
     ctx.restore();
   }
