@@ -118,6 +118,17 @@ CREATE TABLE IF NOT EXISTS owned_trails (
 CREATE INDEX IF NOT EXISTS idx_owned_trails_user ON owned_trails(user_id);
 `);
 
+// Tokens de recuperação de senha (expiram em 1h, um por usuário)
+db.exec(`
+CREATE TABLE IF NOT EXISTS password_resets (
+  token      TEXT PRIMARY KEY,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at TEXT NOT NULL,
+  used       INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id);
+`);
+
 // Ranking do modo Cards of Defense
 db.exec(`
 CREATE TABLE IF NOT EXISTS cards_ranking (
@@ -199,6 +210,12 @@ const stmts = {
 
   insertCardsRank:  db.prepare(`INSERT INTO cards_ranking (user_id, score, level, kills, lives_left, cards_used) VALUES (?,?,?,?,?,?)`),
   topCardsRanking:  db.prepare(`SELECT cr.score, cr.level, cr.kills, cr.lives_left, cr.cards_used, cr.created_at, u.display_name, u.email FROM cards_ranking cr JOIN users u ON u.id = cr.user_id ORDER BY cr.score DESC, cr.level DESC LIMIT 20`),
+
+  insertPasswordReset: db.prepare(`INSERT OR REPLACE INTO password_resets (token, user_id, expires_at) VALUES (?, ?, datetime('now', '+1 hour'))`),
+  findPasswordReset:   db.prepare(`SELECT * FROM password_resets WHERE token = ? AND used = 0 AND expires_at > datetime('now')`),
+  markResetUsed:       db.prepare(`UPDATE password_resets SET used = 1 WHERE token = ?`),
+  deleteUserResets:    db.prepare(`DELETE FROM password_resets WHERE user_id = ?`),
+  updatePasswordHash:  db.prepare(`UPDATE users SET password_hash = ? WHERE id = ?`),
 };
 
 function transaction(fn) {

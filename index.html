@@ -74,7 +74,45 @@
         <div class="auth-error" id="auth-error" style="display:none;"></div>
 
         <button class="login-start-btn" type="submit" id="auth-submit-btn">► &nbsp; ENTRAR &nbsp; ◄</button>
+        <div id="forgot-link-wrap" style="text-align:center;margin-top:10px;display:none;">
+          <button type="button" onclick="showForgotPassword()" style="background:none;border:none;color:#9b5cff;font-size:11px;cursor:pointer;text-decoration:underline;font-family:inherit;">Esqueci minha senha</button>
+        </div>
       </form>
+
+      <!-- Modal: Esqueci minha senha -->
+      <div id="forgot-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.75);display:none;align-items:center;justify-content:center;">
+        <div style="background:#0a0814;border:1px solid #9b5cff44;border-radius:12px;padding:28px 24px;width:min(340px,92vw);box-shadow:0 0 40px #9b5cff22;">
+          <div style="font-family:'Press Start 2P',monospace;color:#ff8c00;font-size:10px;margin-bottom:16px;">RECUPERAR SENHA</div>
+          <div id="forgot-step-email">
+            <p style="font-size:12px;color:#aaa;margin-bottom:14px;">Digite seu e-mail e enviaremos um link para criar uma nova senha.</p>
+            <input id="forgot-email-input" type="email" placeholder="seu@email.com" style="width:100%;box-sizing:border-box;padding:10px;border-radius:6px;border:1px solid #9b5cff44;background:#06091a;color:#e0d0ff;font-size:13px;margin-bottom:12px;"/>
+            <div id="forgot-email-error" style="color:#ff4455;font-size:11px;margin-bottom:10px;display:none;"></div>
+            <button onclick="submitForgotEmail()" style="width:100%;padding:11px;background:#9b5cff;border:none;border-radius:7px;color:#fff;font-weight:bold;font-size:13px;cursor:pointer;">Enviar link</button>
+          </div>
+          <div id="forgot-step-sent" style="display:none;text-align:center;">
+            <div style="font-size:28px;margin-bottom:12px;">✉</div>
+            <p style="font-size:13px;color:#aaa;">Link enviado! Verifique sua caixa de entrada e spam.</p>
+          </div>
+          <div style="text-align:center;margin-top:16px;">
+            <button onclick="hideForgotPassword()" style="background:none;border:none;color:#666;font-size:11px;cursor:pointer;">Fechar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal: Redefinir senha (via link do email) -->
+      <div id="reset-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.85);align-items:center;justify-content:center;">
+        <div style="background:#0a0814;border:1px solid #9b5cff44;border-radius:12px;padding:28px 24px;width:min(340px,92vw);box-shadow:0 0 40px #9b5cff22;">
+          <div style="font-family:'Press Start 2P',monospace;color:#ff8c00;font-size:10px;margin-bottom:16px;">NOVA SENHA</div>
+          <p style="font-size:12px;color:#aaa;margin-bottom:14px;">Digite sua nova senha.</p>
+          <input id="reset-password-input" type="password" placeholder="Nova senha (mín. 6 caracteres)" style="width:100%;box-sizing:border-box;padding:10px;border-radius:6px;border:1px solid #9b5cff44;background:#06091a;color:#e0d0ff;font-size:13px;margin-bottom:12px;"/>
+          <input id="reset-password-confirm" type="password" placeholder="Confirmar nova senha" style="width:100%;box-sizing:border-box;padding:10px;border-radius:6px;border:1px solid #9b5cff44;background:#06091a;color:#e0d0ff;font-size:13px;margin-bottom:12px;"/>
+          <div id="reset-error" style="color:#ff4455;font-size:11px;margin-bottom:10px;display:none;"></div>
+          <button onclick="submitResetPassword()" style="width:100%;padding:11px;background:#9b5cff;border:none;border-radius:7px;color:#fff;font-weight:bold;font-size:13px;cursor:pointer;">Salvar nova senha</button>
+          <div id="reset-step-done" style="display:none;text-align:center;margin-top:14px;">
+            <p style="color:#00e87a;font-size:13px;">Senha alterada com sucesso! Faça login.</p>
+          </div>
+        </div>
+      </div>
 
       <div class="login-divider"></div>
       <div id="google-signin-area" style="display:none;">
@@ -852,6 +890,82 @@
 </div>
 
 <script type="module" src="./src/main.js"></script>
+<script>
+// ── Recuperação de senha ──────────────────────────────────────
+function showForgotPassword() {
+  document.getElementById('forgot-modal').style.display = 'flex';
+  document.getElementById('forgot-step-email').style.display = 'block';
+  document.getElementById('forgot-step-sent').style.display  = 'none';
+  document.getElementById('forgot-email-error').style.display = 'none';
+  document.getElementById('forgot-email-input').value = '';
+}
+function hideForgotPassword() {
+  document.getElementById('forgot-modal').style.display = 'none';
+}
+async function submitForgotEmail() {
+  const email = document.getElementById('forgot-email-input').value.trim();
+  const errEl = document.getElementById('forgot-email-error');
+  errEl.style.display = 'none';
+  if (!email) { errEl.textContent = 'Digite seu e-mail.'; errEl.style.display='block'; return; }
+  try {
+    await fetch('/api/auth/forgot-password', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ email }),
+    });
+    // Sempre mostra "enviado" (não revela se email existe)
+    document.getElementById('forgot-step-email').style.display = 'none';
+    document.getElementById('forgot-step-sent').style.display  = 'block';
+  } catch {
+    errEl.textContent = 'Erro de conexão. Tente novamente.';
+    errEl.style.display = 'block';
+  }
+}
+
+async function submitResetPassword() {
+  const pwd  = document.getElementById('reset-password-input').value;
+  const conf = document.getElementById('reset-password-confirm').value;
+  const errEl = document.getElementById('reset-error');
+  errEl.style.display = 'none';
+  if (pwd.length < 6) { errEl.textContent = 'Senha deve ter no mínimo 6 caracteres.'; errEl.style.display='block'; return; }
+  if (pwd !== conf)   { errEl.textContent = 'As senhas não coincidem.'; errEl.style.display='block'; return; }
+  const token = new URLSearchParams(window.location.search).get('reset');
+  try {
+    const r = await fetch('/api/auth/reset-password', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ token, password: pwd }),
+    });
+    if (r.ok) {
+      document.getElementById('reset-password-input').style.display  = 'none';
+      document.getElementById('reset-password-confirm').style.display = 'none';
+      document.querySelector('#reset-modal button[onclick="submitResetPassword()"]').style.display = 'none';
+      document.getElementById('reset-step-done').style.display = 'block';
+      // Remove o token da URL sem recarregar
+      history.replaceState(null, '', '/');
+    } else {
+      const d = await r.json().catch(()=>({}));
+      errEl.textContent = d.error === 'invalid_or_expired_token' ? 'Link inválido ou expirado.' : 'Erro ao redefinir senha.';
+      errEl.style.display = 'block';
+    }
+  } catch {
+    errEl.textContent = 'Erro de conexão. Tente novamente.';
+    errEl.style.display = 'block';
+  }
+}
+
+// Abre modal de reset se vier com ?reset=TOKEN na URL
+window.addEventListener('DOMContentLoaded', () => {
+  const token = new URLSearchParams(window.location.search).get('reset');
+  if (token) {
+    document.getElementById('reset-modal').style.display = 'flex';
+  }
+});
+
+// Mostra link "Esqueci minha senha" apenas na aba de login
+window._showForgotLink = (show) => {
+  const el = document.getElementById('forgot-link-wrap');
+  if (el) el.style.display = show ? 'block' : 'none';
+};
+</script>
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {

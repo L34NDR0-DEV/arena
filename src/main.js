@@ -937,6 +937,7 @@ window.switchAuthTab = function(mode){
   document.getElementById('auth-submit-btn').textContent = mode==='register'
     ? '►   CRIAR CONTA   ◄' : '►   ENTRAR   ◄';
   document.getElementById('auth-password').setAttribute('autocomplete', mode==='register' ? 'new-password' : 'current-password');
+  if (window._showForgotLink) window._showForgotLink(mode === 'login');
 };
 
 window.authSubmit = function(ev){

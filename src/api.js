@@ -243,6 +243,74 @@ const ROUTES = [
   },
 
   {
+    method: 'POST', path: '/api/auth/forgot-password',
+    rateLimit: rateLimited('auth', 5, 60_000, (req) => clientIp(req)),
+    handler: async (req, res, { body }) => {
+      const email = normalizeEmail(body.email);
+      if (!EMAIL_RE.test(email)) return sendJson(res, 400, { error: 'invalid_email' });
+
+      // Sempre responde OK (não revela se o email existe)
+      const user = db.findUserByEmail.get(email);
+      if (!user || !user.password_hash) return sendJson(res, 200, { ok: true });
+
+      // Gera token seguro (32 bytes hex)
+      const crypto = require('crypto');
+      const token = crypto.randomBytes(32).toString('hex');
+      db.deleteUserResets.run(user.id);
+      db.insertPasswordReset.run(token, user.id);
+
+      const PUBLIC_URL = (process.env.PUBLIC_URL || 'https://towerdefensespace.com.br').replace(/\/$/, '');
+      const resetLink = `${PUBLIC_URL}/?reset=${token}`;
+
+      await mailer.sendEmail({
+        to: email,
+        subject: 'Recuperação de senha — Tower Defense Space',
+        html: `
+          <div style="font-family:sans-serif;max-width:480px;margin:0 auto;background:#04080f;color:#e0d0ff;padding:32px;border-radius:12px;border:1px solid #9b5cff44;">
+            <h2 style="color:#ff8c00;margin:0 0 8px;">Tower Defense Space</h2>
+            <p style="color:#aaa;margin:0 0 24px;font-size:13px;">Recuperação de senha</p>
+            <p>Olá <strong>${user.display_name}</strong>,</p>
+            <p>Recebemos uma solicitação para redefinir a senha da sua conta.</p>
+            <p>Clique no botão abaixo para criar uma nova senha. O link expira em <strong>1 hora</strong>.</p>
+            <div style="text-align:center;margin:32px 0;">
+              <a href="${resetLink}" style="background:#9b5cff;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-weight:bold;font-size:15px;display:inline-block;">
+                Redefinir Senha
+              </a>
+            </div>
+            <p style="font-size:12px;color:#666;">Se você não solicitou isso, ignore este e-mail — sua senha não será alterada.</p>
+            <p style="font-size:12px;color:#666;">Ou copie o link: <a href="${resetLink}" style="color:#9b5cff;">${resetLink}</a></p>
+          </div>
+        `,
+      });
+
+      sendJson(res, 200, { ok: true });
+    },
+  },
+
+  {
+    method: 'POST', path: '/api/auth/reset-password',
+    rateLimit: rateLimited('auth', 8, 60_000, (req) => clientIp(req)),
+    handler: (req, res, { body }) => {
+      const token    = String(body.token || '').trim();
+      const password = String(body.password || '');
+      if (!token)              return sendJson(res, 400, { error: 'missing_token' });
+      if (password.length < 6) return sendJson(res, 400, { error: 'weak_password' });
+
+      const reset = db.findPasswordReset.get(token);
+      if (!reset) return sendJson(res, 400, { error: 'invalid_or_expired_token' });
+
+      const hash = auth.hashPassword(password);
+      db.transaction(() => {
+        db.updatePasswordHash.run(hash, reset.user_id);
+        db.markResetUsed.run(token);
+        db.deleteUserResets.run(reset.user_id);
+      });
+
+      sendJson(res, 200, { ok: true });
+    },
+  },
+
+  {
     method: 'POST', path: '/api/auth/google',
     handler: async (req, res, { body }) => {
       const idToken = String(body.idToken || '');
