@@ -2,6 +2,17 @@
 // Para lançar uma atualização: adicione uma nova entrada no TOPO da lista.
 export const CHANGELOG = [
   {
+    version: 'v2.3',
+    date: '2026-06-12',
+    changes: [
+      'Sistema de versão obrigatório: o jogo detecta atualização nova, limpa cache antigo e recarrega para manter todos na versão atual',
+      'Tower Defense: spawn das naves ficou mais seguro e evita nascer dentro da torre central ou dos relés',
+      'Modos online: contador compacto de abates da equipe ao lado dos slots de arma',
+      'Corrigido falso aviso da narradora dizendo que você eliminou alguém ao iniciar partidas online',
+      'Abates não são contabilizados durante a zona segura inicial dos modos online',
+    ],
+  },
+  {
     version: 'v2.2',
     date: '2026-06-11',
     changes: [

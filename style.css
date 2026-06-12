@@ -967,6 +967,18 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   display:flex;flex-direction:column;align-items:flex-end;gap:6px;
 }
 /* ── Slots de arma (R T Y U I + L) ── */
+#team-kill-counter{
+  display:flex;align-items:center;gap:8px;align-self:flex-end;
+  padding:5px 8px;border:1px solid rgba(155,92,255,.32);border-radius:4px;
+  background:linear-gradient(90deg,rgba(20,8,36,.86),rgba(4,14,28,.74));
+  box-shadow:0 0 12px rgba(155,92,255,.16);
+  font-family:'Press Start 2P',monospace;pointer-events:none;
+}
+.tkc-label{font-size:6px;color:rgba(220,200,255,.72);letter-spacing:1px;}
+.tkc-score{display:flex;align-items:center;gap:5px;font-size:10px;line-height:1;}
+.tkc-score b:first-child{color:#ff4d6a;text-shadow:0 0 8px rgba(255,77,106,.45);}
+.tkc-score b:last-child{color:#4da6ff;text-shadow:0 0 8px rgba(77,166,255,.45);}
+.tkc-score em{font-style:normal;font-size:6px;color:rgba(255,255,255,.38);}
 #weapon-slots{display:flex;gap:4px;align-items:flex-end;}
 .ws-slot{
   position:relative;width:38px;height:38px;

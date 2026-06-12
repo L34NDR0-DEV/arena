@@ -52,7 +52,9 @@ export class Game {
     this.combat.setHitStopCallback((duration) => this.hitStop(duration));
     this.combat.setWallDropCallback((x,y) => this.itemMgr.spawnAt(x,y,1,this.arena));
     this.combat.setVoiceCallbacks(
-      () => this._playVoice('vceleiminouuminimigo'),
+      () => {
+        if (this._canAnnounceKill()) this._playVoice('vceleiminouuminimigo');
+      },
       (byTower) => this._playVoice(byTower ? 'atorreeeliminouvc' : 'vcfoieliminado')
     );
     this.ui       = new UI();
@@ -153,6 +155,7 @@ export class Game {
     this.isHost=false;       // anfitrião simula bots locais
     this.bots=[];            // TeamBot[] (apenas no anfitrião)
     this._teamScores={red:0, blue:0};
+    this._matchStartedAt = 0;
     this._lobby = (mode==='equipe_online' || mode==='tower_defense'); // true até chegar match_start
     this._lobbyCount=1;
     this._tdQueuePos=-1;
@@ -379,8 +382,9 @@ export class Game {
         onState:msg=>this.peers[msg.id]?.applyState(msg.data),
         onEvent:msg=>{
           if(msg.data?.type==='kill') {
+            if (this._safezone?.active) return;
             this.ui.killFeed(`${msg.data.killerName} eliminou ${msg.data.victimName}`);
-            if (isTeamMode && msg.data.killerTeam) this._registerTeamKill(msg.data.killerTeam);
+            if ((isTeamMode || isTdMode) && msg.data.killerTeam) this._registerTeamKill(msg.data.killerTeam);
           }
         },
         onServerNotice: msg=>{
@@ -427,6 +431,7 @@ export class Game {
   // popula peers reais, marca o time/host local e instancia bots (se host).
   _onMatchStart(msg) {
     this._lobby=false;
+    this._matchStartedAt = performance.now();
     this.ui.hideTeamLobby();
     this.team   = msg.you?.team ?? null;
     this.isHost = !!msg.you?.isHost;
@@ -541,6 +546,7 @@ export class Game {
   // ao redor da torre central neutra.
   _onTdMatchStart(msg) {
     this._lobby=false;
+    this._matchStartedAt = performance.now();
     this.ui.hideTeamLobby();
     this.team   = msg.you?.team ?? null;
     this.isHost = !!msg.you?.isHost;
@@ -609,7 +615,32 @@ export class Game {
     const anchor=this._teamStartAnchor(team);
     const spread=this.mode==='tower_defense' ? 80 : 140;
     const jitter=()=> (Math.random()-0.5)*spread;
-    return { x: anchor.x+jitter(), y: anchor.y+jitter() };
+    let best={ x: anchor.x, y: anchor.y }, bestScore=-Infinity;
+    for (let i=0;i<24;i++) {
+      const p={ x: anchor.x+jitter(), y: anchor.y+jitter() };
+      p.x=Math.max(80,Math.min(ARENA_W-80,p.x));
+      p.y=Math.max(80,Math.min(ARENA_H-80,p.y));
+      const score=this._spawnSafetyScore(p.x,p.y);
+      if (score>bestScore) { best=p; bestScore=score; }
+      if (score>=1) return p;
+    }
+    return best;
+  }
+
+  _spawnSafetyScore(x, y) {
+    let score=1;
+    const tower=this.towerDefenseMgr?.tower;
+    if (tower) {
+      const minD=(tower.r||90)+190;
+      const d=Math.hypot(x-tower.x,y-tower.y);
+      if (d<minD) score=Math.min(score,(d-minD)/minD);
+    }
+    for (const r of (this.towerDefenseMgr?.relays||[])) {
+      const minD=120;
+      const d=Math.hypot(x-r.x,y-r.y);
+      if (d<minD) score=Math.min(score,(d-minD)/minD);
+    }
+    return score;
   }
 
   // Calcula centro e raio mínimo da bolha segura que envolve todas as naves de um time
@@ -641,12 +672,21 @@ export class Game {
   }
 
   _registerTeamKill(team) {
+    if (this._safezone?.active) return;
     if (!this._teamScores[team]) this._teamScores[team]=0;
     this._teamScores[team]++;
     if (this._teamScores[team]>=TEAM_KILL_TARGET && !this.over) {
       const won = team===this.team;
       this._endGame(won);
     }
+  }
+
+  _canAnnounceKill() {
+    if (this._lobby || this._safezone?.active) return false;
+    if ((this.mode==='equipe_online'||this.mode==='tower_defense') && this._matchStartedAt) {
+      return performance.now() - this._matchStartedAt > 1500;
+    }
+    return true;
   }
 
   _input() {
@@ -1112,7 +1152,8 @@ export class Game {
     // Atualiza HUD
     const pLives=this.mode==='contra1'?this.enemyMgr.playerLives:null;
     const eLives=this.mode==='contra1'?this.enemyMgr.enemyLives:null;
-    this.ui.update(this.player,this.timeLeft,this.enemyMgr.enemyScore,pLives,eLives,this.enemyMgr.maxLives,this.mode,this.mode==='equipe_online'?this._teamScores:null);
+    const onlineTeamScores = (this.mode==='equipe_online'||this.mode==='tower_defense') ? this._teamScores : null;
+    this.ui.update(this.player,this.timeLeft,this.enemyMgr.enemyScore,pLives,eLives,this.enemyMgr.maxLives,this.mode,onlineTeamScores);
   }
 
   // Resolve combate envolvendo Torres Astrais: projéteis e colisões físicas

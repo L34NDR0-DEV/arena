@@ -147,6 +147,9 @@ export class UI {
     this._scoreE = document.getElementById('score-enemy');
     this._timer  = document.getElementById('timer');
     this._center = document.getElementById('hud-center');
+    this._teamKillCounter = document.getElementById('team-kill-counter');
+    this._teamKillRed = document.getElementById('tkc-red');
+    this._teamKillBlue = document.getElementById('tkc-blue');
     this._wave   = null;
     this._notify = document.getElementById('notify');
     this._kfeed  = document.getElementById('kill-feed');
@@ -298,15 +301,8 @@ export class UI {
 
     // Placar: visível apenas nos modos que usam pontuação direta
     if (this._center) {
-      if (mode === 'contra1' || mode === 'tower_defense' || mode === 'cards') { this._center.classList.add('hidden'); }
-      else if (mode === 'equipe_online' && teamScores) {
-        this._center.classList.remove('hidden');
-        const redLabel  = this._center.querySelector('.score-box:first-child .score-label');
-        const blueLabel = this._center.querySelector('.score-box:last-child .score-label');
-        if (redLabel)  redLabel.textContent  = 'TIME VERMELHO';
-        if (blueLabel) blueLabel.textContent = 'TIME AZUL';
-        if (this._score)  { this._score.textContent  = teamScores.red;  this._score.style.color  = '#ff4d6a'; }
-        if (this._scoreE) { this._scoreE.textContent = teamScores.blue; this._scoreE.style.color = '#4da6ff'; }
+      if (mode === 'contra1' || mode === 'tower_defense' || mode === 'cards' || mode === 'equipe_online') {
+        this._center.classList.add('hidden');
       } else {
         this._center.classList.remove('hidden');
         const redLabel  = this._center.querySelector('.score-box:first-child .score-label');
@@ -315,6 +311,15 @@ export class UI {
         if (blueLabel) blueLabel.textContent = 'INIMIGO';
         if (this._score)  { this._score.textContent  = player.score; this._score.style.color  = ''; }
         if (this._scoreE) { this._scoreE.textContent = enemyScore;   this._scoreE.style.color = ''; }
+      }
+    }
+
+    if (this._teamKillCounter) {
+      const showTeamKills = (mode === 'equipe_online' || mode === 'tower_defense') && teamScores;
+      this._teamKillCounter.style.display = showTeamKills ? 'flex' : 'none';
+      if (showTeamKills) {
+        if (this._teamKillRed) this._teamKillRed.textContent = teamScores.red ?? 0;
+        if (this._teamKillBlue) this._teamKillBlue.textContent = teamScores.blue ?? 0;
       }
     }
 
