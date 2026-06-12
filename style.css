@@ -190,9 +190,11 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .arcade-modal-overlay{
   position:fixed;inset:0;z-index:9999;
   background:rgba(2,5,8,0.88);
-  display:flex;align-items:center;justify-content:center;
+  align-items:center;justify-content:center;
   backdrop-filter:blur(3px);
+  display:none !important;
 }
+.arcade-modal-overlay.open{display:flex !important;}
 .arcade-modal-box{
   position:relative;
   background:linear-gradient(135deg,#0e0a1aee,#160e28ee);
