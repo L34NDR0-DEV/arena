@@ -9,7 +9,7 @@ function spawnTrailPoint(trail, x, y) {
   trail.push({ x, y, life: 1, maxLife: 1 });
 }
 function updateTrail(trail, dt) {
-  const decay = 3.2; // duração ~0.31s
+  const decay = 1.1; // duração ~0.9s
   for (const p of trail) p.life -= decay * dt;
   return trail.filter(p => p.life > 0);
 }
@@ -923,13 +923,15 @@ export class Player {
     const trailDef = TRAILS[this.equippedTrailId];
     if (trailDef && trailDef.style !== 'none') {
       const spd = Math.hypot(this.vx, this.vy);
-      if (spd > 20) {
+      if (spd > 5) {
         this._trailTimer -= dt;
         if (this._trailTimer <= 0) {
-          // Emite atrás do centro da nave
-          const spacing = trailDef.style === 'smoke' ? 0.045 : 0.03;
+          const spacing = trailDef.style === 'smoke' ? 0.045 : 0.025;
           this._trailTimer = spacing;
-          spawnTrailPoint(this.trail, this.x, this.y);
+          // Emite atrás da nave usando o ângulo de movimento
+          const ang = Math.atan2(this.vy, this.vx);
+          const offset = 20;
+          spawnTrailPoint(this.trail, this.x - Math.cos(ang) * offset, this.y - Math.sin(ang) * offset);
         }
       }
     }
