@@ -1,5 +1,5 @@
 {
-  "name": "Tower Defense Space",
+  "name": "Tower Dfense Space",
   "short_name": "TD Space",
   "description": "Jogo de nave espacial multiplayer online. Pilote naves em arenas espaciais, enfrente inimigos e complete missões.",
   "start_url": "/",
@@ -62,7 +62,7 @@
   ],
   "shortcuts": [
     {
-      "name": "Tower Defense Space — Jogar",
+      "name": "Tower Dfense Space — Jogar",
       "short_name": "Jogar",
       "description": "Entrar direto na arena",
       "url": "/?utm_source=pwa_shortcut",

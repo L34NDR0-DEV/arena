@@ -2385,6 +2385,14 @@ export class CardDefenseManager {
     }
     while (chosen.length < 3) chosen.push(positive[Math.floor(Math.random()*positive.length)]);
 
+    // Prioriza upgrade de habilidades permanentes de slot ja escolhidas.
+    const slotCards = new Set(['rapid_charge','freeze_core','nova_core','shield_charge','regen_core','tower_card','trap_card']);
+    const upgradableSlots = [...new Set(ownedCardIds)]
+      .filter(id => slotCards.has(id) && ownedCardIds.filter(x=>x===id).length < 3 && pool.includes(id));
+    const slotUpgradeId = upgradableSlots.length
+      ? upgradableSlots[Math.floor(Math.random()*upgradableSlots.length)]
+      : null;
+
     // Sorteia 1 carta rejeitada para incluir (substitui uma das 3)
     let returnedCard = null;
     if (this._rejectedCards.length > 0) {
@@ -2393,6 +2401,7 @@ export class CardDefenseManager {
       returnedCard = { id: rejected.id, level: Math.min(3, rejected.rejectCount + 1), returned: true };
       chosen[0] = rejected.id; // substitui a primeira
     }
+    if (slotUpgradeId) chosen[returnedCard ? 1 : 0] = slotUpgradeId;
 
     // Determina level das cartas
     return chosen.map((id, idx) => {

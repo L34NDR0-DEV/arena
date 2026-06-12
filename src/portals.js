@@ -295,7 +295,8 @@ class BlackHole {
       this._warnRings.push({ r: this.r * 1.2, maxR: BLACKHOLE_INFLUENCE * 0.6, life: 1, maxLife: 1 });
     }
     for (const w of this._warnRings) {
-      w.r += (w.maxR - w.r) * dt * 2;
+      w.r += (w.maxR - w.r) * Math.min(1, dt * 2);
+      w.r = Math.max(0.01, w.r);
       w.life -= dt;
     }
     this._warnRings = this._warnRings.filter(w => w.life > 0);
@@ -362,11 +363,12 @@ class BlackHole {
 
     // ── Anéis de aviso (choque pulsante) ────────────────────
     for (const w of this._warnRings) {
+      const ringR = Math.max(0.01, w.r);
       ctx.globalAlpha = (w.life / w.maxLife) * 0.35;
       ctx.strokeStyle = '#ff4444';
       ctx.lineWidth = 1.5;
       ctx.shadowColor = '#ff4444'; ctx.shadowBlur = 8;
-      ctx.beginPath(); ctx.arc(this.x, this.y, w.r, 0, Math.PI*2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(this.x, this.y, ringR, 0, Math.PI*2); ctx.stroke();
       ctx.shadowBlur = 0;
     }
 

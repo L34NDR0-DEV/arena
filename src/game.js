@@ -591,17 +591,33 @@ export class Game {
     }
   }
 
-  _spawnPosFor(team) {
-    // Times nascem em lados opostos da arena
+  _teamStartAnchor(team) {
+    if (this.mode === 'tower_defense') {
+      const padX = Math.max(180, ARENA_W * 0.16);
+      const padY = Math.max(150, ARENA_H * 0.22);
+      return team === 'red'
+        ? { x: padX, y: padY }
+        : { x: ARENA_W - padX, y: ARENA_H - padY };
+    }
     const cx=ARENA_W/2, cy=ARENA_H/2;
     const off=Math.min(ARENA_W,ARENA_H)*0.32;
-    const jitter=()=> (Math.random()-0.5)*140;
-    if (team==='red')  return { x: cx-off+jitter(), y: cy+jitter() };
-    return                   { x: cx+off+jitter(), y: cy+jitter() };
+    return team==='red' ? { x: cx-off, y: cy } : { x: cx+off, y: cy };
+  }
+
+  _spawnPosFor(team) {
+    // Times nascem em lados opostos da arena
+    const anchor=this._teamStartAnchor(team);
+    const spread=this.mode==='tower_defense' ? 80 : 140;
+    const jitter=()=> (Math.random()-0.5)*spread;
+    return { x: anchor.x+jitter(), y: anchor.y+jitter() };
   }
 
   // Calcula centro e raio mínimo da bolha segura que envolve todas as naves de um time
   _calcSafeBubble(team) {
+    if (this.mode === 'tower_defense') {
+      const anchor = this._teamStartAnchor(team);
+      return { cx: anchor.x, cy: anchor.y, r: 230 };
+    }
     const members = [];
     if (this.player.team === team && !this.player.dead) members.push(this.player);
     for (const rp of Object.values(this.peers)) {
@@ -942,7 +958,11 @@ export class Game {
 
     // ── Portais e Buracos Negros ──────────────────────────────
     if (this.portalMgr) {
-      const allEntities = [this.player, ...this.enemyMgr.enemies.filter(e=>!e.dead), ...Object.values(this.peers), ...this.bots];
+      const cardsCountdown = this._isCardsMode && this._cardsMgr && !this._cardsMgr.isWaveActive;
+      const preStartLock = this._safezone?.active || cardsCountdown;
+      const allEntities = preStartLock
+        ? []
+        : [this.player, ...this.enemyMgr.enemies.filter(e=>!e.dead), ...Object.values(this.peers), ...this.bots];
       const teleported = this.portalMgr.update(dt, allEntities);
       // Bônus de teleporte ao player: +20 mana e +15 hp
       for (const { entity } of teleported) {
@@ -953,7 +973,7 @@ export class Game {
         }
       }
       // Dano dos buracos negros ao player
-      if (!this.player.dead && !this.player.rebuilding) {
+      if (!preStartLock && !this.player.dead && !this.player.rebuilding) {
         const bh = this.portalMgr.applyBlackHoles(this.player, dt);
         if (bh.destroyed) {
           // Destruição pelo núcleo — morte instantânea
@@ -969,7 +989,7 @@ export class Game {
         }
       }
       // Dano dos buracos negros aos inimigos
-      for (const e of this.enemyMgr.enemies) {
+      if (!preStartLock) for (const e of this.enemyMgr.enemies) {
         if (e.dead) continue;
         const bhe = this.portalMgr.applyBlackHoles(e, dt);
         if (bhe.destroyed) {
@@ -1005,7 +1025,7 @@ export class Game {
       this.towerMgr.update(dt,this.player,this.enemyMgr.enemies,this.combat.bullets);
       this._resolveTowerCombat(dt);
     }
-    if (this.towerDefenseMgr) {
+    if (this.towerDefenseMgr && !this._safezone?.active) {
       this.towerDefenseMgr.update(dt, this.combat.bullets, this._tdAttackers());
       this._resolveCentralTowerCombat(dt);
     }

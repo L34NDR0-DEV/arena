@@ -1760,7 +1760,17 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 @keyframes maintPulse{0%,100%{box-shadow:0 0 10px #ffaa4444}50%{box-shadow:0 0 22px #ffaa44aa}}
 
 /* ══ Cards of Defense — botão na grade de modos ══════════════════ */
-.mode-cards{position:relative;border-color:#00cc66!important;color:#00cc66!important;}
+.mode-cards{
+  position:relative;
+  border-color:#00cc66!important;
+  color:#00ff88!important;
+  background:
+    radial-gradient(circle at 50% 18%,rgba(0,255,136,.12),transparent 38%),
+    linear-gradient(180deg,rgba(0,48,32,.78),rgba(4,10,18,.92))!important;
+}
+.mode-cards:not(.active):not(.mode-disabled-admin){opacity:.82;}
+.mode-cards svg{filter:drop-shadow(0 0 8px rgba(0,255,136,.55));}
+.mode-cards .mode-label{color:#00ff88;text-shadow:0 0 8px rgba(0,255,136,.5);}
 .mode-badge-cards{
   position:absolute;top:4px;right:4px;
   font-family:'Press Start 2P',monospace;font-size:6px;
@@ -1871,6 +1881,12 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   font-size:8px;color:#ff88aa;background:#ff005522;
   border:1px solid #ff005544;border-radius:4px;
   padding:2px 6px;font-family:'Press Start 2P',monospace;letter-spacing:.5px;
+}
+.card-upgrade-badge{
+  font-size:8px;color:#00ffcc;background:#00ffcc22;
+  border:1px solid #00ffcc55;border-radius:4px;
+  padding:2px 6px;font-family:'Press Start 2P',monospace;letter-spacing:.5px;
+  box-shadow:0 0 12px #00ffcc33;
 }
 .cards-hint{font-size:10px;color:#ffffff28;letter-spacing:.5px;text-align:center;}
 

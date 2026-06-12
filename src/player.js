@@ -195,19 +195,19 @@ function spawnFlameAt(flames, ex, ey, angle, intensity, flameColors=null) {
   const back = angle + Math.PI;
   // Núcleo: poucas partículas grandes, alongadas no eixo da popa — dão o
   // efeito de "jato" contínuo em vez de uma bolha de fumaça.
-  const coreCount = 1 + Math.ceil(intensity * 1.4);
+  const coreCount = 1 + Math.ceil(intensity);
   for (let i = 0; i < coreCount; i++) {
-    const spread = (Math.random()-0.5)*0.22;
+    const spread = (Math.random()-0.5)*0.16;
     const fa  = back + spread;
-    const sp  = 95 + Math.random()*90;
-    const life = 0.10 + Math.random()*0.09;
+    const sp  = 105 + Math.random()*75;
+    const life = 0.08 + Math.random()*0.07;
     flames.push({
       kind:'core',
       x:ex+(Math.random()-.5)*2, y:ey+(Math.random()-.5)*2,
       vx:Math.cos(fa)*sp, vy:Math.sin(fa)*sp,
       angle: fa,
       colors,
-      life, maxLife:life, size:5+intensity*9+Math.random()*3, flicker:Math.random(),
+      life, maxLife:life, size:4+intensity*7+Math.random()*2, flicker:Math.random(),
     });
   }
   // Faíscas: partículas pequenas e rápidas, espalhadas em leque — dão
