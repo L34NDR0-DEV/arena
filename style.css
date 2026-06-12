@@ -825,6 +825,28 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .trail-dot-preview{flex-shrink:0;transition:transform .2s cubic-bezier(.2,.9,.3,1.3);}
 .shop-card:hover .trail-dot-preview,.shop-card.selected .trail-dot-preview{transform:scale(1.15);}
 /* Card ativo (equipado) — borda verde igual às skins possuídas no menu */
+.shop-card-action{
+  width:100%;min-height:28px;margin-top:2px;border:1px solid #ffcc4455;border-radius:4px;
+  background:linear-gradient(90deg,#3a1d00,#ff9f1a,#3a1d00);background-size:220% 100%;
+  color:#160b00;font-family:'Press Start 2P',monospace;font-size:7px;line-height:1.35;
+  font-weight:800;letter-spacing:.5px;text-align:center;cursor:pointer;padding:7px 5px;
+  box-shadow:0 3px 10px #00000055,0 0 12px #ff9f1a33;
+  transition:transform .15s,filter .15s,border-color .15s,box-shadow .15s;
+}
+.shop-card-action:hover{
+  transform:translateY(-1px);filter:brightness(1.12);border-color:#ffe066;
+  box-shadow:0 5px 14px #00000066,0 0 16px #ffcc4455;
+}
+.shop-card-action:active{transform:translateY(0) scale(.98);}
+.shop-card-action.equip{
+  border-color:#00ff8855;background:linear-gradient(90deg,#06351f,#20e68a,#06351f);
+  color:#02140c;box-shadow:0 3px 10px #00000055,0 0 12px #00ff8833;
+}
+.shop-card-action.equipped{
+  border-color:#00ff8877;background:#062316;color:#00ff88;cursor:default;
+  box-shadow:0 0 12px #00ff8833 inset,0 3px 10px #00000055;opacity:.9;
+}
+.shop-card-action:disabled{pointer-events:none;}
 .shop-card.trail-active{border-color:#00ff88 !important;box-shadow:0 0 18px #00ff8840,0 0 0 1px #00ff8833 inset;}
 .shop-card.trail-active::after{
   content:'ATIVO';position:absolute;top:8px;right:-26px;transform:rotate(40deg);

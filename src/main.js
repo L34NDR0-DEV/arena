@@ -2183,11 +2183,36 @@ function buildTrailsTab(){
       const badge = document.createElement('div');
       badge.className = 'shop-card-promo-badge';
       badge.textContent = isUserPromoCard ? 'OFERTA' : 'PREMIUM';
-      badge.textContent = 'PREMIUM';
       card.appendChild(badge);
     }
 
-    card.append(dot, nameEl, tag);
+    const action = document.createElement('button');
+    action.type = 'button';
+    action.className = 'shop-card-action';
+    if (isEquipped) {
+      action.classList.add('equipped');
+      action.textContent = 'EQUIPADO';
+      action.disabled = true;
+    } else if (isOwned) {
+      action.classList.add('equip');
+      action.textContent = 'EQUIPAR';
+      action.onclick = (ev) => {
+        ev.stopPropagation();
+        selectTrail(trail.id, true);
+        equipTrail(trail.id);
+      };
+    } else {
+      const effectivePrice = trailPriceFor(trail.id);
+      action.classList.add('buy');
+      action.textContent = `COMPRAR ${effectivePrice} CR`;
+      action.onclick = (ev) => {
+        ev.stopPropagation();
+        selectTrail(trail.id, true);
+        confirmTrailPurchase(trail.id);
+      };
+    }
+
+    card.append(dot, nameEl, tag, action);
     card.onclick = () => selectTrail(trail.id);
     grid.appendChild(card);
   });
