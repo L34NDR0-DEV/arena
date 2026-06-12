@@ -109,7 +109,7 @@ function recordMatchAndMaybeReward(userId, { mode, win }) {
   // Janela de controle horário — reseta quando expira.
   const now = Date.now();
   let hourCount = user.reward_hour_count || 0;
-  let hourStarted = user.reward_hour_started ? Date.parse(user.reward_hour_started + 'Z') : null;
+  let hourStarted = user.reward_hour_started ? Date.parse(user.reward_hour_started.replace(' ', 'T') + 'Z') : null;
   if (!hourStarted || (now - hourStarted) > REWARD_HOUR_WINDOW_MS) {
     hourCount = 0;
     hourStarted = now;

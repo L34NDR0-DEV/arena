@@ -513,8 +513,10 @@ const ROUTES = [
     auth: true,
     rateLimit: rateLimited('matches', 20, 60_000, (req, { user }) => user.id),
     handler: (req, res, { body, user }) => {
-      const mode = String(body.mode || 'livre').slice(0, 30);
-      const difficulty = body.difficulty ? String(body.difficulty).slice(0, 20) : null;
+      const VALID_MODES = ['livre','contra1','survival','cards','equipe_online','tower_defense','teste'];
+      const VALID_DIFFS = ['facil','moderado','dificil','impossivel'];
+      const mode = VALID_MODES.includes(body.mode) ? body.mode : 'livre';
+      const difficulty = VALID_DIFFS.includes(body.difficulty) ? body.difficulty : null;
       const win = body.win ? 1 : 0;
       const score = Number.isFinite(body.score) ? Math.trunc(body.score) : 0;
       const kills = Number.isFinite(body.kills) ? Math.trunc(body.kills) : 0;

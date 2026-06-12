@@ -83,7 +83,8 @@ function findOpenTeamRoom() {
 }
 
 function assignTeam(tr) {
-  return tr.teamCounts.red <= tr.teamCounts.blue ? 'red' : 'blue';
+  if (tr.teamCounts.red === tr.teamCounts.blue) return Math.random() < 0.5 ? 'red' : 'blue';
+  return tr.teamCounts.red < tr.teamCounts.blue ? 'red' : 'blue';
 }
 
 function startTeamMatch(roomId) {
@@ -273,7 +274,8 @@ function tdQueuePosition(userId) {
 }
 
 function tdAssignTeam(counts) {
-  return counts.red <= counts.blue ? 'red' : 'blue';
+  if (counts.red === counts.blue) return Math.random() < 0.5 ? 'red' : 'blue';
+  return counts.red < counts.blue ? 'red' : 'blue';
 }
 
 function tdBroadcastQueueState() {
