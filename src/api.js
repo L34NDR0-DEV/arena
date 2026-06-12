@@ -427,14 +427,17 @@ const ROUTES = [
     rateLimit: rateLimited('shop_buy', 5, 10_000, (req, { user }) => user.id),
     handler: (req, res, { body, user }) => {
       const trailId = Number(body.trailId);
-      if (!Number.isInteger(trailId) || trailId < 1 || trailId > 10) {
+      if (!Number.isInteger(trailId) || trailId < 1 || trailId > 17) {
         return sendJson(res, 400, { error: 'invalid_trail' });
       }
       if (db.ownsTrail.get(user.id, trailId)) return sendJson(res, 409, { error: 'already_owned' });
       const cfg = loadShopConfig();
       const TRAIL_PRICES = cfg.trailPrices || {};
       // Preços padrão dos rastros (podem ser sobrescritos pelo admin)
-      const DEFAULT_PRICES = { 1:300, 2:300, 3:400, 4:400, 5:600, 6:600 };
+      const DEFAULT_PRICES = {
+        1:280, 2:280, 3:320, 4:320, 5:350, 6:450, 7:350, 8:380, 9:380,
+        10:460, 11:420, 12:380, 13:400, 14:480, 15:480, 16:460, 17:590,
+      };
       const price = TRAIL_PRICES[trailId] ?? DEFAULT_PRICES[trailId] ?? 300;
       const ok = db.transaction(() => {
         const result = db.spendCredits.run(price, user.id, price);
@@ -455,7 +458,7 @@ const ROUTES = [
     rateLimit: rateLimited('shop_equip', 5, 10_000, (req, { user }) => user.id),
     handler: (req, res, { body, user }) => {
       const trailId = Number(body.trailId);
-      if (!Number.isInteger(trailId) || trailId < 0 || trailId > 10) {
+      if (!Number.isInteger(trailId) || trailId < 0 || trailId > 17) {
         return sendJson(res, 400, { error: 'invalid_trail' });
       }
       if (trailId !== 0 && !db.ownsTrail.get(user.id, trailId)) {

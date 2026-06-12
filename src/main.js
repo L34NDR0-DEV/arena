@@ -2177,15 +2177,25 @@ function buildTrailsTab(){
       tag.className = 'shop-card-tag owned';
       tag.textContent = 'ATIVO';
     } else if (isOwned) {
-      tag.className = 'shop-card-tag owned';
-      tag.textContent = 'POSSUIDO';
+      tag.className = 'shop-card-tag owned shop-card-tag-action';
+      tag.textContent = 'EQUIPAR';
+      tag.onclick = (ev) => {
+        ev.stopPropagation();
+        selectTrail(trail.id, true);
+        equipTrail(trail.id);
+      };
     } else {
       const effectivePrice = trailPriceFor(trail.id);
       const isUserPromo = _userPromoActive() && profile.userPromo?.trailIds?.includes(trail.id);
-      tag.className = 'shop-card-tag locked' + (trail.premium || isUserPromo ? ' promo' : '');
+      tag.className = 'shop-card-tag locked shop-card-tag-action' + (trail.premium || isUserPromo ? ' promo' : '');
       tag.innerHTML = isUserPromo
-        ? `<span class="shop-card-tag-old">${trail.price} CR</span> ${effectivePrice} CR`
-        : `${effectivePrice} CR`;
+        ? `COMPRAR <span class="shop-card-tag-old">${trail.price} CR</span> ${effectivePrice} CR`
+        : `COMPRAR ${effectivePrice} CR`;
+      tag.onclick = (ev) => {
+        ev.stopPropagation();
+        selectTrail(trail.id, true);
+        confirmTrailPurchase(trail.id);
+      };
     }
 
     const isUserPromoCard = _userPromoActive() && profile.userPromo?.trailIds?.includes(trail.id);
@@ -2401,6 +2411,10 @@ async function confirmTrailPurchase(trailId){
   buyBtn.textContent = origText;
   buyBtn.disabled = false;
   if (!ok) {
+    if (data?.error === 'already_owned') {
+      await equipTrail(trailId);
+      return;
+    }
     const msg = data?.error === 'already_owned'        ? 'Rastro já possuído'
               : data?.error === 'insufficient_credits' ? 'Créditos insuficientes'
               : (data?.error || 'Erro ao comprar');
@@ -2408,10 +2422,12 @@ async function confirmTrailPurchase(trailId){
     return;
   }
   currentUser.credits = data.credits;
+  profile = data;
   document.getElementById('shop-balance').textContent = data.credits;
   updateCreditsBadge();
   if (!profile.ownedTrails) profile.ownedTrails = [];
-  profile.ownedTrails.push(trailId);
+  if (!profile.ownedTrails.includes(trailId)) profile.ownedTrails.push(trailId);
+  await equipTrail(trailId);
   // Sucesso
   buyBtn.style.display = 'none';
   const successEl = document.getElementById('shop-trail-success');
@@ -2419,8 +2435,8 @@ async function confirmTrailPurchase(trailId){
   successEl.style.animation = 'none';
   void successEl.offsetWidth;
   successEl.style.animation = '';
-  showNotify('Rastro desbloqueado!');
-  setTimeout(() => buildTrailsTab(), 1200);
+  showNotify('Rastro desbloqueado e equipado!');
+  setTimeout(() => buildTrailsTab(), 400);
 }
 
 async function equipTrail(trailId){
