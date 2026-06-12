@@ -79,58 +79,6 @@
         </div>
       </form>
 
-      <!-- Modal: Esqueci minha senha -->
-      <div id="forgot-modal" class="arcade-modal-overlay" style="display:none;">
-        <div class="arcade-modal-box">
-          <div class="arcade-modal-corner-tl"></div>
-          <div class="arcade-modal-corner-tr"></div>
-          <div class="arcade-modal-title">◆ RECUPERAR SENHA ◆</div>
-          <div id="forgot-step-email">
-            <p class="arcade-modal-sub">INSIRA SEU E-MAIL PARA RECEBER O LINK DE REDEFINIÇÃO</p>
-            <div class="login-field">
-              <label class="login-label">E-MAIL</label>
-              <input id="forgot-email-input" class="login-input" type="email" placeholder="seu@email.com" autocomplete="email"/>
-            </div>
-            <div id="forgot-email-error" class="auth-error" style="display:none;"></div>
-            <button onclick="submitForgotEmail()" class="login-start-btn" style="margin-top:4px;">► &nbsp; ENVIAR LINK &nbsp; ◄</button>
-          </div>
-          <div id="forgot-step-sent" style="display:none;text-align:center;padding:12px 0;">
-            <div class="arcade-modal-icon">[ ✉ ]</div>
-            <p class="arcade-modal-sub" style="margin-top:14px;">LINK ENVIADO!<br/>VERIFIQUE SUA CAIXA DE ENTRADA E SPAM.</p>
-            <div class="arcade-modal-blink">▶ &nbsp; AGUARDANDO &nbsp; ◀</div>
-          </div>
-          <div style="text-align:center;margin-top:18px;">
-            <button onclick="hideForgotPassword()" class="arcade-modal-close">[ FECHAR ]</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Modal: Redefinir senha (via link do email) -->
-      <div id="reset-modal" class="arcade-modal-overlay" style="display:none;">
-        <div class="arcade-modal-box">
-          <div class="arcade-modal-corner-tl"></div>
-          <div class="arcade-modal-corner-tr"></div>
-          <div class="arcade-modal-title">◆ NOVA SENHA ◆</div>
-          <p class="arcade-modal-sub">CRIE UMA NOVA SENHA PARA SUA CONTA</p>
-          <div id="reset-fields">
-            <div class="login-field">
-              <label class="login-label">NOVA SENHA</label>
-              <input id="reset-password-input" class="login-input" type="password" placeholder="mínimo 6 caracteres" autocomplete="new-password"/>
-            </div>
-            <div class="login-field">
-              <label class="login-label">CONFIRMAR SENHA</label>
-              <input id="reset-password-confirm" class="login-input" type="password" placeholder="repita a senha" autocomplete="new-password"/>
-            </div>
-            <div id="reset-error" class="auth-error" style="display:none;"></div>
-            <button onclick="submitResetPassword()" class="login-start-btn" style="margin-top:4px;">► &nbsp; SALVAR SENHA &nbsp; ◄</button>
-          </div>
-          <div id="reset-step-done" style="display:none;text-align:center;padding:16px 0;">
-            <div class="arcade-modal-icon" style="color:#00e87a;">[ OK ]</div>
-            <p class="arcade-modal-sub" style="color:#00e87a;margin-top:12px;">SENHA ALTERADA!<br/>FAÇA LOGIN NORMALMENTE.</p>
-          </div>
-        </div>
-      </div>
-
       <div class="login-divider"></div>
       <div id="google-signin-area" style="display:none;">
         <div class="google-divider-label">— ou —</div>
@@ -991,5 +939,58 @@ window._showForgotLink = (show) => {
     });
   }
 </script>
+
+<!-- ═══ MODAL: Esqueci minha senha ════════════════════════════ -->
+<div id="forgot-modal" class="arcade-modal-overlay" style="display:none;">
+  <div class="arcade-modal-box">
+    <div class="arcade-modal-corner-tl"></div>
+    <div class="arcade-modal-corner-tr"></div>
+    <div class="arcade-modal-title">◆ RECUPERAR SENHA ◆</div>
+    <div id="forgot-step-email">
+      <p class="arcade-modal-sub">INSIRA SEU E-MAIL PARA RECEBER<br/>O LINK DE REDEFINIÇÃO</p>
+      <div class="login-field">
+        <label class="login-label">E-MAIL</label>
+        <input id="forgot-email-input" class="login-input" type="email" placeholder="seu@email.com" autocomplete="email"/>
+      </div>
+      <div id="forgot-email-error" class="auth-error" style="display:none;"></div>
+      <button onclick="submitForgotEmail()" class="login-start-btn" style="margin-top:4px;">► &nbsp; ENVIAR LINK &nbsp; ◄</button>
+    </div>
+    <div id="forgot-step-sent" style="display:none;text-align:center;padding:16px 0;">
+      <div class="arcade-modal-icon">[ ✉ ]</div>
+      <p class="arcade-modal-sub" style="margin-top:14px;">LINK ENVIADO!<br/>VERIFIQUE SUA CAIXA DE ENTRADA E SPAM.</p>
+      <div class="arcade-modal-blink">▶ &nbsp; AGUARDANDO &nbsp; ◀</div>
+    </div>
+    <div style="text-align:center;margin-top:20px;">
+      <button onclick="hideForgotPassword()" class="arcade-modal-close">[ FECHAR ]</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: Redefinir senha (via link do email) ════════════ -->
+<div id="reset-modal" class="arcade-modal-overlay" style="display:none;">
+  <div class="arcade-modal-box">
+    <div class="arcade-modal-corner-tl"></div>
+    <div class="arcade-modal-corner-tr"></div>
+    <div class="arcade-modal-title">◆ NOVA SENHA ◆</div>
+    <p class="arcade-modal-sub">CRIE UMA NOVA SENHA PARA SUA CONTA</p>
+    <div id="reset-fields">
+      <div class="login-field">
+        <label class="login-label">NOVA SENHA</label>
+        <input id="reset-password-input" class="login-input" type="password" placeholder="mínimo 6 caracteres" autocomplete="new-password"/>
+      </div>
+      <div class="login-field">
+        <label class="login-label">CONFIRMAR SENHA</label>
+        <input id="reset-password-confirm" class="login-input" type="password" placeholder="repita a senha" autocomplete="new-password"/>
+      </div>
+      <div id="reset-error" class="auth-error" style="display:none;"></div>
+      <button onclick="submitResetPassword()" class="login-start-btn" style="margin-top:4px;">► &nbsp; SALVAR SENHA &nbsp; ◄</button>
+    </div>
+    <div id="reset-step-done" style="display:none;text-align:center;padding:16px 0;">
+      <div class="arcade-modal-icon" style="color:#00e87a;">[ OK ]</div>
+      <p class="arcade-modal-sub" style="color:#00e87a;margin-top:12px;">SENHA ALTERADA!<br/>FAÇA LOGIN NORMALMENTE.</p>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
