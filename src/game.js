@@ -1073,7 +1073,12 @@ export class Game {
       const allUnits=[this.player, ...Object.values(this.peers), ...this.bots];
       if (this.isHost) {
         for (const bot of this.bots) {
-          if (bot.dead) continue;
+          if (bot.dead) {
+            if (bot.tickRespawn?.(dt, (team) => this._spawnPosFor(team))) {
+              this.arena.spawnParticles(bot.x, bot.y, bot._brain?.color || '#00d4ff', 18, 180);
+            }
+            continue;
+          }
           const before=this.combat.bullets.length;
           bot.update(dt, allUnits, this.combat.bullets);
           // Marca os projéteis recém-disparados pelo bot com seu time/origem,

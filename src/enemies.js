@@ -580,6 +580,36 @@ export class TeamBot {
   set dead(v) { this._brain.dead = v; }
   set hp(v) { this._brain.hp = v; }
 
+  respawnAt(x, y) {
+    this._respawnDelay = null;
+    this._brain.dead = false;
+    this._brain._dying = false;
+    this._brain._dyingAge = 0;
+    this._brain.shards = [];
+    this._brain.hp = this._brain.maxHp;
+    this._brain.x = x;
+    this._brain.y = y;
+    this._brain.vx = 0;
+    this._brain.vy = 0;
+    this._brain._respawnX = x;
+    this._brain._respawnY = y;
+    this._brain._respawnTimer = this._brain._respawnDuration;
+    this._status = null;
+  }
+
+  tickRespawn(dt, spawnPosFn) {
+    if (!this.dead) {
+      this._respawnDelay = null;
+      return false;
+    }
+    if (this._respawnDelay == null) this._respawnDelay = 3.2;
+    this._respawnDelay -= dt;
+    if (this._respawnDelay > 0) return false;
+    const pos = spawnPosFn ? spawnPosFn(this.team) : { x:this.x, y:this.y };
+    this.respawnAt(pos.x, pos.y);
+    return true;
+  }
+
   // Escolhe o alvo entre os jogadores vivos do time adversário ponderando
   // proximidade + fraqueza (HP baixo) + isolamento (poucos aliados por
   // perto) — um bot "implacável" prioriza a presa mais fácil de abater

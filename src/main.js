@@ -4,6 +4,7 @@ import { ARENA_TYPES }    from './arena.js';
 import { Game }           from './game.js';
 import { CHANGELOG }      from './changelog.js';
 import { PROFILE_ICON_DEFS, drawProfileIcon } from './profileIcons.js';
+import { startVersionChecker } from './version-check.js';
 
 let game=null, selectedSkin=0, selectedMode='contra1', paused=false;
 let pilotName='JOGADOR';
@@ -3556,7 +3557,10 @@ window.closeCardsRankingModal = function() {
 };
 
 // Inicia o polling quando a página carrega
-document.addEventListener('DOMContentLoaded', () => startCardsMiniRankingPolling());
+document.addEventListener('DOMContentLoaded', () => {
+  startVersionChecker();
+  startCardsMiniRankingPolling();
+});
 
 // ── Carta de revelação da skin de recompensa do torneio (Hex Champion) ──
 window.closeSkinReveal=function(ev){
