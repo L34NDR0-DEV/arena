@@ -1,7 +1,7 @@
 // Service Worker — Tower Defense Space
 // Estratégia: network-first para o jogo (sempre atualizado), cache para assets estáticos
 
-const APP_VERSION = '2.3.4';
+const APP_VERSION = '2.3.5';
 const CACHE_NAME = `arena-space-${APP_VERSION}`;
 const CACHE_STATIC = `arena-static-${APP_VERSION}`;
 

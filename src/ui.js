@@ -161,6 +161,7 @@ export class UI {
     this._wsSlots      = [0,1,2,3,4].map(i=>document.getElementById('ws'+i));
     this._wsExtra      = document.getElementById('ws-extra');
     this._touchSlots   = [...document.querySelectorAll('#touch-controls .touch-slot')];
+    this._touchWsSlots = [...document.querySelectorAll('#touch-weapon-slots .touch-ws-slot')];
     this._notTO  = null;
     this._lastMode = null;
     this._tooltip  = document.getElementById('hud-tooltip');
@@ -397,18 +398,33 @@ export class UI {
       }
     }
 
+    // Slots de arma mobile (touch-weapon-slots)
+    if (this._touchWsSlots?.length && player.weaponSlots) {
+      this._touchWsSlots.forEach((slot, i) => {
+        const isExtra = slot.dataset.ws === '5';
+        const wt = isExtra ? player.extraWeaponSlot : player.weaponSlots[i];
+        const cv = slot.querySelector('.touch-ws-icon');
+        const isActive = player.activeWeaponSlot === i;
+        slot.classList.toggle('touch-ws-has-weapon', !!wt);
+        slot.classList.toggle('touch-ws-active', isActive);
+        if (cv) {
+          const cctx = cv.getContext('2d');
+          cctx.clearRect(0,0,cv.width,cv.height);
+          if (wt) _drawWeaponIconSmall(cctx, wt, cv.width, cv.height);
+        }
+      });
+    }
+
     // Slots de inventário (5 slots + extra X)
     if (this._touchSlots?.length) {
       this._touchSlots.forEach((slot, i) => {
         const isExtra = slot.dataset.slot === 'x';
         const item = isExtra ? player.inventory?.extraSlot : player.inventory?.slots?.[i];
         const cv = slot.querySelector('.touch-slot-icon');
-        const label = slot.querySelector('span');
         slot.classList.remove('touch-slot-weapon','touch-slot-active');
         slot.classList.toggle('touch-slot-item', !!item);
         slot.dataset.weaponType = '';
         slot.dataset.itemType = item ? item.type : '';
-        if (label) label.textContent = isExtra ? 'X' : String(i+1);
         if (cv) {
           const cctx = cv.getContext('2d');
           cctx.clearRect(0,0,cv.width,cv.height);

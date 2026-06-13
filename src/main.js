@@ -3023,8 +3023,9 @@ showScreen = function(name){
   const btnFire   = document.getElementById('touch-btn-fire');
   const btnDash   = document.getElementById('touch-btn-dash');
   const btnPause  = document.getElementById('touch-btn-pause');
-  const slots     = touchControls.querySelectorAll('.touch-slot');
-  const weaponSlots = document.querySelectorAll('#weapon-slots .ws-slot');
+  const slots      = touchControls.querySelectorAll('.touch-slot');
+  const touchWsSlots = touchControls.querySelectorAll('#touch-weapon-slots .touch-ws-slot');
+  const weaponSlots  = document.querySelectorAll('#weapon-slots .ws-slot');
 
   btnPause?.addEventListener('touchstart', e => {
     e.preventDefault();
@@ -3118,18 +3119,19 @@ showScreen = function(name){
   });
 
   const WS_CODES = ['KeyR','KeyT','KeyY','KeyU','KeyI','KeyL'];
-  weaponSlots.forEach((slot, idx)=>{
-    const code = WS_CODES[idx];
-    const selectWeapon = (ev)=>{
+  function bindWeaponSlot(slot, code){
+    const onPress = (ev)=>{
       ev.preventDefault();
       slot.classList.add('pressed');
       fireKey('keydown', code);
       fireKey('keyup', code);
       setTimeout(()=>slot.classList.remove('pressed'), 120);
     };
-    slot.addEventListener('touchstart', selectWeapon, { passive:false });
-    slot.addEventListener('click', selectWeapon);
-  });
+    slot.addEventListener('touchstart', onPress, { passive:false });
+    slot.addEventListener('click', onPress);
+  }
+  weaponSlots.forEach((slot, idx) => bindWeaponSlot(slot, WS_CODES[idx]));
+  touchWsSlots.forEach((slot, idx) => bindWeaponSlot(slot, WS_CODES[idx]));
 
   window._touchState = touchState;
   window._touchStick = stickVec;
