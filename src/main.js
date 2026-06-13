@@ -1176,11 +1176,12 @@ const _loginBgState = { copaShips: null, ships: null, stars: null, starsW: 0,
   trophyImg: null, trophyLoaded: false, trophyFailed: false,
   bannerShips: null };
 
-// ── Banner Play Store — 4 naves arrastando bandeira pelo espaço ──────────────
-// Estrutura: [F1 F2] ===bandeira=== [T1 T2]
-// F1,F2 = frente puxando o cabo da bandeira
-// T1,T2 = cauda segurando o outro extremo da bandeira
+// ── Banner Play Store — 1 nave arrastando bandeira PNG com física ─────────────
 // dir = 1 (esq→dir) ou -1 (dir→esq)
+// A bandeira é a imagem bandeira.png deformada por física de tecido (verlet)
+
+const _bannerImg = new Image();
+_bannerImg.src = './src/icons/bandeira.png';
 
 function _pickUniqueSkins(n) {
   if (!SKINS.length) return [];
@@ -1189,212 +1190,259 @@ function _pickUniqueSkins(n) {
   for (let i = 0; i < n; i++) {
     const idx = Math.floor(Math.random() * pool.length);
     out.push(pool.splice(idx, 1)[0]);
-    if (!pool.length) pool.push(...SKINS); // reabastecer se necessário
+    if (!pool.length) pool.push(...SKINS);
   }
   return out;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Bandeira PNG deformada por física de tecido (grade verlet 2D)
+// Colunas × Linhas de partículas; cada quad renderizado com drawImage clipado
+// ─────────────────────────────────────────────────────────────────────────────
+const _BFLAG_COLS = 14; // subdivisões horizontais
+const _BFLAG_ROWS = 4;  // subdivisões verticais
+
 function _initBannerShips(W, H) {
-  const dir = Math.random() < 0.5 ? 1 : -1; // 1=esq→dir, -1=dir→esq
-  const skins = _pickUniqueSkins(4);
-  const y = H * (0.10 + Math.random() * 0.20);
-  const speed = (72 + Math.random() * 36) * dir;
-  const SEGS = 26;
-  const SEG_LEN = 14;
-  // Offset inicial: sai completamente fora da tela
-  // dir=1: naves começam à esquerda, bandeira ainda mais à esquerda
-  // dir=-1: naves começam à direita, bandeira ainda mais à direita
-  const frontX = dir > 0 ? -50 : W + 50;
-  const flagSpan = SEGS * SEG_LEN; // comprimento total da bandeira
-  const tailX  = frontX - dir * 80; // naves da cauda ficam 80px atrás das da frente
-  // pré-popula pontos da bandeira entre frente e cauda
-  const pts = Array.from({ length: SEGS }, (_, i) => {
-    const frac = i / (SEGS - 1);
-    return { x: frontX - dir * (20 + i * SEG_LEN), y: y + Math.sin(frac * 3) * 4, vx: 0, vy: 0 };
-  });
+  const dir  = Math.random() < 0.5 ? 1 : -1;
+  const skin = _pickUniqueSkins(1)[0];
+  // y no terço superior mas com margem para a bandeira não sair do canvas
+  const y = H * (0.13 + Math.random() * 0.18);
+  // velocidade mais lenta
+  const speed = (38 + Math.random() * 18) * dir;
+
+  // Dimensão visual da bandeira (px na tela)
+  const BW = 300, BH = 70;
+  const cols = _BFLAG_COLS, rows = _BFLAG_ROWS;
+
+  // Partículas da grade: [row][col]
+  // A nave puxa a coluna 0 (borda esquerda se dir=1, direita se dir=-1)
+  // A ponta livre é a coluna cols (oposta)
+  const startX = dir > 0 ? -BW - 80 : W + BW + 80;
+  const pts = [];
+  for (let r = 0; r <= rows; r++) {
+    pts[r] = [];
+    for (let c = 0; c <= cols; c++) {
+      const fx = startX + (dir > 0 ? 1 : -1) * c * (BW / cols);
+      const fy = y - BH/2 + r * (BH / rows);
+      pts[r][c] = { x: fx, y: fy, px: fx, py: fy, pinned: false };
+    }
+  }
+  // A coluna ancorada à nave: col 0 se dir=1, col=cols se dir=-1
+  const anchorCol = dir > 0 ? 0 : cols;
+  for (let r = 0; r <= rows; r++) pts[r][anchorCol].pinned = true;
+
   return {
-    dir, speed, y,
-    frontX,              // posição X das naves da frente (líder do grupo)
-    skins,               // [F1, F2, T1, T2]
-    bobs: [0,1,2,3].map(() => Math.random() * Math.PI * 2),
+    dir, speed, y, skin,
+    bobPh: Math.random() * Math.PI * 2,
     done: false,
-    thrusts: [[], [], [], []], // partículas por nave
-    SEGS, SEG_LEN, pts,
+    thrust: [],
+    pts, BW, BH, cols, rows, anchorCol,
+    // posição X da nave (ponta ancorada)
+    shipX: startX,
   };
+}
+
+// Física verlet 2D num frame
+function _stepFlagPhysics(bs, dt, t) {
+  const { pts, cols, rows, anchorCol, dir, BW, BH, y, shipX } = bs;
+  const gravity = 0; // espaço — sem gravidade
+  const wind    = 0; // sem vento horizontal (a nave se move, não o ar)
+
+  // Atualiza posições livres com Verlet + turbulência de tecido
+  for (let r = 0; r <= rows; r++) {
+    for (let c = 0; c <= cols; c++) {
+      const p = pts[r][c];
+      if (p.pinned) continue;
+      const vx = (p.x - p.px) * 0.97;
+      const vy = (p.y - p.py) * 0.97;
+      // Ondulação tipo tecido: aumenta com distância da âncora
+      const dist = Math.abs(c - anchorCol) / cols; // 0=perto, 1=longe
+      const wave = Math.sin(t * 2.8 + r * 1.1 + dist * 4.0) * dist * 3.5 * dt * 60
+                 + Math.cos(t * 1.7 + c * 0.8) * dist * 1.8 * dt * 60;
+      p.px = p.x; p.py = p.y;
+      p.x += vx + wind * dt;
+      p.y += vy + gravity * dt + wave;
+    }
+  }
+
+  // Âncora: col 0 (ou cols) segue a nave
+  const shipY = y + Math.sin(t * 1.1 + bs.bobPh) * 5;
+  for (let r = 0; r <= rows; r++) {
+    const p = pts[r][anchorCol];
+    const anchorY = y - BH/2 + r * (BH / rows) + Math.sin(t * 1.1 + bs.bobPh + r * 0.2) * 3;
+    p.x = shipX + (anchorCol === 0 ? 0 : 0);
+    p.y = anchorY;
+    p.px = p.x; p.py = p.y;
+  }
+
+  // Restrições de distância — horizontal e vertical
+  const restH = BW / cols, restV = BH / rows;
+  for (let iter = 0; iter < 6; iter++) {
+    // horizontal
+    for (let r = 0; r <= rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const a = pts[r][c], b = pts[r][c+1];
+        const dx = b.x-a.x, dy = b.y-a.y;
+        const d = Math.hypot(dx,dy)||0.001, diff=(d-restH)/d*0.5;
+        if (!a.pinned){ a.x+=dx*diff; a.y+=dy*diff; }
+        if (!b.pinned){ b.x-=dx*diff; b.y-=dy*diff; }
+      }
+    }
+    // vertical
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c <= cols; c++) {
+        const a = pts[r][c], b = pts[r+1][c];
+        const dx = b.x-a.x, dy = b.y-a.y;
+        const d = Math.hypot(dx,dy)||0.001, diff=(d-restV)/d*0.5;
+        if (!a.pinned){ a.x+=dx*diff; a.y+=dy*diff; }
+        if (!b.pinned){ b.x-=dx*diff; b.y-=dy*diff; }
+      }
+    }
+    // re-fixa âncora após cada iteração
+    for (let r = 0; r <= rows; r++) {
+      const p = pts[r][anchorCol];
+      const anchorY = y - BH/2 + r * (BH / rows) + Math.sin(t * 1.1 + bs.bobPh + r * 0.2) * 3;
+      p.x = shipX; p.y = anchorY; p.px = p.x; p.py = p.y;
+    }
+  }
+}
+
+// Renderiza a bandeira PNG mapeada sobre a grade de quads
+function _drawFlagPNG(ctx, bs) {
+  const img = _bannerImg;
+  if (!img.complete || !img.naturalWidth) return;
+  const { pts, cols, rows, BW, BH } = bs;
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+
+  ctx.save();
+  ctx.shadowColor = '#9b5cff'; ctx.shadowBlur = 18;
+  ctx.globalAlpha = 0.96;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      // 4 cantos do quad na tela
+      const p00 = pts[r][c], p10 = pts[r][c+1];
+      const p01 = pts[r+1][c], p11 = pts[r+1][c+1];
+      // coordenadas UV no PNG
+      const u0 = (c/cols)*iw,   u1 = ((c+1)/cols)*iw;
+      const v0 = (r/rows)*ih,   v1 = ((r+1)/rows)*ih;
+      const uw = u1-u0, vh = v1-v0;
+
+      // Desenha via transformação afim para cada triângulo do quad
+      // Triângulo 1: p00, p10, p01
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(p00.x,p00.y); ctx.lineTo(p10.x,p10.y);
+      ctx.lineTo(p01.x,p01.y); ctx.closePath(); ctx.clip();
+      const m1 = _affineMatrix(p00,p10,p01, u0,v0, u1,v0, u0,v1, iw, ih);
+      if (m1) { ctx.transform(m1[0],m1[1],m1[2],m1[3],m1[4],m1[5]); ctx.drawImage(img,0,0); }
+      ctx.restore();
+
+      // Triângulo 2: p10, p11, p01
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(p10.x,p10.y); ctx.lineTo(p11.x,p11.y);
+      ctx.lineTo(p01.x,p01.y); ctx.closePath(); ctx.clip();
+      const m2 = _affineMatrix(p10,p11,p01, u1,v0, u1,v1, u0,v1, iw, ih);
+      if (m2) { ctx.transform(m2[0],m2[1],m2[2],m2[3],m2[4],m2[5]); ctx.drawImage(img,0,0); }
+      ctx.restore();
+    }
+  }
+  ctx.restore();
+}
+
+// Matriz de transformação afim para mapear triângulo UV → triângulo de tela
+function _affineMatrix(p0,p1,p2, u0,v0, u1,v1, u2,v2, iw, ih) {
+  // Normaliza UV para 0-1
+  const s0=u0/iw, t0=v0/ih, s1=u1/iw, t1=v1/ih, s2=u2/iw, t2=v2/ih;
+  const det = (s1-s0)*(t2-t0)-(s2-s0)*(t1-t0);
+  if (Math.abs(det) < 1e-10) return null;
+  const a = ((p1.x-p0.x)*(t2-t0)-(p2.x-p0.x)*(t1-t0))/det;
+  const b = ((p2.x-p0.x)*(s1-s0)-(p1.x-p0.x)*(s2-s0))/det;
+  const c = p0.x - a*s0 - b*t0;
+  const d = ((p1.y-p0.y)*(t2-t0)-(p2.y-p0.y)*(t1-t0))/det;
+  const e = ((p2.y-p0.y)*(s1-s0)-(p1.y-p0.y)*(s2-s0))/det;
+  const f = p0.y - d*s0 - e*t0;
+  return [a, d, b, e, c, f];
 }
 
 function _drawBannerShip(ctx, skin, x, y, dir, sz, alpha) {
   if (!skin || !skin.drawPreview) return;
   ctx.save();
   ctx.translate(x, y);
-  // dir=1 → voa para direita → proa aponta para direita → rotate +90°
-  // dir=-1 → voa para esquerda → proa aponta para esquerda → rotate -90°
   ctx.rotate(dir > 0 ? Math.PI / 2 : -Math.PI / 2);
   ctx.shadowColor = skin.color || '#9b5cff';
-  ctx.shadowBlur = 16;
+  ctx.shadowBlur = 20;
   ctx.globalAlpha = alpha;
   skin.drawPreview(ctx, (sz * 2) / (skin._size || 1));
   ctx.restore();
   ctx.globalAlpha = 1;
 }
 
-function _drawBannerFlag(ctx, pts, dir, t) {
-  if (!pts || pts.length < 2) return;
-  const N = pts.length;
-  const HH = 16; // meia-altura da bandeira
-
-  // ── Corpo da bandeira ────────────────────────────────────────
-  ctx.save();
-  ctx.shadowColor = '#9b5cff'; ctx.shadowBlur = 14;
-  ctx.beginPath();
-  ctx.moveTo(pts[0].x, pts[0].y - HH);
-  for (let i = 1; i < N; i++) ctx.lineTo(pts[i].x, pts[i].y - HH);
-  for (let i = N - 1; i >= 0; i--) ctx.lineTo(pts[i].x, pts[i].y + HH);
-  ctx.closePath();
-  const x0 = pts[0].x, x1 = pts[N-1].x;
-  const grd = ctx.createLinearGradient(x0, 0, x1, 0);
-  grd.addColorStop(0,    'rgba(25,8,55,0.95)');
-  grd.addColorStop(0.12, 'rgba(45,12,95,0.90)');
-  grd.addColorStop(0.5,  'rgba(38,10,80,0.88)');
-  grd.addColorStop(0.88, 'rgba(45,12,95,0.90)');
-  grd.addColorStop(1,    'rgba(25,8,55,0.95)');
-  ctx.fillStyle = grd; ctx.fill();
-
-  // Bordas glow
-  ctx.strokeStyle = '#9b5cff'; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.65;
-  ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y - HH);
-  for (let i = 1; i < N; i++) ctx.lineTo(pts[i].x, pts[i].y - HH); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y + HH);
-  for (let i = 1; i < N; i++) ctx.lineTo(pts[i].x, pts[i].y + HH); ctx.stroke();
-
-  // Fio central laranja tracejado
-  ctx.strokeStyle = '#ff8c00'; ctx.lineWidth = 0.9; ctx.globalAlpha = 0.45;
-  ctx.setLineDash([5, 6]);
-  ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
-  for (let i = 1; i < N; i++) ctx.lineTo(pts[i].x, pts[i].y); ctx.stroke();
-  ctx.setLineDash([]); ctx.restore(); ctx.globalAlpha = 1;
-
-  // ── Texto no centro da bandeira ──────────────────────────────
-  const midIdx = Math.floor(N * 0.5);
-  const tx = pts[midIdx].x, ty = pts[midIdx].y;
-
-  ctx.save();
-  ctx.translate(tx, ty);
-  // Espelha o texto quando vai da direita para a esquerda
-  if (dir < 0) ctx.scale(-1, 1);
-
-  // Ícone Play Store — triângulo colorido
-  ctx.globalAlpha = 0.95;
-  const ico = [['#34A853',-68,-6,-68,6,-58,0],['#EA4335',-68,6,-58,0,-68,12],
-               ['#FBBC04',-58,0,-48,6,-48,-6],['#4285F4',-68,-12,-58,-6,-68,0]];
-  for (const [col,x1,y1,x2,y2,x3,y3] of ico) {
-    ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 6;
-    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.lineTo(x3,y3); ctx.closePath(); ctx.fill();
-  }
-
-  ctx.font = 'bold 11px "Press Start 2P", monospace';
-  ctx.fillStyle = '#ff8c00'; ctx.shadowColor = '#ff8c00'; ctx.shadowBlur = 12;
-  ctx.textAlign = 'center';
-  ctx.fillText('PLAY STORE', 14, -3);
-  ctx.font = '7px "Press Start 2P", monospace';
-  ctx.fillStyle = '#d4aaff'; ctx.shadowColor = '#9b5cff'; ctx.shadowBlur = 8;
-  ctx.fillText('EM BREVE NO ANDROID', 14, 10);
-  ctx.restore(); ctx.globalAlpha = 1;
-}
-
 function _tickBannerShips(ctx, W, H, dt, t) {
   const bs = _loginBgState.bannerShips;
   if (!bs) return;
-  const { dir, SEGS, SEG_LEN } = bs;
+  const { dir, skin, anchorCol, cols } = bs;
+  const sz = 22;
 
-  bs.frontX += bs.speed * dt;
+  bs.shipX += bs.speed * dt;
 
-  const sz = 18;
-  // Naves da frente: F1 um pouco acima, F2 um pouco abaixo
-  const fxF1 = bs.frontX,        fyF1 = bs.y - 14 + Math.sin(t * 1.2 + bs.bobs[0]) * 5;
-  const fxF2 = bs.frontX - dir*8, fyF2 = bs.y + 14 + Math.sin(t * 1.4 + bs.bobs[1]) * 5;
+  // Posição Y da nave com bob
+  const shipY = bs.y + Math.sin(t * 1.1 + bs.bobPh) * 5;
 
-  // Naves da cauda: ficam na outra ponta da bandeira
-  const flagLen = (SEGS - 1) * SEG_LEN;
-  const txT1 = bs.frontX - dir * (flagLen + 70),  tyT1 = bs.y - 14 + Math.sin(t * 1.1 + bs.bobs[2]) * 5;
-  const txT2 = bs.frontX - dir * (flagLen + 62),  tyT2 = bs.y + 14 + Math.sin(t * 1.3 + bs.bobs[3]) * 5;
+  // Atualiza âncora da bandeira na posição da traseira da nave
+  // dir=1: nave vai para direita, ponta ancorada = col 0 = lado esquerdo da bandeira
+  //        a bandeira fica atrás (à esquerda) da nave
+  // dir=-1: inverso
+  const tieOffsetX = dir > 0 ? -sz * 1.5 : sz * 1.5;
+  bs.shipX; // já atualizado acima
+  // O ponto de ancoragem segue a nave
+  const anchorX = bs.shipX + tieOffsetX;
 
-  // Ancoragem da bandeira: ponto 0 = traseira das naves da frente, ponto N-1 = frente das naves da cauda
-  const anchorFrontX = fxF1 - dir * sz * 1.3, anchorFrontY = fyF1;
-  const anchorTailX  = txT1 + dir * sz * 1.3,  anchorTailY  = tyT1;
+  // Atualiza o X do shipX para a âncora (a física usa bs.shipX diretamente)
+  // Precisa setar o bs.shipX como o X da âncora (col 0 ou cols)
+  const savedShipX = bs.shipX;
+  bs.shipX = anchorX; // temporário para a física
+  _stepFlagPhysics(bs, dt, t);
+  bs.shipX = savedShipX; // restaura
 
-  // Física da bandeira — dois pontos fixos (frente e cauda)
-  bs.pts[0].x = anchorFrontX; bs.pts[0].y = anchorFrontY;
-  bs.pts[SEGS-1].x = anchorTailX; bs.pts[SEGS-1].y = anchorTailY;
+  // Fio de cabo entre nave e borda da bandeira
+  const flagEdgeR = bs.pts[Math.floor(bs.rows/2)][anchorCol];
+  ctx.save();
+  ctx.strokeStyle = '#6622cc'; ctx.lineWidth = 1.2; ctx.globalAlpha = 0.7;
+  ctx.shadowColor = '#9b5cff'; ctx.shadowBlur = 6;
+  ctx.beginPath(); ctx.moveTo(bs.shipX + tieOffsetX * 0.3, shipY);
+  ctx.lineTo(flagEdgeR.x, flagEdgeR.y); ctx.stroke();
+  ctx.restore(); ctx.globalAlpha = 1;
 
-  for (let i = 1; i < SEGS - 1; i++) {
-    const wave = Math.sin(t * 3.0 + i * 0.65) * 2.0 + Math.cos(t * 1.9 + i * 1.1) * 1.0;
-    bs.pts[i].vy += wave * dt * 24;
-    bs.pts[i].vy *= 0.84; bs.pts[i].vx *= 0.90;
-    bs.pts[i].x  += bs.pts[i].vx;
-    bs.pts[i].y  += bs.pts[i].vy;
+  // Partículas de propulsão
+  const trailX = bs.shipX - dir * sz * 1.2;
+  if (Math.random() < 0.7) {
+    bs.thrust.push({ x: trailX, y: shipY + (Math.random()-0.5)*6,
+      vx: -dir * (16+Math.random()*24), vy: (Math.random()-0.5)*6,
+      life: 0.4+Math.random()*0.3, maxLife: 0,
+      r: 2.5+Math.random()*3, col: skin?.color || '#9b5cff' });
   }
-  for (let iter = 0; iter < 4; iter++) {
-    bs.pts[0].x = anchorFrontX; bs.pts[0].y = anchorFrontY;
-    bs.pts[SEGS-1].x = anchorTailX; bs.pts[SEGS-1].y = anchorTailY;
-    for (let i = 1; i < SEGS; i++) {
-      const dx = bs.pts[i].x - bs.pts[i-1].x, dy = bs.pts[i].y - bs.pts[i-1].y;
-      const d = Math.hypot(dx, dy) || 0.001, corr = (d - SEG_LEN) / d * 0.5;
-      bs.pts[i].x -= dx*corr; bs.pts[i].y -= dy*corr;
-      bs.pts[i-1].x += dx*corr; bs.pts[i-1].y += dy*corr;
-    }
-    bs.pts[0].x = anchorFrontX; bs.pts[0].y = anchorFrontY;
-    bs.pts[SEGS-1].x = anchorTailX; bs.pts[SEGS-1].y = anchorTailY;
+  for (const p of bs.thrust) {
+    p.maxLife = p.maxLife || p.life;
+    p.x += p.vx*dt; p.y += p.vy*dt; p.life -= dt;
+  }
+  for (let i = bs.thrust.length-1; i >= 0; i--) if (bs.thrust[i].life <= 0) bs.thrust.splice(i,1);
+  for (const p of bs.thrust) {
+    const a = p.life / p.maxLife;
+    ctx.save(); ctx.globalAlpha = a * 0.85; ctx.fillStyle = p.col;
+    ctx.shadowColor = p.col; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r*a, 0, Math.PI*2); ctx.fill(); ctx.restore();
   }
 
-  // Posições das 4 naves
-  const navePos = [
-    { x: fxF1, y: fyF1, skin: bs.skins[0], alpha: 1.00 },
-    { x: fxF2, y: fyF2, skin: bs.skins[1], alpha: 0.90 },
-    { x: txT1, y: tyT1, skin: bs.skins[2], alpha: 0.88 },
-    { x: txT2, y: tyT2, skin: bs.skins[3], alpha: 0.80 },
-  ];
+  // Bandeira PNG com física
+  _drawFlagPNG(ctx, bs);
 
-  // Partículas de propulsão — saem da traseira de cada nave
-  navePos.forEach(({ x, y, skin, alpha }, n) => {
-    const arr = bs.thrusts[n];
-    const col = skin?.color || '#9b5cff';
-    const trailDir = -dir; // rastro vai na direção oposta ao movimento
-    if (Math.random() < 0.65) {
-      arr.push({ x: x + trailDir * sz * 1.0, y: y + (Math.random()-0.5)*5,
-        vx: trailDir * (18+Math.random()*28), vy: (Math.random()-0.5)*7,
-        life: 0.3+Math.random()*0.25, maxLife: 0, r: 2+Math.random()*2.5, col });
-    }
-    for (const p of arr) { p.maxLife = p.maxLife || p.life; p.x += p.vx*dt; p.y += p.vy*dt; p.life -= dt; }
-    for (let i = arr.length-1; i >= 0; i--) if (arr[i].life <= 0) arr.splice(i,1);
-    for (const p of arr) {
-      const a = p.life / p.maxLife;
-      ctx.save(); ctx.globalAlpha = a * 0.8 * alpha; ctx.fillStyle = p.col;
-      ctx.shadowColor = p.col; ctx.shadowBlur = 10;
-      ctx.beginPath(); ctx.arc(p.x, p.y, p.r * a, 0, Math.PI*2); ctx.fill(); ctx.restore();
-    }
-  });
+  // Nave por cima da bandeira
+  _drawBannerShip(ctx, skin, bs.shipX, shipY, dir, sz, 1.0);
 
-  // Cabos de formação intra-grupo (fio laranja)
-  ctx.save(); ctx.strokeStyle = '#ff8c00'; ctx.lineWidth = 0.9; ctx.globalAlpha = 0.4;
-  ctx.shadowColor = '#ff8c00'; ctx.shadowBlur = 4; ctx.setLineDash([3,5]);
-  ctx.beginPath(); ctx.moveTo(fxF1,fyF1); ctx.lineTo(fxF2,fyF2); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(txT1,tyT1); ctx.lineTo(txT2,tyT2); ctx.stroke();
-  ctx.setLineDash([]); ctx.restore(); ctx.globalAlpha = 1;
-
-  // Bandeira (atrás das naves)
-  _drawBannerFlag(ctx, bs.pts, dir, t);
-
-  // Naves da cauda (desenhadas antes = ficam mais atrás visualmente)
-  _drawBannerShip(ctx, bs.skins[3], txT2, tyT2, dir, sz, 0.80);
-  _drawBannerShip(ctx, bs.skins[2], txT1, tyT1, dir, sz, 0.88);
-  // Naves da frente (por cima)
-  _drawBannerShip(ctx, bs.skins[1], fxF2, fyF2, dir, sz, 0.90);
-  _drawBannerShip(ctx, bs.skins[0], fxF1, fyF1, dir, sz, 1.00);
-
-  // Condição de saída: quando a última nave (mais atrasada) sair da tela
-  const lastX = dir > 0 ? Math.min(txT1, txT2) : Math.max(txT1, txT2);
-  bs.done = dir > 0 ? lastX > W + 60 : lastX < -60;
+  // Condição de saída
+  bs.done = dir > 0 ? bs.shipX > W + 80 : bs.shipX < -80;
 }
 
 // ── Fundo arcade animado na tela de login ─────────────────────
@@ -3148,9 +3196,10 @@ async function loadHistory(){
 // ── Telas ──────────────────────────────────────────────────────
 function showScreen(name){
   document.getElementById('login-screen').style.display = name==='login'?'flex':'none';
-  if (name!=='login') {
-    const music = document.getElementById('login-music');
-    if (music && !music.paused) music.pause();
+  const music = document.getElementById('login-music');
+  if (name !== 'login' && music) {
+    music.pause();
+    music.currentTime = 0; // reseta para não vazar som ao voltar ao login
   }
   document.getElementById('menu').style.display         = name==='menu' ?'flex':'none';
   document.getElementById('game-canvas').style.display  = name==='game' ?'block':'none';
