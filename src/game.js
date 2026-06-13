@@ -1023,8 +1023,8 @@ export class Game {
           this.arena.spawnParticles(this.player.x,this.player.y,'#8844ff',35,320);
           this.ui.notify('Sugado pelo buraco negro!','#8844ff');
           this._audio.playDeath?.();
-          this._playVoice('oburaconegrobateuvc');
-          this.combat._triggerPlayerRebuild(this.player, this.mode==='contra1');
+          this._playVoice('oburaconegroabateuvc');
+          this.combat._triggerPlayerRebuild(this.player, this.mode==='contra1', false, true);
         } else if (bh.dmg > 0) {
           const died = this.player.takeDamage(bh.dmg);
           this._flash(this.player);

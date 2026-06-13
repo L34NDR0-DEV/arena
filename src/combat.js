@@ -571,12 +571,12 @@ export class CombatSystem {
     });
   }
 
-  _triggerPlayerRebuild(player, isContra1, killedByTower=false) {
+  _triggerPlayerRebuild(player, isContra1, killedByTower=false, silenceVoice=false) {
     const deathColor = player.skin?.deathColor || player.skin?.color || '#ff4466';
     this.arena.spawnParticles(player.x,player.y,deathColor,20,200);
     this.spawnExplosion(player.x,player.y,60,deathColor);
     this._shake?.(10);
-    this._voiceOnPlayerDeath?.(killedByTower);
+    if (!silenceVoice) this._voiceOnPlayerDeath?.(killedByTower);
     if (isContra1) {
       this._enemyMgr?.playerLostLife();
       // Iniciar fase de reconstrução (30s)
