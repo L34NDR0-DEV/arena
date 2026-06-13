@@ -3238,7 +3238,27 @@ window.startGame=function(){
   game.start();
   window._game=game;
   updateOrientationUI();
+  if (IS_MOBILE) _showTouchHint();
 };
+
+function _showTouchHint(){
+  const SEEN_KEY = 'tds_touch_hint_seen';
+  if (localStorage.getItem(SEEN_KEY)) return;
+  const el = document.getElementById('touch-hint-overlay');
+  if (!el) return;
+  el.classList.add('tho-visible');
+  let t = setTimeout(dismissHint, 5000);
+  function dismissHint(){
+    clearTimeout(t);
+    el.classList.add('tho-hiding');
+    setTimeout(()=>{ el.classList.remove('tho-visible','tho-hiding'); }, 400);
+    localStorage.setItem(SEEN_KEY, '1');
+    el.removeEventListener('touchstart', dismissHint);
+    el.removeEventListener('click', dismissHint);
+  }
+  el.addEventListener('touchstart', dismissHint, { once:true });
+  el.addEventListener('click', dismissHint, { once:true });
+}
 
 window.restartGame=function(){document.getElementById('gameover').style.display='none';startGame();};
 
