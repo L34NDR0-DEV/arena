@@ -1200,8 +1200,8 @@ function _pickUniqueSkins(n) {
 // Bandeira PNG com física de tecido por colunas (verlet 1D por coluna)
 // ─────────────────────────────────────────────────────────────────────────────
 const _BFLAG_COLS = 16;  // nº de fatias verticais da imagem
-const _BFLAG_BW   = 340; // largura visual da bandeira em px
-const _BFLAG_BH   = 76;  // altura visual
+const _BFLAG_BW   = 520; // largura visual da bandeira em px
+const _BFLAG_BH   = 110; // altura visual
 
 function _initBannerShips(W, H) {
   const dir   = Math.random() < 0.5 ? 1 : -1;
@@ -1214,7 +1214,9 @@ function _initBannerShips(W, H) {
   // shipX = posição X da nave
   // dir=1: nave entra pela esquerda, bandeira fica à direita da nave (puxada à frente)
   // Cada coluna tem um offset Y que ondula — física de tecido simplificada
-  const shipX0 = dir > 0 ? -50 : W + 50;
+  // Nave começa fora da tela; bandeira fica ATRÁS, então nave entra primeiro
+  // dir=1: nave entra da esquerda, já visível logo, bandeira aparece chegando atrás
+  const shipX0 = dir > 0 ? -sz - 10 : W + sz + 10;
 
   // offY[c] = deslocamento vertical da coluna c (física 1D por coluna)
   const offY  = new Float32Array(cols + 1).fill(0);
@@ -1232,20 +1234,20 @@ function _initBannerShips(W, H) {
 // Física leve: cada coluna da bandeira oscila verticalmente de forma independente
 function _stepFlagPhysics(bs, dt, t) {
   const { offY, offVY, cols, dir } = bs;
-  // col 0 = borda presa na nave (ancoragem) — col cols = ponta livre
-  // dir=1: âncora = col 0 (lado esquerdo da bandeira = perto da nave)
-  // dir=-1: âncora = col cols (lado direito = perto da nave)
-  const anchorCol = dir > 0 ? 0 : cols;
+  // Bandeira atrás da nave:
+  // dir=1 (vai para direita): borda DIREITA da bandeira é presa na nave → anchorCol = cols
+  // dir=-1 (vai para esquerda): borda ESQUERDA da bandeira é presa na nave → anchorCol = 0
+  const anchorCol = dir > 0 ? cols : 0;
 
   for (let c = 0; c <= cols; c++) {
     if (c === anchorCol) { offY[c] = 0; offVY[c] = 0; continue; }
     // Distância normalizada da âncora (0=perto, 1=longe)
     const dist = Math.abs(c - anchorCol) / cols;
-    // Força de onda que aumenta com a distância
-    const wave = (Math.sin(t * 2.4 + c * 0.55) * 3.5
-                + Math.cos(t * 1.6 + c * 0.9)  * 1.8) * dist;
-    offVY[c] += (wave - offY[c] * 0.4) * dt * 18;
-    offVY[c] *= 0.88;
+    // Ondulação suave — amplitude pequena, aumenta só na ponta livre
+    const wave = (Math.sin(t * 1.2 + c * 0.4) * 1.4
+                + Math.cos(t * 0.8 + c * 0.6) * 0.7) * dist;
+    offVY[c] += (wave - offY[c] * 0.3) * dt * 10;
+    offVY[c] *= 0.92; // mais amortecimento = movimento mais suave
     offY[c]  += offVY[c];
   }
 }
@@ -1259,10 +1261,10 @@ function _drawFlagPNG(ctx, bs, t) {
   const iw = img.naturalWidth, ih = img.naturalHeight;
   const sz = 22;
 
-  // X onde começa a borda esquerda da bandeira
-  // dir=1: nave vai para direita, bandeira fica à direita puxada pela frente da nave
-  // dir=-1: nave vai para esquerda, bandeira fica à esquerda
-  const flagLeft = dir > 0 ? shipX + sz * 1.4 : shipX - sz * 1.4 - BW;
+  // Bandeira fica ATRÁS da nave (nave puxa, bandeira arrasta atrás)
+  // dir=1 (vai para direita): bandeira à esquerda da nave → flagLeft = shipX - sz*1.4 - BW
+  // dir=-1 (vai para esquerda): bandeira à direita da nave → flagLeft = shipX + sz*1.4
+  const flagLeft = dir > 0 ? shipX - sz * 1.4 - BW : shipX + sz * 1.4;
 
   const sliceW = BW / cols;   // largura de cada fatia na tela
   const srcW   = iw / cols;   // largura de cada fatia no PNG
@@ -1327,22 +1329,24 @@ function _tickBannerShips(ctx, W, H, dt, t) {
   // Física da bandeira (oscilação vertical por coluna)
   _stepFlagPhysics(bs, dt, t);
 
-  // Cabo da nave até a borda da bandeira
-  // dir=1: bandeira à direita da nave → cabo vai da frente da nave até borda esq da bandeira
-  // dir=-1: bandeira à esquerda → cabo vai da frente até borda direita
-  const cableEndX = dir > 0 ? bs.shipX + sz * 1.4 : bs.shipX - sz * 1.4;
-  const cableEndY = shipY + bs.offY[dir > 0 ? 0 : bs.cols];
+  // Cabo: sai da TRASEIRA da nave e vai até a borda próxima da bandeira
+  // dir=1: traseira = esquerda da nave; borda próxima da bandeira = lado direito (anchorCol=cols)
+  // dir=-1: traseira = direita da nave; borda próxima = lado esquerdo (anchorCol=0)
+  const naveBack  = bs.shipX - dir * sz * 1.0; // traseira da nave
+  const ancColIdx = dir > 0 ? bs.cols : 0;
+  const cableEndX = dir > 0 ? bs.shipX - sz * 1.4 : bs.shipX + sz * 1.4; // borda da bandeira
+  const cableEndY = shipY + bs.offY[ancColIdx];
   ctx.save();
-  ctx.strokeStyle = '#7733dd'; ctx.lineWidth = 1.2; ctx.globalAlpha = 0.8;
+  ctx.strokeStyle = '#7733dd'; ctx.lineWidth = 1.3; ctx.globalAlpha = 0.85;
   ctx.shadowColor = '#9b5cff'; ctx.shadowBlur = 6;
   ctx.beginPath();
-  ctx.moveTo(dir > 0 ? bs.shipX + sz * 0.5 : bs.shipX - sz * 0.5, shipY);
+  ctx.moveTo(naveBack, shipY);
   ctx.lineTo(cableEndX, cableEndY);
   ctx.stroke();
   ctx.restore(); ctx.globalAlpha = 1;
 
-  // Partículas de propulsão (saem da traseira)
-  const trailX = bs.shipX - dir * sz * 1.2;
+  // Partículas de propulsão (saem da TRASEIRA, na direção oposta ao movimento)
+  const trailX = bs.shipX - dir * sz * 1.4;
   if (Math.random() < 0.65) {
     bs.thrust.push({ x: trailX, y: shipY + (Math.random()-0.5)*5,
       vx: -dir*(14+Math.random()*20), vy: (Math.random()-0.5)*5,
@@ -1364,10 +1368,11 @@ function _tickBannerShips(ctx, W, H, dt, t) {
   // Nave por cima de tudo
   _drawBannerShip(ctx, skin, bs.shipX, shipY, dir, sz, 1.0);
 
-  // Saída: nave saiu da tela + folga para a bandeira sumir
-  const flagRight = dir > 0 ? bs.shipX + sz*1.4 + BW : bs.shipX - sz*1.4;
-  const flagLeft  = dir > 0 ? bs.shipX + sz*1.4       : bs.shipX - sz*1.4 - BW;
-  bs.done = dir > 0 ? flagLeft > W + 20 : flagRight < -20;
+  // Saída: bandeira (que está atrás) sumiu completamente da tela
+  // dir=1: ponta livre da bandeira (lado esquerdo) > W
+  // dir=-1: ponta livre da bandeira (lado direito) < 0
+  const freePtX = dir > 0 ? bs.shipX - sz*1.4 - BW : bs.shipX + sz*1.4 + BW;
+  bs.done = dir > 0 ? freePtX > W + 30 : freePtX < -30;
 }
 
 // ── Fundo arcade animado na tela de login ─────────────────────
