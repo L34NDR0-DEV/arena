@@ -3,7 +3,8 @@ import { ARENA_W, ARENA_H } from './arena.js';
 import { tickStatus, isStunned, isFrozen, isConfused, confusedAngle, drawStatusIcons } from './statusEffects.js';
 
 const DIFF = { facil:0.6, moderado:1.0, dificil:1.5, insano:2.2 };
-const MAX_LIVES = 5;
+const LIVES_BY_MODE = { contra1: 3, contra2: 4, equipe_online: 9, tower_defense: 9 };
+const MAX_LIVES = 9; // valor máximo possível (usado para escalar o HUD)
 
 // ── Sprites exclusivos de inimigo (nunca aparecem como skin de jogador) ──
 // Mesmo padrão de cache/desenho de src/skins.js, porém local: estas naves
@@ -1701,10 +1702,12 @@ export class EnemyManager {
     this._audio=null;
     this._prepareWave();
 
-    // Contra 1: sistema de vidas compartilhado
-    this._enemyLives=MAX_LIVES;
-    this._playerLives=MAX_LIVES;
-    this._livesResult=null; // 'player_win' | 'enemy_win'
+    // Sistema de vidas por modo
+    const lives = LIVES_BY_MODE[mode] ?? 0;
+    this._maxLives    = lives;
+    this._enemyLives  = lives;
+    this._playerLives = lives;
+    this._livesResult = null; // 'player_win' | 'enemy_win'
   }
 
   setAudio(a) { this._audio=a; }
@@ -1714,7 +1717,7 @@ export class EnemyManager {
 
   get enemyLives() { return this._enemyLives; }
   get playerLives() { return this._playerLives; }
-  get maxLives() { return MAX_LIVES; }
+  get maxLives() { return this._maxLives; }
   get livesResult() { return this._livesResult; }
 
   get maxSimultaneous() {
@@ -1769,7 +1772,7 @@ export class EnemyManager {
 
   // Notifica que o player perdeu uma vida (chamado de combat.js)
   playerLostLife() {
-    if (this.mode!=='contra1') return;
+    if (!this._maxLives) return; // modos sem limite de vidas
     this._playerLives--;
     if (this._playerLives<=0) this._livesResult='enemy_win';
   }
@@ -1860,8 +1863,10 @@ export class EnemyManager {
         // Aciona animação de morte se ainda não iniciou
         e.startDeath();
         if (this.mode==='contra1') {
-          this._enemyLives=0;
-          this._livesResult='player_win';
+          // Só declara vitória se realmente ficou sem vidas (morte definitiva)
+          if (this._enemyLives <= 0) {
+            this._livesResult='player_win';
+          }
           arena.spawnParticles(e.x,e.y,e.color,22,200);
           itemMgr.spawnAt(e.x,e.y,3,arena);
           this.enemyScore+=e.score;
@@ -1894,7 +1899,7 @@ export class EnemyManager {
 
   // Chamado quando inimigo chega a 0 hp no modo contra1 (mas não morreu — perde vida)
   enemyLostLife(enemy, arena, itemMgr) {
-    if (this.mode!=='contra1') return;
+    if (this.mode!=='contra1' || !this._maxLives) return;
     this._enemyLives--;
     enemy.lives=this._enemyLives;
     if (this._enemyLives<=0) {

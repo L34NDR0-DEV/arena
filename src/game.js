@@ -16,7 +16,7 @@ import * as SkinsModule                          from './skins.js';
 const MATCH_DURATION_NORMAL = 900;  // 15 min
 const MATCH_DURATION_ONLINE = 1200; // 20 min
 const MATCH_DURATION = 900; // alias para compatibilidade (não usado diretamente)
-const CONTRA1_LIVES  = 5;
+const CONTRA1_LIVES  = 3; // vidas definidas por modo em enemies.js (LIVES_BY_MODE)
 // Paredes elétricas: aparecem quando timeLeft cai abaixo deste threshold
 const ELECTRIC_WALLS_WARN_AT = 30; // anuncia 30s antes
 const ELECTRIC_WALLS_AT = 0;       // ativas quando timer chega a 0
@@ -917,8 +917,8 @@ export class Game {
       if (this._cardsMgr) this.enemyMgr.enemies = this._cardsMgr.enemies;
     }
 
-    // Contra1: verificar fim por vidas
-    if (this.mode==='contra1') {
+    // Contra1/Contra2: verificar fim por vidas
+    if (this.mode==='contra1' || this.mode==='contra2') {
       const res=this.enemyMgr.livesResult;
       if (res==='player_win') { this._endGame(true); return; }
       if (res==='enemy_win'||this.enemyMgr.playerLives<=0) { this._endGame(false); return; }
@@ -1481,8 +1481,8 @@ export class Game {
     if (mm) { const mc=mm.getContext('2d'); this.ui.drawMinimap(mc,this.player,this.enemyMgr.enemies,this.itemMgr.items,mm.width,mm.height); }
 
 
-    // Contra1: HUD de vidas em tela
-    if (this.mode==='contra1') this._drawLivesHUD(ctx,W,H);
+    // Contra1/Contra2: HUD de vidas em tela
+    if (this.mode==='contra1'||this.mode==='contra2') this._drawLivesHUD(ctx,W,H);
     // Cards: HUD de vidas do modo cards
     if (this._isCardsMode) this._drawCardsLivesHUD(ctx,W,H);
 
@@ -1662,34 +1662,36 @@ export class Game {
   }
 
   _drawLivesHUD(ctx, W, H) {
-    const pLives=this.enemyMgr.playerLives;
-    const eLives=this.enemyMgr.enemyLives;
-    const max=this.enemyMgr.maxLives;
-    const sz=14, gap=18, y=H-38;
+    const pLives = this.enemyMgr.playerLives;
+    const max    = this.enemyMgr.maxLives;
+    if (!max) return;
 
-    // Vidas do player (esquerda)
+    // Diamantes de vida no topo esquerdo, abaixo do nome do jogador
+    // Posição: logo após a barra de XP no HUD-left (~y=52, x=14)
+    const sz = 10, gap = 14;
+    const x0 = 14, y = 52;
+
     ctx.save();
-    ctx.font='bold 9px monospace'; ctx.fillStyle='#00c8f0'; ctx.textAlign='left';
-    ctx.fillText('VOCÊ',18,y-4);
-    for (let i=0;i<max;i++) {
-      const filled=i<pLives;
-      ctx.fillStyle=filled?'#00c8f0':'#0d2a3a';
-      ctx.shadowColor=filled?'#00c8f0':'transparent'; ctx.shadowBlur=filled?8:0;
-      ctx.beginPath(); ctx.moveTo(18+i*gap+sz/2,y); ctx.lineTo(18+i*gap+sz,y+sz/2); ctx.lineTo(18+i*gap+sz/2,y+sz); ctx.lineTo(18+i*gap,y+sz/2); ctx.closePath(); ctx.fill();
+    ctx.font = '7px monospace';
+    ctx.fillStyle = '#9b5cff';
+    ctx.textAlign = 'left';
+    ctx.fillText('RESPAWN', x0, y - 3);
+    for (let i = 0; i < max; i++) {
+      const filled = i < pLives;
+      ctx.fillStyle   = filled ? '#9b5cff' : '#1a0e2a';
+      ctx.shadowColor = filled ? '#9b5cff' : 'transparent';
+      ctx.shadowBlur  = filled ? 7 : 0;
+      const cx = x0 + i * gap;
+      ctx.beginPath();
+      ctx.moveTo(cx + sz/2, y);
+      ctx.lineTo(cx + sz,   y + sz/2);
+      ctx.lineTo(cx + sz/2, y + sz);
+      ctx.lineTo(cx,        y + sz/2);
+      ctx.closePath();
+      ctx.fill();
     }
-    ctx.shadowBlur=0;
-
-    // Vidas do inimigo (direita)
-    ctx.font='bold 9px monospace'; ctx.fillStyle='#ff3355'; ctx.textAlign='right';
-    ctx.fillText('INIMIGO',W-18,y-4);
-    for (let i=0;i<max;i++) {
-      const filled=i<eLives;
-      ctx.fillStyle=filled?'#ff3355':'#2a0d14';
-      ctx.shadowColor=filled?'#ff3355':'transparent'; ctx.shadowBlur=filled?8:0;
-      const px=W-18-(max-1-i)*gap;
-      ctx.beginPath(); ctx.moveTo(px+sz/2,y); ctx.lineTo(px+sz,y+sz/2); ctx.lineTo(px+sz/2,y+sz); ctx.lineTo(px,y+sz/2); ctx.closePath(); ctx.fill();
-    }
-    ctx.shadowBlur=0; ctx.restore();
+    ctx.shadowBlur = 0;
+    ctx.restore();
   }
 
   // ── Cards: draw de torres e armadilhas aliadas ─────────────────

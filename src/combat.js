@@ -164,7 +164,9 @@ export class CombatSystem {
   }
 
   update(dt, player, enemies) {
-    const isContra1=this._enemyMgr?.mode==='contra1';
+    const mode=this._enemyMgr?.mode;
+    const isContra1=mode==='contra1';
+    const hasLives=mode==='contra1'||mode==='contra2';
     if (this._collisionCd>0) this._collisionCd-=dt;
 
     // Balas a spawnar por efeitos especiais (quantum split, chain) — processado fora do filter
@@ -263,7 +265,7 @@ export class CombatSystem {
             }
 
             if (e.hp<=0) {
-              if (isContra1) {
+              if (hasLives) {
                 this._enemyMgr.enemyLostLife(e,this.arena,{spawnAt:()=>{}});
                 player.score+=10; player.addXP(20);
                 if (e.dead) this._enemyKilled();
@@ -577,13 +579,8 @@ export class CombatSystem {
     this.spawnExplosion(player.x,player.y,60,deathColor);
     this._shake?.(10);
     if (!silenceVoice) this._voiceOnPlayerDeath?.(killedByTower);
-    if (isContra1) {
-      this._enemyMgr?.playerLostLife();
-      // Iniciar fase de reconstrução (30s)
-      player.startRebuild(player.x,player.y);
-    } else {
-      player.startRebuild(player.x,player.y);
-    }
+    this._enemyMgr?.playerLostLife(); // só tem efeito se o modo tiver vidas
+    player.startRebuild(player.x,player.y);
   }
 
   draw(ctx) {
