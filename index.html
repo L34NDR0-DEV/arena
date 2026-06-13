@@ -198,43 +198,34 @@
         <div class="skin-grid" id="skin-grid"></div>
       </div>
 
-      <!-- Banner de anuncio: Play Store + Novos Modos -->
-      <div class="menu-section announce-section">
-        <!-- Card 1: Em breve nos celulares -->
+      <!-- Banners de anuncio -->
+      <div class="announce-section">
+        <!-- Card: Em breve na Play Store -->
         <div class="announce-card">
-          <div class="announce-strip">EM BREVE NOS CELULARES</div>
-          <div class="announce-body">
-            <div class="announce-stores-row">
-              <div class="announce-store-pill">
-                <span class="announce-store-dot" style="background:#4ade80;"></span>
-                <span class="announce-store-dot" style="background:#f87171;"></span>
-                <span class="announce-store-dot" style="background:#facc15;"></span>
-                <span class="announce-store-dot" style="background:#60a5fa;"></span>
-                <span class="announce-store-name">Google Play</span>
-              </div>
-              <div class="announce-store-pill">
-                <span class="announce-store-apple">&#63743;</span>
-                <span class="announce-store-name">App Store</span>
-              </div>
+          <div class="announce-body announce-body-store">
+            <img src="./icons/play-store.svg" class="announce-gplay-icon" alt="Google Play"/>
+            <div class="announce-store-info">
+              <div class="announce-store-badge-label">EM BREVE</div>
+              <div class="announce-store-title">Google Play</div>
+              <div class="announce-store-sub">Tower Defense Space chegando no Android. Leve a arena espacial no seu bolso!</div>
             </div>
-            <div class="announce-text">Tower Defense Space chegando nos celulares. Leve a arena espacial no seu bolso!</div>
           </div>
         </div>
-        <!-- Card 2: Modos em destaque -->
+        <!-- Card: Modos em destaque -->
         <div class="announce-card announce-card-modes">
-          <div class="announce-strip announce-strip-orange">MODOS DISPONIVEIS AGORA</div>
+          <div class="announce-strip-orange-bar">MODOS DISPONIVEIS AGORA</div>
           <div class="announce-body">
             <div class="announce-modes-row">
               <div class="announce-mode-item">
-                <div class="announce-mode-dot" style="background:#ff4d6a;"></div>
+                <div class="announce-mode-icon announce-mode-icon-online">3x3</div>
                 <span class="announce-mode-label">Equipe Online</span>
-                <span class="announce-mode-desc">PvP 3x3 ao vivo. Vagas preenchidas com bots. Primeiro time a 200 abates vence.</span>
+                <span class="announce-mode-desc">PvP ao vivo. Vagas preenchidas com bots. Primeiro time a 200 abates vence.</span>
               </div>
               <div class="announce-mode-divider"></div>
               <div class="announce-mode-item">
-                <div class="announce-mode-dot" style="background:#9b5cff;"></div>
+                <div class="announce-mode-icon announce-mode-icon-tower">TD</div>
                 <span class="announce-mode-label">Tower Defense</span>
-                <span class="announce-mode-desc">Equipes 2x2 disputam a torre central. Venca e ganhe a skin exclusiva Stealwing.</span>
+                <span class="announce-mode-desc">Equipes 2x2. Destrua a torre inimiga e ganhe a skin exclusiva Stealwing.</span>
               </div>
             </div>
             <div class="announce-cta" onclick="document.querySelector('.mode-equipe-online')?.click()">JOGAR AGORA</div>

@@ -832,7 +832,7 @@ const NEW_MODE_ANNOUNCEMENTS = [
     id: 'playstore_and_modes_v1',
     mode: null,
     title: 'App no celular e novos modos!',
-    text: 'Tower Defense Space chega em breve na Play Store e App Store! Jogue o Equipe Online (PvP 3x3) e o Tower Defense (disputa pela torre central com skin exclusiva Stealwing) agora mesmo no navegador.',
+    text: 'Tower Defense Space chega em breve na Play Store para Android! Jogue agora no navegador o Equipe Online (PvP 3x3) e o Tower Defense — dispute a torre central e ganhe a skin exclusiva Stealwing.',
     icon: '<path d="M3 20.5 L13.5 12 L3 3.5 Q2 4.2 2 5.5 L2 18.5 Q2 19.8 3 20.5Z" fill="#4ade80" stroke="none"/><path d="M3 20.5 L13.5 12 L17 15.5 L7 21.5 Q4.8 22.6 3 20.5Z" fill="#facc15" stroke="none"/><path d="M3 3.5 L13.5 12 L17 8.5 L7 2.5 Q4.8 1.4 3 3.5Z" fill="#f87171" stroke="none"/><path d="M13.5 12 L22 7.5 L22 16.5 L17 15.5 L17 8.5Z" fill="#60a5fa" stroke="none"/>',
   },
   {

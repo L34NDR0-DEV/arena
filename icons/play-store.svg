@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- fundo circular opcional removido — só o simbolo -->
+  <!-- Fatia azul (base/esquerda) -->
+  <path d="M32 32 L32 480 L280 256 Z" fill="#4285F4"/>
+  <!-- Fatia verde (topo) -->
+  <path d="M32 32 L280 256 L360 176 L100 16 Q64 0 32 32Z" fill="#34A853"/>
+  <!-- Fatia amarela (ponta direita) -->
+  <path d="M280 256 L360 336 L420 300 Q460 278 460 256 Q460 234 420 212 L360 176 Z" fill="#FBBC04"/>
+  <!-- Fatia vermelha (base) -->
+  <path d="M32 480 Q64 512 100 496 L360 336 L280 256 Z" fill="#EA4335"/>
+</svg>
