@@ -882,16 +882,11 @@ function maybeShowNewModeAlert(){
   const iconEl = document.getElementById('nm-icon');
   if (available.img) {
     iconEl.innerHTML = `<img src="${available.img}" class="nm-icon-img" alt=""/>`;
-    iconEl.style.background = 'none';
-    iconEl.style.border = 'none';
-    iconEl.style.boxShadow = 'none';
+    iconEl.className = 'nm-icon nm-icon-plain';
   } else {
-    iconEl.innerHTML = '';
-    iconEl.style.background = '';
-    iconEl.style.border = '';
-    iconEl.style.boxShadow = '';
     const needsStroke = !available.icon.includes('fill="');
     iconEl.innerHTML = `<svg viewBox="0 0 24 24" fill="none" ${needsStroke ? 'stroke="currentColor" stroke-width="1.8"' : ''}>${available.icon}</svg>`;
+    iconEl.className = 'nm-icon';
   }
   document.getElementById('new-mode-overlay').style.display = 'flex';
 }

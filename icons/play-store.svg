@@ -1,11 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- fundo circular opcional removido — só o simbolo -->
-  <!-- Fatia azul (base/esquerda) -->
-  <path d="M32 32 L32 480 L280 256 Z" fill="#4285F4"/>
-  <!-- Fatia verde (topo) -->
-  <path d="M32 32 L280 256 L360 176 L100 16 Q64 0 32 32Z" fill="#34A853"/>
-  <!-- Fatia amarela (ponta direita) -->
-  <path d="M280 256 L360 336 L420 300 Q460 278 460 256 Q460 234 420 212 L360 176 Z" fill="#FBBC04"/>
-  <!-- Fatia vermelha (base) -->
-  <path d="M32 480 Q64 512 100 496 L360 336 L280 256 Z" fill="#EA4335"/>
+  <!-- Fundo branco circular -->
+  <circle cx="256" cy="256" r="256" fill="#ffffff"/>
+  <!-- Icone Play Store — fatias coloridas exatas -->
+  <!-- Azul (base grande) -->
+  <path d="M88 75 L88 437 L295 256 Z" fill="#4285F4"/>
+  <!-- Verde (topo) -->
+  <path d="M88 75 L295 256 L370 181 L133 42 Q108 28 88 75Z" fill="#34A853"/>
+  <!-- Amarelo (ponta) -->
+  <path d="M295 256 L370 331 L424 300 Q460 280 460 256 Q460 232 424 212 L370 181 Z" fill="#FBBC04"/>
+  <!-- Vermelho (base) -->
+  <path d="M88 437 Q108 484 133 470 L370 331 L295 256 Z" fill="#EA4335"/>
 </svg>
