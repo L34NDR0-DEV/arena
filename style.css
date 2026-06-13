@@ -940,6 +940,18 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   font-size:7px;color:var(--text2);margin-left:2px;white-space:nowrap;
 }
 
+/* ── HUD Vidas (contra1/contra2) ── */
+#hud-lives{
+  display:flex;align-items:center;gap:3px;margin-top:4px;
+}
+.hud-life-diamond{
+  width:10px;height:10px;flex-shrink:0;
+  clip-path:polygon(50% 0%,100% 50%,50% 100%,0% 50%);
+  background:#9b5cff;box-shadow:0 0 6px #9b5cff88;
+  transition:background .2s,box-shadow .2s;
+}
+.hud-life-diamond.empty{background:#1a0e2a;box-shadow:none;}
+
 /* ── HUD Centro: placar ── */
 #hud-center{
   position:absolute;top:0;left:50%;transform:translateX(-50%);
@@ -1590,8 +1602,9 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .touch-slot.touch-slot-active::after{border-color:var(--touch-orange);box-shadow:0 0 18px var(--touch-orange), inset 0 0 14px rgba(255,140,0,.25);}
 .touch-slot:active,.touch-slot.pressed{transform:scale(.93);filter:brightness(1.18);}
 .touch-slot:active::after,.touch-slot.pressed::after{border-color:var(--touch-violet);box-shadow:0 0 16px var(--touch-violet), inset 0 0 12px rgba(155,92,255,.22);}
-/* Canvas de item dentro do slot — dimensão maior */
-.touch-slot canvas{position:relative;z-index:2;}
+/* Canvas de item dentro do slot — absoluto para não deslocar o número */
+.touch-slot canvas{position:absolute;inset:0;width:100%!important;height:100%!important;z-index:1;border-radius:50%;}
+.touch-slot span{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);z-index:3;line-height:1;}
 @media (orientation:landscape) and (max-height:520px){
   .touch-btn-fire{width:60px;height:60px;}
   .touch-btn-dash{width:56px;height:56px;}

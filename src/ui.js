@@ -151,8 +151,10 @@ export class UI {
     this._teamKillRed = document.getElementById('tkc-red');
     this._teamKillBlue = document.getElementById('tkc-blue');
     this._wave   = null;
-    this._notify = document.getElementById('notify');
-    this._kfeed  = document.getElementById('kill-feed');
+    this._notify    = document.getElementById('notify');
+    this._kfeed     = document.getElementById('kill-feed');
+    this._hudLives  = document.getElementById('hud-lives');
+    this._livesMax  = 0;
     this._puSlots      = [0,1,2,3,4].map(i=>document.getElementById('pu'+i));
     this._extraSlot    = document.getElementById('pu-extra');
     this._effectsCanvas= document.getElementById('active-effects-canvas');
@@ -298,6 +300,26 @@ export class UI {
     if (this._xp)     this._xp.style.width     = Math.max(0,player.xp/player.xpToNext*100)+'%';
     if (this._mana)   this._mana.style.width   = Math.max(0,player.mana/player.maxMana*100)+'%';
     if (this._lvl)    this._lvl.textContent     = `NV.${player.level}`;
+
+    // HUD de vidas (contra1/contra2) — diamantes roxos ao lado da barra de XP
+    if (this._hudLives) {
+      const hasLives = (mode==='contra1'||mode==='contra2') && maxLives > 0;
+      this._hudLives.style.display = hasLives ? 'flex' : 'none';
+      if (hasLives) {
+        if (this._livesMax !== maxLives) {
+          // Recria os diamantes se mudou o max
+          this._livesMax = maxLives;
+          this._hudLives.innerHTML = '';
+          for (let i = 0; i < maxLives; i++) {
+            const d = document.createElement('div');
+            d.className = 'hud-life-diamond';
+            this._hudLives.appendChild(d);
+          }
+        }
+        const diamonds = this._hudLives.querySelectorAll('.hud-life-diamond');
+        diamonds.forEach((d, i) => d.classList.toggle('empty', i >= pLives));
+      }
+    }
 
     // Placar: visível apenas nos modos que usam pontuação direta
     if (this._center) {

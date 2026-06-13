@@ -1481,8 +1481,7 @@ export class Game {
     if (mm) { const mc=mm.getContext('2d'); this.ui.drawMinimap(mc,this.player,this.enemyMgr.enemies,this.itemMgr.items,mm.width,mm.height); }
 
 
-    // Contra1/Contra2: HUD de vidas em tela
-    if (this.mode==='contra1'||this.mode==='contra2') this._drawLivesHUD(ctx,W,H);
+    // Vidas: gerenciado pelo HUD HTML (#hud-lives via ui.js)
     // Cards: HUD de vidas do modo cards
     if (this._isCardsMode) this._drawCardsLivesHUD(ctx,W,H);
 
