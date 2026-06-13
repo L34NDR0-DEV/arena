@@ -831,9 +831,9 @@ const NEW_MODE_ANNOUNCEMENTS = [
   {
     id: 'playstore_and_modes_v1',
     mode: null,
-    title: 'App no celular e novos modos!',
-    text: 'Tower Defense Space chega em breve na Play Store para Android! Jogue agora no navegador o Equipe Online (PvP 3x3) e o Tower Defense — dispute a torre central e ganhe a skin exclusiva Stealwing.',
-    icon: '<path d="M3 20.5 L13.5 12 L3 3.5 Q2 4.2 2 5.5 L2 18.5 Q2 19.8 3 20.5Z" fill="#4ade80" stroke="none"/><path d="M3 20.5 L13.5 12 L17 15.5 L7 21.5 Q4.8 22.6 3 20.5Z" fill="#facc15" stroke="none"/><path d="M3 3.5 L13.5 12 L17 8.5 L7 2.5 Q4.8 1.4 3 3.5Z" fill="#f87171" stroke="none"/><path d="M13.5 12 L22 7.5 L22 16.5 L17 15.5 L17 8.5Z" fill="#60a5fa" stroke="none"/>',
+    title: 'Chegando no seu Smartphone!',
+    text: 'Tower Defense Space em breve na Google Play para Android. Novos modos disponiveis agora no navegador: Equipe Online (PvP 3x3) e Tower Defense — dispute a torre central e ganhe a skin exclusiva Stealwing.',
+    img: './icons/play-store.svg',
   },
   {
     id: 'tower_defense_v1',
@@ -877,9 +877,13 @@ function maybeShowNewModeAlert(){
   _pendingNewModeId = available.id;
   document.getElementById('nm-title').textContent = available.title;
   document.getElementById('nm-text').textContent = available.text;
-  // Ícones SVG que já têm fill/stroke proprios (ex: Play Store colorido) não herdam stroke do wrapper
-  const needsStroke = !available.icon.includes('fill="');
-  document.getElementById('nm-icon').innerHTML = `<svg viewBox="0 0 24 24" fill="none" ${needsStroke ? 'stroke="currentColor" stroke-width="1.8"' : ''}>${available.icon}</svg>`;
+  const iconEl = document.getElementById('nm-icon');
+  if (available.img) {
+    iconEl.innerHTML = `<img src="${available.img}" style="width:52px;height:52px;display:block;" alt=""/>`;
+  } else {
+    const needsStroke = !available.icon.includes('fill="');
+    iconEl.innerHTML = `<svg viewBox="0 0 24 24" fill="none" ${needsStroke ? 'stroke="currentColor" stroke-width="1.8"' : ''}>${available.icon}</svg>`;
+  }
   document.getElementById('new-mode-overlay').style.display = 'flex';
 }
 
