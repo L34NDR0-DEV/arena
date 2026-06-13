@@ -3700,33 +3700,40 @@ function _showSkinPromoOverlay(skins) {
   overlay.id = 'skin-promo-overlay';
   overlay.style.cssText = `
     position:fixed;inset:0;z-index:9998;display:flex;flex-direction:column;
-    align-items:center;justify-content:center;
+    align-items:center;justify-content:flex-start;
     background:rgba(2,5,13,.92);backdrop-filter:blur(8px);
-    animation:srFadeIn .3s ease both;padding:20px;box-sizing:border-box;
+    animation:srFadeIn .3s ease both;
+    padding:16px 12px 20px;box-sizing:border-box;
+    overflow-y:auto;overflow-x:hidden;
   `;
 
   overlay.innerHTML = `
-    <div style="text-align:center;margin-bottom:22px;">
-      <div style="font-family:'Press Start 2P',monospace;font-size:8px;
-        color:#00d4ff;letter-spacing:3px;border:1px solid #00d4ff33;
-        border-radius:3px;padding:5px 14px;display:inline-block;margin-bottom:12px;">
+    <div style="text-align:center;margin-bottom:16px;flex-shrink:0;width:100%;">
+      <div style="font-family:'Press Start 2P',monospace;font-size:7px;
+        color:#9b5cff;letter-spacing:2px;border:1px solid #9b5cff33;
+        border-radius:3px;padding:4px 12px;display:inline-block;margin-bottom:10px;">
         PILOTOS DISPONIVEIS
       </div>
-      <div style="font-family:'Press Start 2P',monospace;font-size:13px;
+      <div style="font-family:'Press Start 2P',monospace;font-size:clamp(9px,2.5vw,13px);
         color:#fff;letter-spacing:1px;line-height:1.6;">
         NOVAS NAVES NA LOJA
       </div>
-      <div style="font-size:11px;color:#4a7a9a;margin-top:6px;letter-spacing:1px;">
+      <div style="font-size:10px;color:#4a7a9a;margin-top:5px;letter-spacing:.5px;">
         Customize sua nave com skins exclusivas
       </div>
     </div>
-    <div id="skin-promo-cards" style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;align-items:flex-start;"></div>
+    <div id="skin-promo-cards" style="
+      display:flex;gap:12px;flex-wrap:wrap;
+      justify-content:center;align-items:flex-start;
+      width:100%;max-width:680px;
+    "></div>
     <button onclick="document.getElementById('skin-promo-overlay').remove()" style="
-      margin-top:28px;font-family:'Press Start 2P',monospace;font-size:8px;
+      flex-shrink:0;margin-top:20px;
+      font-family:'Press Start 2P',monospace;font-size:7px;
       letter-spacing:1px;background:transparent;color:#4a7a9a;
       border:1px solid #2a4a6a;border-radius:6px;padding:10px 24px;
       cursor:pointer;transition:.15s;
-    " onmouseover="this.style.color='#00d4ff';this.style.borderColor='#00d4ff44'"
+    " onmouseover="this.style.color='#9b5cff';this.style.borderColor='#9b5cff44'"
        onmouseout="this.style.color='#4a7a9a';this.style.borderColor='#2a4a6a'">
       AGORA NAO
     </button>
@@ -3742,34 +3749,35 @@ function _showSkinPromoOverlay(skins) {
 
     const card = document.createElement('div');
     card.style.cssText = `
-      background:linear-gradient(160deg,#0b1e33,#040c18);
-      border:1px solid #00d4ff22;border-radius:12px;
-      padding:20px 16px 16px;text-align:center;width:200px;flex-shrink:0;
-      box-shadow:0 0 30px #00d4ff0a;
+      background:linear-gradient(160deg,#0e0a1a,#08060f);
+      border:1px solid #9b5cff22;border-radius:12px;
+      padding:16px 12px 14px;text-align:center;
+      width:clamp(140px,42vw,200px);flex-shrink:1;
+      box-shadow:0 0 24px #9b5cff0a;
       display:flex;flex-direction:column;align-items:center;
       animation:bonusCardIn .4s cubic-bezier(.2,.9,.3,1.3) both;
       animation-delay:${i * 0.12}s;
     `;
 
     const badge = document.createElement('div');
-    badge.style.cssText = `font-family:'Press Start 2P',monospace;font-size:7px;
-      color:#00d4ff;letter-spacing:2px;border:1px solid #00d4ff33;
-      border-radius:3px;padding:3px 8px;display:inline-block;margin-bottom:10px;`;
+    badge.style.cssText = `font-family:'Press Start 2P',monospace;font-size:6px;
+      color:#9b5cff;letter-spacing:2px;border:1px solid #9b5cff33;
+      border-radius:3px;padding:3px 8px;display:inline-block;margin-bottom:8px;`;
     badge.textContent = 'SKIN';
 
     const cv = document.createElement('canvas');
-    cv.width = 140; cv.height = 140;
-    cv.style.cssText = 'display:block;margin:0 auto 14px;';
+    cv.width = 120; cv.height = 120;
+    cv.style.cssText = 'display:block;margin:0 auto 10px;width:clamp(80px,28vw,120px);height:clamp(80px,28vw,120px);';
 
     const nameEl = document.createElement('div');
-    nameEl.style.cssText = `font-family:'Press Start 2P',monospace;font-size:8px;
-      color:#fff;letter-spacing:.5px;margin-bottom:8px;line-height:1.7;
+    nameEl.style.cssText = `font-family:'Press Start 2P',monospace;font-size:clamp(6px,1.8vw,8px);
+      color:#fff;letter-spacing:.5px;margin-bottom:6px;line-height:1.7;
       word-break:break-word;width:100%;`;
     nameEl.textContent = skin.name;
 
     const priceEl = document.createElement('div');
-    priceEl.style.cssText = `font-family:'Press Start 2P',monospace;font-size:13px;
-      color:#ffcc44;margin-bottom:14px;text-shadow:0 0 12px #ffcc4466;`;
+    priceEl.style.cssText = `font-family:'Press Start 2P',monospace;font-size:clamp(9px,2.8vw,13px);
+      color:#ff8c00;margin-bottom:12px;text-shadow:0 0 10px #ff8c0066;`;
     priceEl.textContent = `${price} CR`;
 
     const btn = document.createElement('button');
@@ -3777,8 +3785,8 @@ function _showSkinPromoOverlay(skins) {
     // Estilo igual ao #shop-buy-btn da loja (dourado pulsante)
     btn.style.cssText = `
       position:relative;overflow:hidden;
-      font-family:'Press Start 2P',monospace;font-size:8px;letter-spacing:1px;
-      width:100%;padding:11px 8px;border-radius:6px;cursor:pointer;
+      font-family:'Press Start 2P',monospace;font-size:clamp(6px,1.8vw,8px);letter-spacing:.5px;
+      width:100%;padding:10px 6px;border-radius:6px;cursor:pointer;
       border:none;transition:transform .15s,box-shadow .15s,filter .15s;
       ${owned
         ? 'background:#0d2035;color:#4a8aaa;cursor:default;'
