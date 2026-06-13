@@ -1547,38 +1547,12 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   clip-path:polygon(0 40%,52% 40%,42% 6%,100% 50%,42% 94%,52% 60%,0 60%);
   filter:drop-shadow(0 0 8px var(--accent));
 }
-/* ── Topbar mobile (pause + HP/mana) ── */
+/* ── Topbar mobile (pause centralizado) ── */
 #touch-topbar{
-  position:absolute;top:0;left:0;right:0;
-  height:46px;display:flex;align-items:center;
-  padding:6px 10px 4px calc(10px + env(safe-area-inset-left));
-  gap:8px;pointer-events:none;box-sizing:border-box;
-  background:linear-gradient(180deg,rgba(2,4,12,.80) 0%,transparent 100%);
+  position:absolute;top:6px;left:0;right:0;
+  display:flex;align-items:center;justify-content:center;
+  pointer-events:none;
 }
-#touch-hp-hud{
-  display:flex;flex-direction:column;justify-content:center;gap:5px;
-  flex:1;min-width:0;pointer-events:none;
-}
-.thp-bar-wrap{
-  display:flex;align-items:center;gap:4px;width:100%;
-}
-.thp-label{
-  font-size:7px;color:rgba(200,180,255,.75);
-  font-family:'Press Start 2P',monospace;
-  min-width:28px;white-space:nowrap;flex-shrink:0;
-}
-.thp-bar-bg{
-  flex:1;height:6px;border-radius:3px;
-  background:rgba(8,4,16,.75);overflow:hidden;
-  border:1px solid rgba(255,255,255,.07);
-}
-.thp-bar-fill{
-  height:100%;width:100%;border-radius:3px;
-  background:#00e060;box-shadow:0 0 5px #00e06077;
-  transition:width .12s linear,background .2s;
-}
-.thp-mana .thp-bar-fill{background:#4488ff;box-shadow:0 0 5px #4488ff77;}
-.thp-val{font-size:7px;color:rgba(220,200,255,.6);min-width:26px;text-align:left;flex-shrink:0;}
 .touch-btn-pause{
   --accent:var(--touch-violet);
   position:relative;flex-shrink:0;

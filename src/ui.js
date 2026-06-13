@@ -153,10 +153,6 @@ export class UI {
     this._wave   = null;
     this._notify = document.getElementById('notify');
     this._kfeed  = document.getElementById('kill-feed');
-    this._touchHpFill   = document.getElementById('touch-hp-fill');
-    this._touchManaFill = document.getElementById('touch-mana-fill');
-    this._touchHpLabel  = document.getElementById('touch-hp-label');
-    this._touchManaLabel= document.getElementById('touch-mana-label');
     this._puSlots      = [0,1,2,3,4].map(i=>document.getElementById('pu'+i));
     this._extraSlot    = document.getElementById('pu-extra');
     this._effectsCanvas= document.getElementById('active-effects-canvas');
@@ -302,19 +298,6 @@ export class UI {
     if (this._xp)     this._xp.style.width     = Math.max(0,player.xp/player.xpToNext*100)+'%';
     if (this._mana)   this._mana.style.width   = Math.max(0,player.mana/player.maxMana*100)+'%';
     if (this._lvl)    this._lvl.textContent     = `NV.${player.level}`;
-
-    // Barras mobile no topbar
-    const hpPct   = Math.max(0, player.hp / player.maxHp);
-    const manaPct = Math.max(0, player.mana / player.maxMana);
-    if (this._touchHpFill) {
-      this._touchHpFill.style.width = (hpPct * 100) + '%';
-      const hc = hpPct > 0.5 ? '#00e060' : hpPct > 0.25 ? '#ffcc00' : '#ff2244';
-      this._touchHpFill.style.background = hc;
-      this._touchHpFill.style.boxShadow  = `0 0 6px ${hc}88`;
-    }
-    if (this._touchManaFill)  this._touchManaFill.style.width  = (manaPct * 100) + '%';
-    if (this._touchHpLabel)   this._touchHpLabel.textContent   = `${Math.round(player.hp)}`;
-    if (this._touchManaLabel) this._touchManaLabel.textContent = `${Math.round(player.mana)}`;
 
     // Placar: visível apenas nos modos que usam pontuação direta
     if (this._center) {
