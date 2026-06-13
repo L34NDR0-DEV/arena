@@ -1960,7 +1960,7 @@ let _bannerPrevT = 0;
     ctx.globalAlpha=0.03; ctx.fillStyle='#000';
     for (let y=0;y<H;y+=3) ctx.fillRect(0,y,W,1);
     ctx.globalAlpha=1;
-  } catch(e) { console.warn('[Login BG]',e); }
+  } catch(e) { console.error('[Login BG]',e.message, e.stack); }
   requestAnimationFrame(animateLoginBg);
 })();
 
