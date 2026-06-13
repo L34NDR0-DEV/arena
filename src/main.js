@@ -2971,6 +2971,8 @@ resizeCanvas(); window.addEventListener('resize',resizeCanvas);
 const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent)
   || (navigator.maxTouchPoints > 0 && window.matchMedia('(pointer:coarse)').matches);
 
+if (IS_MOBILE) document.body.classList.add('is-mobile');
+
 const orientationWarning = document.getElementById('orientation-warning');
 const touchControls      = document.getElementById('touch-controls');
 

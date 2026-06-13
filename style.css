@@ -1648,6 +1648,10 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 @media (max-width:400px){
   .arcade-title-top{display:none;} /* economiza espaço vertical em telas muito pequenas */
 }
+
+/* Elementos exclusivos de desktop — escondidos em qualquer mobile, independente da largura/orientação */
+body.is-mobile #hud-bottom { display:none !important; }
+body.is-mobile #ps-desktop-settings { display:none !important; }
 @media (orientation:landscape) and (max-height:520px){
   #hud-left,#hud-right{transform:scale(.82);transform-origin:top left;}
   #hud-right{transform-origin:top right;}
