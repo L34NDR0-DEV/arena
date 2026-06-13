@@ -384,7 +384,10 @@ export class Game {
           if(msg.data?.type==='kill') {
             if (this._safezone?.active) return;
             this.ui.killFeed(`${msg.data.killerName} eliminou ${msg.data.victimName}`);
-            if ((isTeamMode || isTdMode) && msg.data.killerTeam) this._registerTeamKill(msg.data.killerTeam);
+            if ((isTeamMode || isTdMode) && msg.data.killerTeam) {
+              this._registerTeamKill(msg.data.killerTeam);
+              if (msg.data.killerTeam === this.team) this._playVoice('umaliadoeliminouuminimigo');
+            }
           }
         },
         onServerNotice: msg=>{
