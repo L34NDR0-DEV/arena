@@ -1981,8 +1981,10 @@ window.selectShopSkin = function(skinId){
   document.getElementById('shop-equip-btn').style.display = 'none';
   drawShopFrame(skin);
 
-  // Atualiza destaque na esteira sem reconstruir tudo
+  // Atualiza destaque na esteira sem reconstruir tudo.
+  // Congela animacao nos cards existentes para evitar re-disparo de shopCardIn ao trocar selecao.
   document.querySelectorAll('#shop-track .shop-card').forEach(c=>{
+    c.style.animationDuration = '0s';
     c.classList.toggle('selected', Number(c.dataset.id)===skinId);
   });
 };
@@ -2008,6 +2010,11 @@ window.openShop = async function(){
   if (available.length) { frame.style.display = ''; selectShopSkin(available[0].id); }
   else { frame.style.display = 'none'; }
   document.getElementById('shop-modal').style.display='flex';
+  const firstId = available[0]?.id;
+  if (firstId != null) setTimeout(()=>{
+    const card = document.querySelector(`#shop-track .shop-card[data-id="${firstId}"]`);
+    if (card) card.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }, 50);
 };
 
 window.openShopAt = async function(skinId){
@@ -2237,9 +2244,13 @@ function buildTrailsTab(){
     grid.appendChild(card);
   });
 
-  // Seleciona o equipado atual (ou o primeiro) ao abrir
-  const toSelect = equipped;
+  // Seleciona: ultimo selecionado (se ainda existe) > equipado > primeiro
+  const toSelect = TRAILS.find(t => t.id === _trailSelectedId) ? _trailSelectedId : equipped;
   selectTrail(toSelect, true);
+  setTimeout(()=>{
+    const card = document.querySelector(`#shop-trails-grid .shop-card[data-id="${toSelect}"]`);
+    if (card) card.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }, 50);
 }
 
 function selectTrail(trailId, silent = false){
@@ -2266,9 +2277,13 @@ function selectTrail(trailId, silent = false){
 
   const priceEl = document.getElementById('shop-trail-price');
   if (!isOwned && trail.price > 0) {
+    const effectivePrice = trailPriceFor(trail.id);
+    const isUserPromo = _userPromoActive() && profile?.userPromo?.trailIds?.includes(trail.id);
     priceEl.style.display = 'block';
-    priceEl.textContent = trail.price + ' CR';
-    priceEl.className = 'skin-price' + (trail.premium ? ' promo' : '');
+    priceEl.innerHTML = isUserPromo
+      ? `<span class="shop-card-tag-old">${trail.price} CR</span> ${effectivePrice} CR`
+      : `${effectivePrice} CR`;
+    priceEl.className = 'skin-price' + (trail.premium || isUserPromo ? ' promo' : '');
   } else {
     priceEl.style.display = 'none';
   }
@@ -2293,10 +2308,11 @@ function selectTrail(trailId, silent = false){
 }
 
 function startTrailFramePreview(canvas, trailDef){
+  // Para qualquer loop anterior antes de iniciar novo
+  _stopTrailFrameAnim();
   const ctx = canvas.getContext('2d');
   const W = canvas.width, H = canvas.height;
   let t = 0, points = [];
-  if (canvas._animId) cancelAnimationFrame(canvas._animId);
 
   if (trailDef.style === 'none') {
     ctx.clearRect(0, 0, W, H);
@@ -2335,7 +2351,6 @@ function startTrailFramePreview(canvas, trailDef){
     ctx.fill();
     ctx.restore();
     _trailFrameAnimId = requestAnimationFrame(tick);
-    canvas._animId = _trailFrameAnimId;
   }
   tick();
 }
