@@ -1650,8 +1650,11 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 }
 
 /* Elementos exclusivos de desktop — escondidos em qualquer mobile, independente da largura/orientação */
-body.is-mobile #hud-bottom { display:none !important; }
+body.is-mobile #hud-bottom       { display:none !important; }
 body.is-mobile #ps-desktop-settings { display:none !important; }
+body.is-mobile #weapon-slots     { display:none !important; }
+body.is-mobile #powerup-slots    { display:none !important; }
+body.is-mobile #active-effects-canvas { display:none !important; }
 @media (orientation:landscape) and (max-height:520px){
   #hud-left,#hud-right{transform:scale(.82);transform-origin:top left;}
   #hud-right{transform-origin:top right;}
