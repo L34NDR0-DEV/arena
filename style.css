@@ -908,96 +908,92 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 /* ═══ HUD ═══════════════════════════════════════════════════ */
 #hud{position:absolute;inset:0;pointer-events:none;display:none;}
 
-/* ── Topbar única ── */
-#hud-topbar{
-  position:absolute;top:0;left:0;right:0;
-  height:48px;
-  display:flex;align-items:center;
-  background:linear-gradient(180deg,rgba(4,2,12,.92) 60%,transparent);
-  padding:0 10px;gap:0;
-  pointer-events:none;
+/* ── HUD Esquerdo: nome + barras ── */
+#hud-left{
+  position:absolute;top:0;left:0;
+  padding:10px 14px 20px;
+  background:linear-gradient(135deg,rgba(8,4,18,.88) 60%,transparent);
+  border-bottom-right-radius:12px;
+  min-width:200px;
 }
-#hud-topbar-left{
-  display:flex;align-items:center;gap:8px;
-  flex:0 0 auto;min-width:0;
-}
-.hud-pause-btn{
-  pointer-events:auto;
-  width:34px;height:34px;border-radius:8px;border:1.5px solid rgba(155,92,255,.35);
-  background:rgba(14,8,30,.85);
-  display:flex;align-items:center;justify-content:center;
-  cursor:pointer;flex-shrink:0;
-  transition:border-color .15s,box-shadow .15s;
-}
-.hud-pause-btn:hover,.hud-pause-btn:active{border-color:#9b5cff;box-shadow:0 0 10px #9b5cff55;}
-.hud-pause-btn svg{width:13px;height:13px;color:#9b5cff;}
-.hud-identity{display:flex;flex-direction:column;gap:1px;}
 .hud-player-name{
   font-family:'Press Start 2P',monospace;
-  font-size:7px;color:var(--orange);letter-spacing:1px;
+  font-size:9px;color:var(--orange);letter-spacing:1px;
   text-shadow:0 0 8px var(--orange);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:110px;
+  margin-bottom:8px;display:block;
 }
-.hud-level{
-  font-family:'Press Start 2P',monospace;
-  font-size:6px;color:rgba(155,92,255,.7);white-space:nowrap;
-}
-
-/* Centro: placar + timer */
-#hud-center{
-  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
-}
-#hud-center.hidden{display:none!important;}
-.score-row{display:flex;align-items:center;gap:8px;}
-.score-val{
-  font-family:'Press Start 2P',monospace;font-size:15px;font-weight:900;
-  color:var(--gold);line-height:1;text-shadow:0 0 10px rgba(255,200,0,.4);
-}
-.score-val.enemy{color:var(--red);text-shadow:0 0 10px rgba(255,40,80,.4);}
-.score-sep{font-family:'Press Start 2P',monospace;font-size:7px;color:rgba(155,92,255,.5);}
-#timer{font-family:'Press Start 2P',monospace;font-size:8px;color:rgba(155,92,255,.55);letter-spacing:2px;}
-#team-kill-counter{
-  display:flex;align-items:center;gap:4px;
-  font-family:'Press Start 2P',monospace;font-size:8px;
-}
-#team-kill-counter b:first-child{color:#ff4d6a;}
-#team-kill-counter b:last-child{color:#5599ff;}
-#team-kill-counter em{font-style:normal;font-size:6px;color:rgba(255,255,255,.3);}
-
-/* Direita: barra XP + minimap */
-#hud-topbar-right{
-  display:flex;flex-direction:column;align-items:flex-end;gap:4px;
-  flex:0 0 auto;
-}
-.hud-xp-wrap{width:110px;}
+.bar-row{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.bar-icon{width:11px;height:11px;opacity:.85;flex-shrink:0;}
 .bar-bg{
-  width:100%;height:5px;
+  flex:1;height:6px;
   background:rgba(10,26,40,.7);
   border-radius:3px;overflow:hidden;
-  border:1px solid rgba(155,92,255,.15);
+  border:1px solid rgba(0,150,200,.12);
 }
 .bar-fill{height:100%;border-radius:3px;transition:width .15s;}
-#xp-fill{background:linear-gradient(90deg,#551199,#cc44ff);box-shadow:0 0 6px #cc44ff33;}
 #hp-fill{background:linear-gradient(90deg,#991122,#ff2255);box-shadow:0 0 6px #ff225566;}
-#shield-fill{background:linear-gradient(90deg,#004499,#00aaff);}
-#mana-fill{background:linear-gradient(90deg,#1133aa,#4488ff);}
-#minimap{display:block;pointer-events:none;border:1px solid rgba(155,92,255,.22);border-radius:3px;}
-
-/* Slots de arma desktop (canto direito, abaixo da topbar) */
-#weapon-slots{
-  position:absolute;top:56px;right:10px;
-  display:flex;gap:4px;align-items:flex-start;
-  pointer-events:auto;
+#shield-fill{background:linear-gradient(90deg,#004499,#00aaff);box-shadow:0 0 6px #00aaff44;}
+#mana-fill{background:linear-gradient(90deg,#1133aa,#4488ff);box-shadow:0 0 6px #4488ff44;}
+#xp-fill{background:linear-gradient(90deg,#551199,#cc44ff);box-shadow:0 0 6px #cc44ff33;}
+.hud-level{
+  font-family:'Press Start 2P',monospace;
+  font-size:7px;color:var(--text2);margin-left:2px;white-space:nowrap;
 }
+
+/* ── HUD Centro: placar ── */
+#hud-center{
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  padding:8px 20px 14px;
+  background:linear-gradient(180deg,rgba(2,8,18,.82),transparent);
+  border-bottom-left-radius:10px;border-bottom-right-radius:10px;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+}
+.score-row{display:flex;align-items:center;gap:10px;}
+.score-box{
+  background:rgba(14,8,28,.8);
+  border:1px solid rgba(155,92,255,.18);
+  border-radius:4px;padding:4px 14px;
+  display:flex;flex-direction:column;align-items:center;
+  box-shadow:0 0 12px rgba(155,92,255,.08);
+}
+.score-label{font-family:'Press Start 2P',monospace;font-size:6px;color:var(--text2);margin-bottom:2px;}
+.score-val{font-family:'Press Start 2P',monospace;font-size:16px;font-weight:900;color:var(--gold);line-height:1;}
+.score-val.enemy{color:var(--red);}
+.score-sep{font-family:'Press Start 2P',monospace;font-size:8px;color:rgba(100,80,140,.6);}
+#timer{font-family:'Press Start 2P',monospace;font-size:10px;color:rgba(155,92,255,.45);letter-spacing:2px;margin-top:2px;}
+
+/* ── HUD Direito: itens ativos ── */
+#hud-right{
+  position:absolute;top:0;right:0;
+  padding:10px 14px 20px;
+  background:linear-gradient(225deg,rgba(8,4,18,.88) 60%,transparent);
+  border-bottom-left-radius:12px;
+  display:flex;flex-direction:column;align-items:flex-end;gap:6px;
+}
+/* ── Slots de arma (R T Y U I + L) ── */
+#team-kill-counter{
+  display:flex;align-items:center;gap:8px;align-self:flex-end;
+  padding:5px 8px;border:1px solid rgba(155,92,255,.32);border-radius:4px;
+  background:linear-gradient(90deg,rgba(20,8,36,.86),rgba(4,14,28,.74));
+  box-shadow:0 0 12px rgba(155,92,255,.16);
+  font-family:'Press Start 2P',monospace;pointer-events:none;
+}
+.tkc-label{font-size:6px;color:rgba(220,200,255,.72);letter-spacing:1px;}
+.tkc-score{display:flex;align-items:center;gap:5px;font-size:10px;line-height:1;}
+.tkc-score b:first-child{color:#ff4d6a;text-shadow:0 0 8px rgba(255,77,106,.45);}
+.tkc-score b:last-child{color:#4da6ff;text-shadow:0 0 8px rgba(77,166,255,.45);}
+.tkc-score em{font-style:normal;font-size:6px;color:rgba(255,255,255,.38);}
+#weapon-slots{display:flex;gap:4px;align-items:flex-end;}
 .ws-slot{
   position:relative;width:38px;height:38px;
   border:1.5px solid rgba(255,140,0,.25);
-  border-radius:4px;background:rgba(8,4,2,.82);
+  border-radius:3px;background:rgba(8,4,2,.8);
   display:flex;align-items:center;justify-content:center;
   transition:border-color .15s,box-shadow .15s;
-  cursor:pointer;
 }
-.ws-slot.ws-active{border-color:#ff8c00;box-shadow:0 0 10px #ff8c0055,inset 0 0 6px #ff8c0022;}
+.ws-slot.ws-active{
+  border-color:#ff8c00;box-shadow:0 0 10px #ff8c0055,inset 0 0 6px #ff8c0022;
+}
 .ws-slot.pressed{transform:scale(.94);filter:brightness(1.25);}
 .ws-slot.ws-has-weapon{border-color:rgba(255,140,0,.6);}
 .ws-slot.ws-extra{border-style:dashed;border-color:rgba(155,92,255,.35);margin-left:6px;}
@@ -1015,37 +1011,6 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none;
 }
 
-/* Slots de item desktop */
-#powerup-slots{
-  position:absolute;top:102px;right:10px;
-  display:flex;gap:4px;
-  pointer-events:auto;
-}
-.pu-slot{
-  width:34px;height:34px;
-  border:1px solid rgba(255,140,0,.2);
-  border-radius:4px;
-  background:rgba(6,14,28,.78);
-  display:flex;align-items:center;justify-content:center;
-  font-size:10px;position:relative;
-  transition:border-color .2s,box-shadow .2s;
-  cursor:pointer;
-}
-.pu-slot .pu-key{position:absolute;bottom:1px;right:3px;font-size:6px;color:var(--text2);font-family:monospace;}
-.pu-slot.has-item{border-color:rgba(255,140,0,.55);box-shadow:0 0 6px rgba(255,140,0,.25);}
-.pu-slot.has-item.harmful-item{border-color:rgba(200,50,100,.55);box-shadow:0 0 6px rgba(200,50,100,.25);}
-.pu-slot.pu-extra{border-style:dashed;border-color:rgba(155,92,255,.3);background:rgba(20,12,40,.75);}
-.pu-slot.extra-slot-active{border-style:solid;border-color:rgba(155,92,255,.7);box-shadow:0 0 10px rgba(155,92,255,.4);animation:extraPulse 1.2s ease-in-out infinite;}
-@keyframes extraPulse{0%,100%{box-shadow:0 0 8px rgba(255,200,0,.3)}50%{box-shadow:0 0 16px rgba(255,200,0,.7)}}
-.pu-key-x{color:#ffcc00!important;font-weight:bold;}
-.pu-icon{display:block;image-rendering:pixelated;}
-.hidden-slot{display:none!important;}
-#active-effects-canvas{
-  position:absolute;top:144px;right:10px;
-  display:block;border-radius:2px;background:rgba(4,10,22,.6);min-height:22px;
-  pointer-events:none;
-}
-
 /* Tooltip de itens/armas */
 #hud-tooltip{
   position:fixed;z-index:9999;pointer-events:none;
@@ -1059,6 +1024,28 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 #hud-tooltip.visible{opacity:1;display:block;}
 #hud-tooltip .tt-name{font-size:6px;color:#ff8c00;margin-bottom:5px;line-height:1.4;}
 #hud-tooltip .tt-desc{font-size:5px;color:rgba(220,200,255,0.85);line-height:1.6;}
+
+#powerup-slots{display:flex;gap:5px;}
+.pu-slot{
+  width:34px;height:34px;
+  border:1px solid rgba(0,150,200,.2);
+  border-radius:4px;
+  background:rgba(6,14,28,.75);
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;position:relative;
+  transition:border-color .2s,box-shadow .2s;
+}
+.pu-slot .pu-key{position:absolute;bottom:1px;right:3px;font-size:6px;color:var(--text2);font-family:monospace;}
+.pu-slot.has-item{border-color:rgba(255,140,0,.55);box-shadow:0 0 6px rgba(255,140,0,.25);}
+.pu-slot.has-item.harmful-item{border-color:rgba(200,50,100,.55);box-shadow:0 0 6px rgba(200,50,100,.25);}
+.pu-slot.pu-extra{border-style:dashed;border-color:rgba(155,92,255,.3);background:rgba(20,12,40,.75);}
+.pu-slot.extra-slot-active{border-style:solid;border-color:rgba(155,92,255,.7);box-shadow:0 0 10px rgba(155,92,255,.4);animation:extraPulse 1.2s ease-in-out infinite;}
+@keyframes extraPulse{0%,100%{box-shadow:0 0 8px rgba(255,200,0,.3)}50%{box-shadow:0 0 16px rgba(255,200,0,.7)}}
+.pu-key-x{color:#ffcc00!important;font-weight:bold;}
+.pu-icon{display:block;image-rendering:pixelated;}
+.hidden-slot{display:none!important;}
+#active-effects-canvas{display:block;margin-top:4px;border-radius:2px;background:rgba(4,10,22,0.6);min-height:22px;}
+#hud-center.hidden{display:none!important;}
 
 /* Kill feed */
 #kill-feed{position:absolute;right:12px;top:68px;display:flex;flex-direction:column;gap:3px;pointer-events:none;}
@@ -1078,57 +1065,20 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .notify-msg{font-size:14px;font-weight:900;text-shadow:0 0 14px currentColor;animation:notAnim 2s forwards;font-family:'Press Start 2P',monospace;}
 @keyframes notAnim{0%{opacity:0;transform:scale(.5)}15%{opacity:1;transform:scale(1.1)}35%{transform:scale(1)}80%{opacity:1}100%{opacity:0}}
 
-/* Hints desktop */
+/* Minimap */
+#minimap{position:absolute;bottom:44px;right:12px;pointer-events:none;border:1px solid rgba(155,92,255,.22);border-radius:2px;}
+
+/* Hints */
 #hud-bottom{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(0deg,rgba(2,6,12,.7),transparent);padding:5px 16px;display:flex;justify-content:center;gap:14px;}
 .hint{font-size:7px;color:#1a3350;display:flex;align-items:center;gap:3px;}
 .hint kbd{background:rgba(4,10,20,.8);border:1px solid #152840;border-radius:2px;padding:1px 4px;font-size:6px;color:#233f5a;}
 
 /* ═══ PAUSE ════════════════════════════════════════════════ */
-#pause{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,4,10,.96);backdrop-filter:blur(10px);flex-direction:column;gap:14px;}
+#pause{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,4,10,.95);backdrop-filter:blur(8px);flex-direction:column;gap:14px;}
 .pause-title{font-family:'Press Start 2P',monospace;font-size:12px;color:var(--text2);letter-spacing:3px;display:flex;align-items:center;gap:10px;}
-.pause-title svg{width:18px;height:18px;color:#9b5cff;}
-.pause-game-name{font-family:'Press Start 2P',monospace;font-size:clamp(10px,2vw,18px);color:#9b5cff;text-shadow:0 0 14px #9b5cff88;text-align:center;line-height:1.5;}
+.pause-title svg{width:18px;height:18px;color:var(--cyan);}
+.pause-game-name{font-family:'Press Start 2P',monospace;font-size:clamp(10px,2vw,18px);color:var(--cyan);text-shadow:0 0 14px var(--cyan);text-align:center;line-height:1.5;}
 .pause-btns{display:flex;flex-direction:column;gap:8px;width:220px;margin-top:10px;}
-
-/* ═══ Regras exclusivas mobile (classe .is-mobile no body) ══ */
-/* Independente da largura — cobre celular em landscape (>760px) */
-.is-mobile #weapon-slots,
-.is-mobile #powerup-slots,
-.is-mobile #active-effects-canvas,
-.is-mobile #hud-bottom { display:none !important; }
-
-/* ═══ Touch hint overlay (mobile) ══════════════════════════ */
-#touch-hint-overlay{
-  position:absolute;bottom:80px;left:50%;transform:translateX(-50%);
-  background:rgba(4,2,14,.88);backdrop-filter:blur(6px);
-  border:1px solid rgba(155,92,255,.28);border-radius:14px;
-  padding:10px 16px 8px;
-  display:none;flex-direction:column;align-items:center;gap:6px;
-  pointer-events:auto;z-index:120;
-  animation:thoIn .3s ease;
-  transition:opacity .4s;
-}
-#touch-hint-overlay.tho-visible{display:flex;}
-#touch-hint-overlay.tho-hiding{opacity:0;}
-@keyframes thoIn{from{opacity:0;transform:translateX(-50%) translateY(14px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-.tho-row{display:flex;gap:16px;align-items:flex-start;}
-.tho-item{
-  display:flex;flex-direction:column;align-items:center;gap:4px;
-  min-width:44px;
-}
-.tho-item svg{width:34px;height:34px;flex-shrink:0;}
-.tho-item span{
-  font-family:'Press Start 2P',monospace;font-size:5px;
-  color:rgba(220,200,255,.65);text-align:center;line-height:1.5;
-}
-.tho-dismiss{
-  font-family:'Press Start 2P',monospace;font-size:5px;
-  color:rgba(155,92,255,.45);letter-spacing:.5px;
-  margin-top:2px;
-}
-
-/* Oculto no desktop; só aparece no mobile via JS */
-@media (min-width:761px){#touch-hint-overlay{display:none!important;}}
 
 /* ═══ GAME OVER ════════════════════════════════════════════ */
 #gameover{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(2,4,10,.97);backdrop-filter:blur(10px);}
@@ -1491,187 +1441,168 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .rotate-text{font-family:'Press Start 2P',monospace;font-size:11px;color:var(--text);line-height:1.8;letter-spacing:.5px;max-width:340px;}
 .rotate-text span{color:var(--orange);}
 
-/* ═══ Controles touch (mobile) — novo layout ════════════════ */
+/* ═══ Controles touch (mobile) ═══════════════════════════════ */
 #touch-controls{
-  --tc-orange:#ff8c00;
-  --tc-violet:#9b5cff;
-  --tc-orange-soft:rgba(255,140,0,.38);
-  --tc-violet-soft:rgba(155,92,255,.38);
+  --touch-orange:#ff8c00;
+  --touch-violet:#9b5cff;
+  --touch-gold:#ffcc44;
+  --touch-shell:#120e18;
+  --touch-shell2:#2a1a40;
   position:absolute;inset:0;display:none;pointer-events:none;z-index:50;
 }
 #touch-controls.active{display:block;}
-
-/* ── Joystick ── */
-.tc-joystick-wrap{
-  position:absolute;
-  left:calc(10px + env(safe-area-inset-left));
-  bottom:calc(10px + env(safe-area-inset-bottom));
-  width:136px;height:136px;
-}
 .touch-stick-zone{
-  position:relative;width:136px;height:136px;border-radius:50%;
+  position:absolute;
+  left:calc(16px + env(safe-area-inset-left));
+  bottom:calc(16px + env(safe-area-inset-bottom));
+  width:148px;height:148px;border-radius:50%;
   pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;
-  background:radial-gradient(circle at 40% 34%,rgba(155,92,255,.1),transparent 60%),
-             radial-gradient(circle,rgba(10,6,20,.85),rgba(4,2,10,.95));
 }
-.tsk-ring{
-  position:absolute;border-radius:50%;border:1.5px solid rgba(155,92,255,.28);
-  pointer-events:none;
+.touch-stick-zone::before{
+  content:"";position:absolute;inset:0;border-radius:50%;
+  background:
+    conic-gradient(from 8deg,#0e0818 0 14deg,#3a2855 14deg 34deg,#120e1c 34deg 54deg,#4a3a6a 54deg 66deg,#0e0818 66deg 90deg,#2a1840 90deg 126deg,#0e0818 126deg 180deg,#3a2855 180deg 214deg,#0e0818 214deg 270deg,#2a1840 270deg 306deg,#0e0818 306deg 360deg);
+  border:1px solid rgba(155,92,255,.32);
+  box-shadow:0 0 24px rgba(155,92,255,.28), inset 0 0 16px rgba(0,0,0,.75);
 }
-.tsk-ring-outer{inset:0;box-shadow:0 0 20px rgba(155,92,255,.18),inset 0 0 14px rgba(0,0,0,.6);}
-.tsk-ring-inner{inset:20px;border-color:rgba(155,92,255,.14);}
+.touch-stick-zone::after{
+  content:"";position:absolute;inset:18px;border-radius:50%;
+  background:
+    radial-gradient(circle at 35% 28%,rgba(255,255,255,.12),rgba(255,255,255,0) 24%),
+    radial-gradient(circle,rgba(155,92,255,.18),rgba(14,8,24,.82) 58%,rgba(6,4,12,.92));
+  border:2px solid rgba(155,92,255,.72);
+  box-shadow:0 0 18px rgba(155,92,255,.46), inset 0 0 24px rgba(8,4,18,.9);
+}
+.touch-stick-core{
+  position:absolute;inset:44px;border-radius:50%;z-index:2;pointer-events:none;
+  background:
+    linear-gradient(30deg,rgba(255,255,255,.04) 0 1px,transparent 1px 9px),
+    radial-gradient(circle,#1e1228,#0a0814 68%);
+  border:1px solid rgba(155,92,255,.28);
+}
+.touch-stick-arrow{
+  position:absolute;z-index:3;width:0;height:0;opacity:.82;pointer-events:none;
+  filter:drop-shadow(0 0 6px var(--touch-violet));
+}
+.touch-stick-arrow-up{left:50%;top:15px;transform:translateX(-50%);border-left:7px solid transparent;border-right:7px solid transparent;border-bottom:12px solid var(--touch-violet);}
+.touch-stick-arrow-right{right:15px;top:50%;transform:translateY(-50%);border-top:7px solid transparent;border-bottom:7px solid transparent;border-left:12px solid var(--touch-violet);}
+.touch-stick-arrow-down{left:50%;bottom:15px;transform:translateX(-50%);border-left:7px solid transparent;border-right:7px solid transparent;border-top:12px solid var(--touch-violet);}
+.touch-stick-arrow-left{left:15px;top:50%;transform:translateY(-50%);border-top:7px solid transparent;border-bottom:7px solid transparent;border-right:12px solid var(--touch-violet);}
 .touch-stick-knob{
-  position:absolute;width:52px;height:52px;border-radius:50%;z-index:6;
+  position:absolute;width:58px;height:58px;border-radius:50%;z-index:6;
   left:50%;top:50%;transform:translate(-50%,-50%);
   background:
-    radial-gradient(circle at 34% 28%,rgba(255,220,180,.22) 0 14%,#ff8c2a 14% 30%,#7a3200 62%,#120800 100%);
-  border:2px solid rgba(255,160,60,.7);
-  box-shadow:0 0 18px rgba(255,140,0,.6), inset 0 -8px 12px rgba(0,0,0,.5);
+    radial-gradient(circle at 34% 26%,#ffe4c4 0 9%,#ff9a40 10% 24%,#8a3a00 58%,#1a0a00 100%);
+  border:2px solid #ffbb66;
+  box-shadow:0 0 20px rgba(255,140,0,.8), inset 0 -10px 16px rgba(0,0,0,.46);
   pointer-events:none;
 }
-
-/* ── Barra de itens inferior (centro) ── */
-.tc-item-bar{
+.touch-actions{
   position:absolute;
-  left:50%;bottom:calc(10px + env(safe-area-inset-bottom));
-  transform:translateX(-50%);
-  display:flex;gap:6px;align-items:flex-end;
-  pointer-events:none;
+  right:calc(16px + env(safe-area-inset-right));
+  bottom:calc(136px + env(safe-area-inset-bottom));
+  display:flex;flex-direction:column;align-items:flex-end;gap:12px;pointer-events:none;
+}
+.touch-btn{
+  --accent:var(--touch-orange);
+  --accent-soft:rgba(255,140,0,.42);
+  --accent-border:rgba(255,140,0,.72);
+  --accent-core:#2a1800;
+  pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;
+  position:relative;display:flex;align-items:center;justify-content:center;
+  border:none;border-radius:50%;color:var(--accent);
+  isolation:isolate;
+  background:radial-gradient(circle at 42% 35%,#2e1e0a,#14100e 54%,#06040a 100%);
+  box-shadow:0 0 18px var(--accent-soft), inset 0 0 18px rgba(0,0,0,.68);
+}
+.touch-btn::before{
+  content:"";position:absolute;inset:-4px;border-radius:50%;
+  background:conic-gradient(from 18deg,#090608 0 18deg,#3a2814 18deg 42deg,#100a0e 42deg 82deg,var(--accent) 82deg 92deg,#1a1218 92deg 160deg,#4a3020 160deg 190deg,#100a0e 190deg 262deg,var(--accent) 262deg 272deg,#201618 272deg 340deg,#090608 340deg 360deg);
+  box-shadow:0 0 14px var(--accent-soft);
+  z-index:-1;
+}
+.touch-btn::after{
+  content:"";position:absolute;inset:8px;border-radius:50%;
+  border:2px solid var(--accent-border);
+  box-shadow:0 0 12px var(--accent-soft), inset 0 0 14px rgba(0,0,0,.72);
+}
+.touch-btn-core{
+  width:58%;height:58%;border-radius:50%;display:flex;align-items:center;justify-content:center;z-index:2;
+  background:
+    radial-gradient(circle at 40% 28%,rgba(255,255,255,.18),rgba(255,255,255,0) 28%),
+    radial-gradient(circle,var(--accent-core),#0a0608 72%);
+  box-shadow:inset 0 0 14px rgba(0,0,0,.65);
+}
+.touch-btn:active,.touch-btn.pressed{transform:scale(.93);filter:brightness(1.18);}
+.touch-btn:active::after,.touch-btn.pressed::after{border-color:var(--accent);box-shadow:0 0 18px var(--accent), inset 0 0 18px var(--accent-soft);}
+.touch-btn-fire{width:72px;height:72px;--accent:var(--touch-orange);}
+.touch-btn-dash{width:68px;height:68px;--accent:var(--touch-violet);--accent-soft:rgba(155,92,255,.44);--accent-border:rgba(155,92,255,.74);--accent-core:#1a0c30;}
+.touch-icon-fire{
+  width:0;height:0;margin-left:5px;
+  border-top:14px solid transparent;border-bottom:14px solid transparent;border-left:26px solid var(--accent);
+  filter:drop-shadow(0 0 8px var(--accent));
+}
+.touch-icon-dash{
+  width:30px;height:24px;background:var(--accent);
+  clip-path:polygon(0 40%,52% 40%,42% 6%,100% 50%,42% 94%,52% 60%,0 60%);
+  filter:drop-shadow(0 0 8px var(--accent));
+}
+.touch-btn-pause{
+  --accent:var(--touch-violet);
+  position:relative;top:auto;left:auto;transform:none;
+  width:44px;height:44px;z-index:60;pointer-events:auto;
+  align-self:flex-end;margin-right:3px;
+}
+.touch-btn-pause svg{width:15px;height:15px;z-index:2;filter:drop-shadow(0 0 6px var(--touch-violet));}
+.touch-btn-pause:active,.touch-btn-pause.pressed{transform:scale(.93);filter:brightness(1.18);}
+.touch-slots{
+  position:absolute;left:50%;bottom:calc(12px + env(safe-area-inset-bottom));
+  transform:translateX(-50%);display:flex;gap:7px;pointer-events:none;
 }
 .touch-slot{
   pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;
-  position:relative;width:50px;height:50px;border-radius:10px;
-  display:flex;align-items:center;justify-content:center;flex-direction:column;
-  background:rgba(8,4,18,.82);
-  border:1.5px solid rgba(155,92,255,.22);
-  box-shadow:0 2px 12px rgba(0,0,0,.5), inset 0 0 8px rgba(0,0,0,.4);
-  transition:border-color .12s,box-shadow .12s;
+  position:relative;width:54px;height:54px;border-radius:50%;border:none;
+  color:var(--text);font-family:'Press Start 2P',monospace;font-size:9px;
+  display:flex;align-items:center;justify-content:center;
+  isolation:isolate;
+  background:radial-gradient(circle at 36% 28%,#261836,#0e0c18 60%,#050308);
+  box-shadow:0 0 10px rgba(155,92,255,.22), inset 0 0 14px rgba(0,0,0,.72);
 }
-.touch-slot.has-item{border-color:rgba(255,140,0,.5);box-shadow:0 0 10px rgba(255,140,0,.22),inset 0 0 6px rgba(0,0,0,.4);}
-.touch-slot.pressed,.touch-slot:active{transform:scale(.91);filter:brightness(1.15);}
-.touch-slot canvas{display:block;image-rendering:pixelated;position:relative;z-index:2;}
-.ts-label{
-  font-family:'Press Start 2P',monospace;font-size:6px;
-  color:rgba(200,180,255,.55);position:relative;z-index:2;margin-top:1px;
+.touch-slot::before{
+  content:"";position:absolute;inset:-3px;border-radius:50%;
+  background:conic-gradient(from 24deg,#0a0810 0 26deg,#3a2855 26deg 56deg,#0e0c1a 56deg 142deg,var(--touch-violet) 142deg 152deg,#1e1430 152deg 236deg,#4a3870 236deg 266deg,#0a0810 266deg 360deg);
+  z-index:-1;opacity:.86;
 }
-.touch-slot.has-item .ts-label{color:rgba(255,200,120,.7);}
-.touch-slot-x{border-style:dashed;border-color:rgba(155,92,255,.28);}
-.touch-slot-x .ts-label{color:rgba(220,180,255,.45);}
-
-/* ── Weapon switcher ── */
-.tc-weapon-switcher{
-  position:absolute;
-  right:calc(160px + env(safe-area-inset-right));
-  bottom:calc(10px + env(safe-area-inset-bottom));
-  width:96px;height:50px;border-radius:10px;
-  background:rgba(20,10,36,.88);
-  border:1.5px solid rgba(255,140,0,.3);
-  box-shadow:0 0 12px rgba(255,140,0,.18),inset 0 0 8px rgba(0,0,0,.5);
-  display:flex;align-items:center;justify-content:center;gap:4px;
-  pointer-events:auto;touch-action:none;user-select:none;
-  overflow:hidden;
+.touch-slot::after{
+  content:"";position:absolute;inset:8px;border-radius:50%;
+  border:1.5px solid rgba(155,92,255,.5);
+  box-shadow:0 0 10px rgba(155,92,255,.34), inset 0 0 10px rgba(0,0,0,.78);
 }
-.tc-weapon-switcher.has-weapon{border-color:rgba(255,140,0,.6);box-shadow:0 0 16px rgba(255,140,0,.28),inset 0 0 8px rgba(0,0,0,.5);}
-.tc-weapon-icon{display:block;image-rendering:pixelated;flex-shrink:0;}
-.tc-weapon-name{
-  font-family:'Press Start 2P',monospace;font-size:5px;color:rgba(255,200,120,.8);
-  text-align:center;line-height:1.4;max-width:44px;overflow:hidden;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
-}
-.tc-weapon-arrows{
-  position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;
-  pointer-events:auto;
-}
-.tc-warrow{
-  width:22px;height:100%;display:flex;align-items:center;justify-content:center;
-  font-size:16px;color:rgba(255,140,0,.55);cursor:pointer;
-  font-family:system-ui;font-weight:300;
-  transition:color .1s;
-}
-.tc-warrow:active{color:#ff8c00;}
-
-/* ── Botões direita: FIRE + DASH ── */
-.tc-right-btns{
-  position:absolute;
-  right:calc(10px + env(safe-area-inset-right));
-  bottom:calc(10px + env(safe-area-inset-bottom));
-  display:flex;flex-direction:column;align-items:center;gap:8px;
-  pointer-events:none;
-}
-.tc-btn{
-  pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none;
-  position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
-  border-radius:50%;border:none;cursor:pointer;
-  transition:transform .1s,filter .1s;
-}
-.tc-btn:active,.tc-btn.pressed{transform:scale(.9);filter:brightness(1.2);}
-.tc-btn-inner{
-  border-radius:50%;display:flex;align-items:center;justify-content:center;
-  position:relative;
-}
-.tc-btn-inner::after{
-  content:"";position:absolute;inset:0;border-radius:50%;
-  border:2px solid transparent;
-  box-shadow:0 0 14px transparent;
-  transition:border-color .12s,box-shadow .12s;
-}
-.tc-btn.pressed .tc-btn-inner::after,.tc-btn:active .tc-btn-inner::after{
-  border-color:rgba(255,255,255,.3);
-}
-.tc-btn-label{
-  font-family:'Press Start 2P',monospace;font-size:5px;
-  color:rgba(255,255,255,.4);letter-spacing:.5px;
-}
-.tc-btn-fire{
-  width:76px;height:76px;
-}
-.tc-btn-fire .tc-btn-inner{
-  width:76px;height:76px;
-  background:radial-gradient(circle at 40% 32%,#3a1e00,#1e0e00 48%,#08040a 100%);
-  box-shadow:0 0 22px rgba(255,140,0,.35),inset 0 0 18px rgba(0,0,0,.6);
-  border:2px solid rgba(255,140,0,.45);
-}
-.tc-btn-fire:active .tc-btn-inner,.tc-btn-fire.pressed .tc-btn-inner{
-  box-shadow:0 0 28px rgba(255,140,0,.6),inset 0 0 18px rgba(0,0,0,.5);
-  border-color:rgba(255,140,0,.85);
-}
-.tc-icon-fire{
-  width:0;height:0;margin-left:6px;
-  border-top:13px solid transparent;border-bottom:13px solid transparent;
-  border-left:24px solid #ff8c00;
-  filter:drop-shadow(0 0 8px rgba(255,140,0,.8));
-}
-.tc-btn-dash{
-  width:64px;height:64px;
-}
-.tc-btn-dash .tc-btn-inner{
-  width:64px;height:64px;
-  background:radial-gradient(circle at 40% 32%,#1a0c32,#0e0820 48%,#060410 100%);
-  box-shadow:0 0 18px rgba(155,92,255,.3),inset 0 0 14px rgba(0,0,0,.6);
-  border:2px solid rgba(155,92,255,.4);
-}
-.tc-btn-dash:active .tc-btn-inner,.tc-btn-dash.pressed .tc-btn-inner{
-  box-shadow:0 0 24px rgba(155,92,255,.55),inset 0 0 14px rgba(0,0,0,.5);
-  border-color:rgba(155,92,255,.8);
-}
-.tc-icon-dash{
-  width:26px;height:20px;background:#9b5cff;
-  clip-path:polygon(0 38%,50% 38%,40% 8%,100% 50%,40% 92%,50% 62%,0 62%);
-  filter:drop-shadow(0 0 7px rgba(155,92,255,.8));
-}
-
-/* Compact mode: landscape + pequena altura */
-@media (orientation:landscape) and (max-height:480px){
-  .tc-joystick-wrap{width:114px;height:114px;}
-  .touch-stick-zone{width:114px;height:114px;}
-  .touch-stick-knob{width:44px;height:44px;}
-  .tc-btn-fire{width:62px;height:62px;}
-  .tc-btn-fire .tc-btn-inner{width:62px;height:62px;}
-  .tc-btn-dash{width:52px;height:52px;}
-  .tc-btn-dash .tc-btn-inner{width:52px;height:52px;}
-  .touch-slot{width:42px;height:42px;}
-  .tc-item-bar{gap:4px;}
-  .tc-weapon-switcher{width:78px;height:42px;right:calc(130px + env(safe-area-inset-right));}
+.touch-slot span{position:relative;z-index:2;color:#e8d4ff;text-shadow:0 0 8px rgba(155,92,255,.9);}
+.touch-slot.touch-slot-weapon::before{background:conic-gradient(from 24deg,#0a0810 0 26deg,#6b3a10 26deg 56deg,#0e0c1a 56deg 142deg,var(--touch-orange) 142deg 152deg,#2c1608 152deg 236deg,#704018 236deg 266deg,#0a0810 266deg 360deg);}
+.touch-slot.touch-slot-weapon::after{border-color:rgba(255,140,0,.62);box-shadow:0 0 14px rgba(255,140,0,.42), inset 0 0 10px rgba(0,0,0,.78);}
+.touch-slot.touch-slot-weapon span{color:#ffd8a6;text-shadow:0 0 8px rgba(255,140,0,.9);}
+.touch-slot.touch-slot-active{filter:brightness(1.22);}
+.touch-slot.touch-slot-active::after{border-color:var(--touch-orange);box-shadow:0 0 18px var(--touch-orange), inset 0 0 14px rgba(255,140,0,.25);}
+.touch-slot:active,.touch-slot.pressed{transform:scale(.93);filter:brightness(1.18);}
+.touch-slot:active::after,.touch-slot.pressed::after{border-color:var(--touch-violet);box-shadow:0 0 16px var(--touch-violet), inset 0 0 12px rgba(155,92,255,.22);}
+/* Canvas de item dentro do slot — dimensão maior */
+.touch-slot canvas{position:relative;z-index:2;}
+@media (orientation:landscape) and (max-height:520px){
+  .touch-btn-fire{width:60px;height:60px;}
+  .touch-btn-dash{width:56px;height:56px;}
+  .touch-stick-zone{width:120px;height:120px;}
+  .touch-stick-zone::after{inset:15px;}
+  .touch-stick-core{inset:36px;}
+  .touch-stick-knob{width:50px;height:50px;}
+  .touch-stick-arrow-up{top:12px;}
+  .touch-stick-arrow-right{right:12px;}
+  .touch-stick-arrow-down{bottom:12px;}
+  .touch-stick-arrow-left{left:12px;}
+  .touch-slot{width:46px;height:46px;font-size:8px;}
+  .touch-slots{gap:5px;}
+  .touch-btn-pause{width:40px;height:40px;}
+  .touch-actions{bottom:calc(168px + env(safe-area-inset-bottom));}
 }
 
 /* ── Copa mobile: canvas acima, painel abaixo ── */
@@ -1699,27 +1630,27 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   .arcade-title{margin-bottom:12px;}
   .arcade-title-main{font-size:clamp(15px,5.5vw,26px);}
   .arcade-title-top,.arcade-title-sub{font-size:7px;letter-spacing:3px;}
-  /* HUD mobile: topbar compacta */
-  #hud-topbar{height:44px;padding:0 8px;}
-  .hud-player-name{font-size:6px;max-width:80px;}
-  .hud-level{font-size:5px;}
-  .score-val{font-size:12px;}
-  #timer{font-size:7px;}
-  .hud-pause-btn{width:30px;height:30px;}
-  .hud-pause-btn svg{width:11px;height:11px;}
-  .hud-xp-wrap{width:84px;}
-  #minimap{width:84px!important;height:50px!important;}
+  /* HUD do jogo no mobile */
+  #hud-left{top:6px;left:6px;transform:scale(.78);transform-origin:top left;}
+  #hud-right{top:6px;right:6px;transform:scale(.78);transform-origin:top right;}
+  #minimap{bottom:96px;right:6px;transform:scale(.75);transform-origin:bottom right;}
   #hud-bottom{display:none;}
-  #kill-feed{top:52px;right:8px;}
-  .kf-entry{font-size:7px;padding:2px 6px;}
+  /* Slots de arma menores no mobile */
+  #weapon-slots{gap:3px;}
+  .ws-slot{width:32px;height:32px;}
+  .ws-icon{width:26px!important;height:26px!important;}
+  #powerup-slots{gap:3px;}
+  .pu-slot{width:30px;height:30px;}
+  .pu-icon{width:24px!important;height:24px!important;}
+  /* Slots de arma ficam acima dos controles touch */
+  #hud-right{z-index:200;}
 }
 @media (max-width:400px){
   .arcade-title-top{display:none;} /* economiza espaço vertical em telas muito pequenas */
 }
 @media (orientation:landscape) and (max-height:520px){
-  #hud-topbar{height:40px;}
-  .score-val{font-size:11px;}
-  #minimap{width:76px!important;height:44px!important;}
+  #hud-left,#hud-right{transform:scale(.82);transform-origin:top left;}
+  #hud-right{transform-origin:top right;}
   #login-screen{align-items:flex-start;}
   .login-content{padding:8px 12px 16px;}
   .arcade-title{margin-bottom:8px;}

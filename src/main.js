@@ -5,7 +5,6 @@ import { Game }           from './game.js';
 import { CHANGELOG }      from './changelog.js';
 import { PROFILE_ICON_DEFS, drawProfileIcon } from './profileIcons.js';
 import { startVersionChecker } from './version-check.js';
-import { IS_MOBILE, PLATFORM }   from './platform.js';
 
 let game=null, selectedSkin=0, selectedMode='contra1', paused=false;
 let pilotName='JOGADOR';
@@ -2968,9 +2967,10 @@ const canvas=document.getElementById('game-canvas');
 function resizeCanvas(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;if(game)game.onResize(canvas.width,canvas.height);}
 resizeCanvas(); window.addEventListener('resize',resizeCanvas);
 
-// ── Orientação / controles touch ──
-// IS_MOBILE vem de platform.js (importado no topo)
-if (IS_MOBILE) document.body.classList.add('is-mobile');
+// ── Detecção de dispositivo móvel / orientação / controles touch ──
+const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent)
+  || (navigator.maxTouchPoints > 0 && window.matchMedia('(pointer:coarse)').matches);
+
 const orientationWarning = document.getElementById('orientation-warning');
 const touchControls      = document.getElementById('touch-controls');
 
@@ -2999,6 +2999,8 @@ function updateOrientationUI(){
   orientationWarning.classList.toggle('show', inGame && portrait);
   touchControls.classList.toggle('active', showControls);
   if (game) game._touchActive = showControls;
+  const hudBottom = document.getElementById('hud-bottom');
+  if (hudBottom) hudBottom.style.display = 'none';
 }
 window.addEventListener('resize', updateOrientationUI);
 window.addEventListener('orientationchange', updateOrientationUI);
@@ -3010,20 +3012,28 @@ showScreen = function(name){
   lockOrientation(name==='game' ? 'landscape' : 'portrait');
 };
 
-// ── Controles touch — novo layout ──────────────────────────────
+// ── Controles touch personalizados (joystick virtual + botões) ──
 (function setupTouchControls(){
   if (!IS_MOBILE) return;
 
-  const stickZone   = document.getElementById('touch-stick-zone');
-  const stickKnob   = document.getElementById('touch-stick-knob');
-  const btnFire     = document.getElementById('touch-btn-fire');
-  const btnDash     = document.getElementById('touch-btn-dash');
-  const itemSlots   = touchControls.querySelectorAll('.touch-slot');
-  const wSwitcher   = document.getElementById('tc-weapon-switcher');
-  const wArrowL     = document.getElementById('tc-warrow-l');
-  const wArrowR     = document.getElementById('tc-warrow-r');
+  const stickZone = document.getElementById('touch-stick-zone');
+  const stickKnob = document.getElementById('touch-stick-knob');
+  const btnFire   = document.getElementById('touch-btn-fire');
+  const btnDash   = document.getElementById('touch-btn-dash');
+  const btnPause  = document.getElementById('touch-btn-pause');
+  const slots     = touchControls.querySelectorAll('.touch-slot');
+  const weaponSlots = document.querySelectorAll('#weapon-slots .ws-slot');
 
-  // ── Joystick ──
+  btnPause?.addEventListener('touchstart', e => {
+    e.preventDefault();
+    btnPause.classList.add('pressed');
+    window.togglePause?.();
+  }, { passive:false });
+  btnPause?.addEventListener('touchend', e => {
+    e.preventDefault();
+    btnPause.classList.remove('pressed');
+  }, { passive:false });
+
   let stickTouchId = null;
   const stickVec = { x:0, y:0, active:false };
 
@@ -3033,7 +3043,12 @@ showScreen = function(name){
   }
   function stickRadius(){
     const r = stickZone.getBoundingClientRect();
-    return Math.max(32, Math.min(r.width, r.height) * 0.46);
+    return Math.max(36, Math.min(r.width, r.height) * 0.47);
+  }
+  function stickStart(touch){
+    if (stickTouchId !== null) return;
+    stickTouchId = touch.identifier;
+    stickMove(touch);
   }
   function stickMove(touch){
     const { cx, cy } = stickCenter();
@@ -3053,120 +3068,74 @@ showScreen = function(name){
   }
   stickZone.addEventListener('touchstart', e=>{
     e.preventDefault();
-    for (const t of e.changedTouches) { if (stickTouchId===null){ stickTouchId=t.identifier; stickMove(t); } }
+    for (const t of e.changedTouches) stickStart(t);
   }, { passive:false });
   stickZone.addEventListener('touchmove', e=>{
     e.preventDefault();
-    for (const t of e.changedTouches) if (t.identifier===stickTouchId) stickMove(t);
+    for (const t of e.changedTouches) if (t.identifier === stickTouchId) stickMove(t);
   }, { passive:false });
   stickZone.addEventListener('touchend', e=>{
     e.preventDefault();
-    for (const t of e.changedTouches) if (t.identifier===stickTouchId) stickEnd();
+    for (const t of e.changedTouches) if (t.identifier === stickTouchId) stickEnd();
   }, { passive:false });
   stickZone.addEventListener('touchcancel', stickEnd);
 
-  // ── Fire / Dash ──
   function bindHold(el, onStart, onEnd){
-    if (!el) return;
     el.addEventListener('touchstart', e=>{ e.preventDefault(); el.classList.add('pressed'); onStart(); }, { passive:false });
     el.addEventListener('touchend',   e=>{ e.preventDefault(); el.classList.remove('pressed'); onEnd(); }, { passive:false });
-    el.addEventListener('touchcancel',e=>{ el.classList.remove('pressed'); onEnd(); });
+    el.addEventListener('touchcancel',e=>{ e.preventDefault(); el.classList.remove('pressed'); onEnd(); }, { passive:false });
   }
+
   const touchState = { firing:false, dashing:false };
+  // Armazena a última direção do stick para manter a mira ao soltar e atirar
   const lastFireVec = { x:0, y:-1 };
   bindHold(btnFire, ()=>touchState.firing=true,  ()=>touchState.firing=false);
   bindHold(btnDash, ()=>touchState.dashing=true, ()=>touchState.dashing=false);
 
-  // ── Slots de item ──
+  const SLOT_CODE = { '1':'Digit1','2':'Digit2','3':'Digit3','4':'Digit4','5':'Digit5','x':'KeyX' };
   function fireKey(type, code){
     window.dispatchEvent(new KeyboardEvent(type, { code, bubbles:true }));
   }
-  const SLOT_CODE = { '1':'Digit1','2':'Digit2','3':'Digit3','4':'Digit4','5':'Digit5','x':'KeyX' };
-  itemSlots.forEach(slot=>{
+  slots.forEach(slot=>{
     const code = SLOT_CODE[slot.dataset.slot];
-    if (!code) return;
     slot.addEventListener('touchstart', e=>{
       e.preventDefault(); slot.classList.add('pressed');
-      slot._tc = code; fireKey('keydown', code);
+      slot._touchCode = code;
+      fireKey('keydown', slot._touchCode);
     }, { passive:false });
     slot.addEventListener('touchend', e=>{
       e.preventDefault(); slot.classList.remove('pressed');
-      fireKey('keyup', slot._tc || code); slot._tc = null;
+      fireKey('keyup', slot._touchCode || code);
+      slot._touchCode = null;
     }, { passive:false });
-    slot.addEventListener('touchcancel', ()=>{
+    slot.addEventListener('touchcancel', e=>{
       slot.classList.remove('pressed');
-      fireKey('keyup', slot._tc || code); slot._tc = null;
+      fireKey('keyup', slot._touchCode || code);
+      slot._touchCode = null;
     });
   });
 
-  // ── Weapon switcher: seta esquerda/direita ──
-  // Percorre os slots de arma preenchidos (R T Y U I + L) em ciclo
   const WS_CODES = ['KeyR','KeyT','KeyY','KeyU','KeyI','KeyL'];
-  let _wIdx = 0; // índice do slot atual no WS_CODES
-
-  function _switchWeapon(dir){
-    // Descobre quais slots têm arma a partir do DOM (ws-has-weapon)
-    const wsSlots = Array.from(document.querySelectorAll('#weapon-slots .ws-slot'));
-    const filled  = wsSlots.map((s,i)=>s.classList.contains('ws-has-weapon') ? i : -1).filter(i=>i>=0);
-    if (filled.length === 0) return;
-    const cur  = filled.indexOf(_wIdx);
-    const next = (cur + dir + filled.length) % filled.length;
-    _wIdx = filled[next];
-    const code = WS_CODES[_wIdx] || 'KeyR';
-    fireKey('keydown', code);
-    fireKey('keyup',   code);
-    // Flash visual no switcher
-    wSwitcher?.classList.add('pressed');
-    setTimeout(()=>wSwitcher?.classList.remove('pressed'), 120);
-  }
-
-  function bindTap(el, fn){
-    if (!el) return;
-    el.addEventListener('touchstart', e=>{ e.preventDefault(); fn(); }, { passive:false });
-    el.addEventListener('click', fn);
-  }
-  bindTap(wArrowL, ()=>_switchWeapon(-1));
-  bindTap(wArrowR, ()=>_switchWeapon(+1));
-
-  // Swipe horizontal no switcher também troca
-  let _swipeX = null;
-  wSwitcher?.addEventListener('touchstart', e=>{ _swipeX = e.touches[0].clientX; }, { passive:true });
-  wSwitcher?.addEventListener('touchend', e=>{
-    if (_swipeX === null) return;
-    const dx = e.changedTouches[0].clientX - _swipeX;
-    if (Math.abs(dx) > 24) _switchWeapon(dx < 0 ? 1 : -1);
-    _swipeX = null;
-  }, { passive:true });
-
-  // Atualiza ícone/nome do switcher sempre que o jogo atualiza os ws-slots
-  // (piggyback no observer de mutação do DOM)
-  const wsContainer = document.getElementById('weapon-slots');
-  if (wsContainer) {
-    const obs = new MutationObserver(()=>{
-      const active = wsContainer.querySelector('.ws-slot.ws-active');
-      const icon   = active?.querySelector('.ws-icon');
-      const tcIcon = document.getElementById('tc-weapon-icon');
-      const tcName = document.getElementById('tc-weapon-name');
-      const hasTc  = wSwitcher;
-      if (!hasTc) return;
-      const hasWeapon = wsContainer.querySelector('.ws-has-weapon');
-      wSwitcher.classList.toggle('has-weapon', !!hasWeapon);
-      if (icon && tcIcon) {
-        const src = icon.getContext('2d').getImageData(0,0,icon.width,icon.height);
-        tcIcon.width  = icon.width;
-        tcIcon.height = icon.height;
-        tcIcon.getContext('2d').putImageData(src, 0, 0);
-      }
-      const labelEl = active?.querySelector('.ws-weapon-label');
-      if (tcName) tcName.textContent = labelEl?.textContent || (active?.querySelector('.ws-key')?.textContent || '');
-    });
-    obs.observe(wsContainer, { subtree:true, attributes:true, attributeFilter:['class'] });
-  }
+  weaponSlots.forEach((slot, idx)=>{
+    const code = WS_CODES[idx];
+    const selectWeapon = (ev)=>{
+      ev.preventDefault();
+      slot.classList.add('pressed');
+      fireKey('keydown', code);
+      fireKey('keyup', code);
+      setTimeout(()=>slot.classList.remove('pressed'), 120);
+    };
+    slot.addEventListener('touchstart', selectWeapon, { passive:false });
+    slot.addEventListener('click', selectWeapon);
+  });
 
   window._touchState = touchState;
   window._touchStick = stickVec;
 
   // ── Injeta os controles touch no fluxo de input do jogo ──
+  // O jogo usa "mira/movimento até o ponteiro do mouse"; no touch, a mira
+  // (worldMouseX/Y) segue a mesma direção para onde o jogador está movendo
+  // a nave pelo analógico — sem mira automática em inimigos.
   const TOUCH_AIM_DIST = 260;
   const origInput = Game.prototype._input;
   Game.prototype._input = function(){
@@ -3176,8 +3145,12 @@ showScreen = function(name){
     const px = this.player ? this.player.x : base.worldMouseX;
     const py = this.player ? this.player.y : base.worldMouseY;
 
+    // Mira e movimento seguem a mesma direção: o vetor do analógico.
+    // Sem o analógico ativo, mantém a direção atual da nave (evita
+    // "destravar" a mira para o canto da tela).
     let wmx, wmy, moveTargetX, moveTargetY, holdRight = base.holdRight;
     if (stickVec.active) {
+      // Stick ativo: atualiza mira e memória de direção
       lastFireVec.x = stickVec.x;
       lastFireVec.y = stickVec.y;
       wmx = px + stickVec.x * TOUCH_AIM_DIST;
@@ -3186,6 +3159,7 @@ showScreen = function(name){
       moveTargetY = wmy;
       holdRight = true;
     } else if (touchState.firing) {
+      // Botão de fogo sem stick: aponta na última direção do stick
       wmx = px + lastFireVec.x * TOUCH_AIM_DIST;
       wmy = py + lastFireVec.y * TOUCH_AIM_DIST;
     } else if (this.player) {
@@ -3238,27 +3212,7 @@ window.startGame=function(){
   game.start();
   window._game=game;
   updateOrientationUI();
-  if (IS_MOBILE) _showTouchHint();
 };
-
-function _showTouchHint(){
-  const SEEN_KEY = 'tds_touch_hint_seen';
-  if (localStorage.getItem(SEEN_KEY)) return;
-  const el = document.getElementById('touch-hint-overlay');
-  if (!el) return;
-  el.classList.add('tho-visible');
-  let t = setTimeout(dismissHint, 5000);
-  function dismissHint(){
-    clearTimeout(t);
-    el.classList.add('tho-hiding');
-    setTimeout(()=>{ el.classList.remove('tho-visible','tho-hiding'); }, 400);
-    localStorage.setItem(SEEN_KEY, '1');
-    el.removeEventListener('touchstart', dismissHint);
-    el.removeEventListener('click', dismissHint);
-  }
-  el.addEventListener('touchstart', dismissHint, { once:true });
-  el.addEventListener('click', dismissHint, { once:true });
-}
 
 window.restartGame=function(){document.getElementById('gameover').style.display='none';startGame();};
 
