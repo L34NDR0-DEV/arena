@@ -169,6 +169,7 @@
           <button class="mode-btn mode-equipe-online" onclick="selectMode('equipe_online',this)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 14 L9 6 L12 14" stroke-linejoin="round" stroke="#ff4d6a"/><path d="M12 14 L15 6 L18 14" stroke-linejoin="round" stroke="#4da6ff"/><line x1="4" y1="19" x2="20" y2="19" opacity=".5"/></svg>
             <span class="mode-label">Equipe Online</span>
+            <span class="mode-badge-online">ONLINE</span>
           </button>
           <button class="mode-btn mode-livre" onclick="selectMode('livre',this)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 3 Q16 8 12 12 Q8 16 12 21" stroke-dasharray="2 2"/><path d="M3 12 Q8 8 12 12 Q16 16 21 12" stroke-dasharray="2 2"/></svg>
@@ -195,6 +196,60 @@
       <div class="menu-section">
         <h3>Nave</h3>
         <div class="skin-grid" id="skin-grid"></div>
+      </div>
+
+      <!-- Banner de anuncio: Play Store + Novos Modos -->
+      <div class="menu-section announce-section">
+        <div class="announce-card">
+          <div class="announce-strip">EM BREVE</div>
+          <div class="announce-body">
+            <div class="announce-icon-row">
+              <!-- Icone Play Store -->
+              <div class="announce-store-badge">
+                <svg class="announce-store-icon" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 20.5 L13.5 12 L3 3.5 Q2 4.2 2 5.5 L2 18.5 Q2 19.8 3 20.5Z" fill="#4ade80"/>
+                  <path d="M3 20.5 L13.5 12 L17 15.5 L7 21.5 Q4.8 22.6 3 20.5Z" fill="#facc15"/>
+                  <path d="M3 3.5 L13.5 12 L17 8.5 L7 2.5 Q4.8 1.4 3 3.5Z" fill="#f87171"/>
+                  <path d="M13.5 12 L22 7.5 L22 16.5 L17 15.5 L17 8.5Z" fill="#60a5fa"/>
+                </svg>
+                <span class="announce-store-label">Google Play</span>
+              </div>
+              <div class="announce-store-badge">
+                <svg class="announce-store-icon" viewBox="0 0 24 24" fill="none">
+                  <rect x="4" y="1" width="16" height="22" rx="3" stroke="#c0c0c0" stroke-width="1.4"/>
+                  <path d="M12 3 C9 3 7 5 7 8 C7 11 9 14 12 14 C15 14 17 11 17 8 C17 5 15 3 12 3Z" fill="#c0c0c0" opacity=".85"/>
+                  <line x1="9" y1="1.5" x2="9" y2="0" stroke="#c0c0c0" stroke-width="1.2"/>
+                  <line x1="15" y1="1.5" x2="15" y2="0" stroke="#c0c0c0" stroke-width="1.2"/>
+                  <line x1="8" y1="0" x2="16" y2="0" stroke="#c0c0c0" stroke-width="1.2"/>
+                  <path d="M8 17 L10 19 M12 17 L12 20 M16 17 L14 19" stroke="#c0c0c0" stroke-width="1.2" stroke-linecap="round"/>
+                </svg>
+                <span class="announce-store-label">App Store</span>
+              </div>
+            </div>
+            <div class="announce-title">CHEGANDO NOS CELULARES</div>
+            <div class="announce-text">Tower Defense Space em breve disponivel na Play Store e App Store. Leve a arena espacial no seu bolso!</div>
+          </div>
+        </div>
+
+        <div class="announce-card announce-card-modes">
+          <div class="announce-strip announce-strip-orange">NOVIDADES</div>
+          <div class="announce-body">
+            <div class="announce-modes-row">
+              <div class="announce-mode-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#ff4d6a" stroke-width="1.8"><path d="M6 14 L9 6 L12 14" stroke-linejoin="round" stroke="#ff4d6a"/><path d="M12 14 L15 6 L18 14" stroke-linejoin="round" stroke="#9b5cff"/><line x1="4" y1="19" x2="20" y2="19" opacity=".5" stroke="#ff4d6a"/></svg>
+                <span class="announce-mode-label">Equipe Online</span>
+                <span class="announce-mode-desc">PvP 3x3 ao vivo. Vagas preenchidas com bots. Primeiro time a 200 abates vence.</span>
+              </div>
+              <div class="announce-mode-divider"></div>
+              <div class="announce-mode-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#9b5cff" stroke-width="1.8"><path d="M12 2 L20 7 L20 14 L12 21 L4 14 L4 7 Z"/><path d="M12 2 L12 21 M4 7 L20 14 M20 7 L4 14" opacity=".45" stroke="#9b5cff"/><circle cx="12" cy="11" r="2.4" fill="#9b5cff" stroke="none"/></svg>
+                <span class="announce-mode-label">Tower Defense</span>
+                <span class="announce-mode-desc">Equipes 2x2 disputam a torre central. Vencedor ganha a skin exclusiva Stealwing.</span>
+              </div>
+            </div>
+            <div class="announce-cta" onclick="document.querySelector('.mode-equipe-online')?.click()">JOGAR AGORA</div>
+          </div>
+        </div>
       </div>
 
     </div>

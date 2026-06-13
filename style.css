@@ -519,6 +519,73 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .mode-btn.mode-disabled-admin:hover{opacity:.2!important;transform:none;}
 .mode-tip{font-size:9px;color:var(--gold);margin-top:8px;padding:6px 10px;background:#120e00;border-radius:4px;border-left:2px solid var(--orange);font-family:'Press Start 2P',monospace;line-height:1.6;}
 
+/* ═══ Banners de anuncio no menu ════════════════════════════ */
+.announce-section{display:flex;flex-direction:column;gap:10px;padding-bottom:16px;}
+.announce-card{
+  position:relative;overflow:hidden;border-radius:8px;
+  background:linear-gradient(135deg,#0e0a1a,#160e24);
+  border:1px solid var(--border2);
+  box-shadow:0 0 18px rgba(155,92,255,.1);
+}
+.announce-card::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.06) 3px,rgba(0,0,0,.06) 4px);
+}
+.announce-card-modes{border-color:rgba(255,140,0,.28);box-shadow:0 0 18px rgba(255,140,0,.08);}
+.announce-strip{
+  font-family:'Press Start 2P',monospace;font-size:7px;letter-spacing:3px;
+  text-align:center;padding:5px 12px;
+  background:linear-gradient(90deg,#2a0e4a,#4a1a88,#2a0e4a);
+  color:#cc88ff;border-bottom:1px solid rgba(155,92,255,.3);
+  animation:announceStripPulse 3s ease-in-out infinite;
+}
+.announce-strip-orange{
+  background:linear-gradient(90deg,#2a1400,#8a3a00,#2a1400);
+  color:#ffb866;border-color:rgba(255,140,0,.28);
+}
+@keyframes announceStripPulse{0%,100%{opacity:.8;}50%{opacity:1;}}
+.announce-body{padding:12px 14px;position:relative;z-index:1;}
+
+/* Badges de loja */
+.announce-icon-row{display:flex;gap:10px;margin-bottom:10px;}
+.announce-store-badge{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);
+  border-radius:6px;padding:5px 10px;flex:1;justify-content:center;
+  transition:background .15s,border-color .15s;
+}
+.announce-store-badge:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.22);}
+.announce-store-icon{width:18px;height:18px;flex-shrink:0;}
+.announce-store-label{font-family:'Press Start 2P',monospace;font-size:6px;color:#c0c0d0;letter-spacing:.5px;}
+
+/* Textos do banner */
+.announce-title{
+  font-family:'Press Start 2P',monospace;font-size:9px;
+  color:#e8d0ff;letter-spacing:1px;margin-bottom:6px;
+  text-shadow:0 0 12px rgba(155,92,255,.5);
+}
+.announce-text{font-size:10px;color:var(--text2);line-height:1.65;}
+
+/* Modos em destaque */
+.announce-modes-row{display:flex;gap:0;align-items:stretch;}
+.announce-mode-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:5px;padding:6px 8px;}
+.announce-mode-item svg{width:28px;height:28px;flex-shrink:0;}
+.announce-mode-label{font-family:'Press Start 2P',monospace;font-size:7px;color:var(--text);letter-spacing:.5px;text-align:center;}
+.announce-mode-desc{font-size:9px;color:var(--text2);line-height:1.6;text-align:center;}
+.announce-mode-divider{width:1px;background:linear-gradient(180deg,transparent,rgba(155,92,255,.3),transparent);margin:4px 0;flex-shrink:0;}
+
+/* Botao CTA */
+.announce-cta{
+  margin-top:10px;text-align:center;
+  font-family:'Press Start 2P',monospace;font-size:8px;letter-spacing:1.5px;
+  color:#fff;background:linear-gradient(90deg,#6a1a00,var(--orange),#6a1a00);
+  background-size:200%;border-radius:4px;padding:8px 16px;cursor:pointer;
+  animation:announceCtaShimmer 3s linear infinite;
+  transition:box-shadow .2s,transform .15s;
+}
+.announce-cta:hover{box-shadow:0 0 18px var(--orange);transform:translateY(-1px);}
+@keyframes announceCtaShimmer{0%{background-position:0%}100%{background-position:200%}}
+
 /* Skins */
 .skin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
 .skin-card{background:var(--panel2);border:1.5px solid var(--border);border-radius:4px;padding:7px 5px 5px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:all .15s;}
@@ -1756,6 +1823,12 @@ body.is-mobile #timer      { font-size:8px; }
   .mode-label{font-size:8px;}
   .skin-grid{grid-template-columns:repeat(3,1fr);}
   .menu-section{padding:10px 12px;}
+  .announce-card{border-radius:6px;}
+  .announce-title{font-size:8px;}
+  .announce-text{font-size:9px;}
+  .announce-mode-label{font-size:6px;}
+  .announce-mode-desc{font-size:8px;}
+  .announce-cta{font-size:7px;padding:7px 12px;}
 
   /* Loja — empilha frame acima, grade abaixo */
   .shop-panel{width:100%;height:100%;max-height:none;border-radius:0;}
@@ -1906,6 +1979,14 @@ body.is-mobile #timer      { font-size:8px; }
   background:linear-gradient(135deg,#00ff88,#00d4ff);
   color:#02050d;padding:2px 5px;border-radius:3px;letter-spacing:.5px;
 }
+.mode-badge-online{
+  position:absolute;top:4px;right:4px;
+  font-family:'Press Start 2P',monospace;font-size:6px;
+  background:linear-gradient(135deg,#ff4d6a,#9b5cff);
+  color:#fff;padding:2px 5px;border-radius:3px;letter-spacing:.5px;
+  animation:onlineBadgePulse 2s ease-in-out infinite;
+}
+@keyframes onlineBadgePulse{0%,100%{box-shadow:0 0 0px transparent;}50%{box-shadow:0 0 8px #ff4d6a88;}}
 
 /* ══ Cards of Defense — overlay de escolha de carta ═════════════ */
 #cards-overlay{

@@ -829,6 +829,13 @@ function maybeShowTutorial(){
 // + lista `seenNewModes` salva localmente por conta).
 const NEW_MODE_ANNOUNCEMENTS = [
   {
+    id: 'playstore_and_modes_v1',
+    mode: null,
+    title: 'App no celular e novos modos!',
+    text: 'Tower Defense Space chega em breve na Play Store e App Store! Jogue o Equipe Online (PvP 3x3) e o Tower Defense (disputa pela torre central com skin exclusiva Stealwing) agora mesmo no navegador.',
+    icon: '<path d="M3 20.5 L13.5 12 L3 3.5 Q2 4.2 2 5.5 L2 18.5 Q2 19.8 3 20.5Z" fill="#4ade80" stroke="none"/><path d="M3 20.5 L13.5 12 L17 15.5 L7 21.5 Q4.8 22.6 3 20.5Z" fill="#facc15" stroke="none"/><path d="M3 3.5 L13.5 12 L17 8.5 L7 2.5 Q4.8 1.4 3 3.5Z" fill="#f87171" stroke="none"/><path d="M13.5 12 L22 7.5 L22 16.5 L17 15.5 L17 8.5Z" fill="#60a5fa" stroke="none"/>',
+  },
+  {
     id: 'tower_defense_v1',
     mode: 'tower_defense',
     title: 'Torneio Tower Defense chegou!',
@@ -861,17 +868,18 @@ window.closeNewModeAlert = function(){
 function maybeShowNewModeAlert(){
   if (!currentUser) return;
   const seen = _getSeenNewModes();
-  // Só anuncia modos que estão de fato disponíveis agora (ex.: torneio ativo)
   const available = NEW_MODE_ANNOUNCEMENTS.find(a => {
     if (seen.includes(a.id)) return false;
     if (a.mode === 'tower_defense') return !!(profile && profile.tournament && profile.tournament.active);
-    return true;
+    return true; // anuncios sem mode especifico aparecem sempre (uma vez por conta)
   });
   if (!available) return;
   _pendingNewModeId = available.id;
   document.getElementById('nm-title').textContent = available.title;
   document.getElementById('nm-text').textContent = available.text;
-  document.getElementById('nm-icon').innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${available.icon}</svg>`;
+  // Ícones SVG que já têm fill/stroke proprios (ex: Play Store colorido) não herdam stroke do wrapper
+  const needsStroke = !available.icon.includes('fill="');
+  document.getElementById('nm-icon').innerHTML = `<svg viewBox="0 0 24 24" fill="none" ${needsStroke ? 'stroke="currentColor" stroke-width="1.8"' : ''}>${available.icon}</svg>`;
   document.getElementById('new-mode-overlay').style.display = 'flex';
 }
 
