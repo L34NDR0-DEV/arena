@@ -1196,160 +1196,114 @@ function _pickUniqueSkins(n) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Bandeira PNG deformada por física de tecido (grade verlet 2D)
+// Bandeira PNG com física de tecido por colunas (verlet 1D por coluna)
 // ─────────────────────────────────────────────────────────────────────────────
-const _BFLAG_COLS = 12;
-const _BFLAG_ROWS = 4;
-const _BFLAG_BW   = 320; // largura visual da bandeira em px
-const _BFLAG_BH   = 72;  // altura visual
+const _BFLAG_COLS = 16;  // nº de fatias verticais da imagem
+const _BFLAG_BW   = 340; // largura visual da bandeira em px
+const _BFLAG_BH   = 76;  // altura visual
 
 function _initBannerShips(W, H) {
-  const dir  = Math.random() < 0.5 ? 1 : -1;
-  const skin = _pickUniqueSkins(1)[0];
-  const y    = H * (0.13 + Math.random() * 0.18);
-  const speed = (36 + Math.random() * 16) * dir; // mais devagar
-
-  const cols = _BFLAG_COLS, rows = _BFLAG_ROWS;
+  const dir   = Math.random() < 0.5 ? 1 : -1;
+  const skin  = _pickUniqueSkins(1)[0];
+  const y     = H * (0.13 + Math.random() * 0.18);
+  const speed = (36 + Math.random() * 16) * dir;
+  const cols  = _BFLAG_COLS;
   const BW = _BFLAG_BW, BH = _BFLAG_BH;
 
-  // Nave começa fora da tela; se dir=1 entra pela esquerda, a bandeira vem atrás (à esquerda da nave)
   // shipX = posição X da nave
-  // anchorCol = coluna da grade que fica presa na traseira da nave
-  //   dir=1: nave vai para direita → bandeira fica à esquerda → anchorCol=0 (col da esquerda)
-  //   dir=-1: nave vai para esquerda → bandeira fica à direita → anchorCol=cols
-  const anchorCol = dir > 0 ? 0 : cols;
-  const shipX0 = dir > 0 ? -40 : W + 40; // nave começa quase na borda
+  // dir=1: nave entra pela esquerda, bandeira fica à direita da nave (puxada à frente)
+  // Cada coluna tem um offset Y que ondula — física de tecido simplificada
+  const shipX0 = dir > 0 ? -50 : W + 50;
 
-  // Pré-popula a grade: a coluna anchorCol começa junto com a nave,
-  // as demais se estendem na direção OPOSTA ao movimento (ficam atrás)
-  const pts = [];
-  for (let r = 0; r <= rows; r++) {
-    pts[r] = [];
-    for (let c = 0; c <= cols; c++) {
-      // distância da coluna anchorCol → positivo = afastando no sentido oposto ao dir
-      const colDist = (c - anchorCol) * (-dir); // fica atrás (sentido -dir)
-      const fx = shipX0 + colDist * (BW / cols);
-      const fy = y - BH/2 + r * (BH / rows);
-      pts[r][c] = { x: fx, y: fy, ox: fx, oy: fy }; // ox/oy = posição anterior (verlet)
-    }
-  }
+  // offY[c] = deslocamento vertical da coluna c (física 1D por coluna)
+  const offY  = new Float32Array(cols + 1).fill(0);
+  const offVY = new Float32Array(cols + 1).fill(0);
 
   return {
-    dir, speed, y, skin,
+    dir, speed, y, skin, BW, BH, cols,
     bobPh: Math.random() * Math.PI * 2,
     done: false, thrust: [],
-    pts, BW, BH, cols, rows, anchorCol,
     shipX: shipX0,
+    offY, offVY,
   };
 }
 
-// anchorX/Y são passados explicitamente — sem truques de salvar/restaurar
-function _stepFlagPhysics(bs, dt, t, anchorX, anchorY0) {
-  const { pts, cols, rows, anchorCol, BW, BH } = bs;
-  const restH = BW / cols, restV = BH / rows;
+// Física leve: cada coluna da bandeira oscila verticalmente de forma independente
+function _stepFlagPhysics(bs, dt, t) {
+  const { offY, offVY, cols, dir } = bs;
+  // col 0 = borda presa na nave (ancoragem) — col cols = ponta livre
+  // dir=1: âncora = col 0 (lado esquerdo da bandeira = perto da nave)
+  // dir=-1: âncora = col cols (lado direito = perto da nave)
+  const anchorCol = dir > 0 ? 0 : cols;
 
-  // 1. Integração verlet + ondulação de tecido
-  for (let r = 0; r <= rows; r++) {
-    for (let c = 0; c <= cols; c++) {
-      if (c === anchorCol) continue; // âncora é atualizada separado
-      const p = pts[r][c];
-      const vx = (p.x - p.ox) * 0.97;
-      const vy = (p.y - p.oy) * 0.97;
-      // ondulação aumenta com distância da âncora
-      const dist = Math.abs(c - anchorCol) / cols;
-      const wave = (Math.sin(t * 2.6 + r * 1.2 + dist * 3.5) * 2.8
-                  + Math.cos(t * 1.8 + c * 0.9) * 1.4) * dist;
-      p.ox = p.x; p.oy = p.y;
-      p.x += vx;
-      p.y += vy + wave * dt * 55;
-    }
-  }
-
-  // 2. Fixa âncora na traseira da nave
-  for (let r = 0; r <= rows; r++) {
-    const p = pts[r][anchorCol];
-    const ay = anchorY0 - BH/2 + r * (BH / rows) + Math.sin(t * 1.1 + bs.bobPh + r * 0.3) * 2.5;
-    p.x = anchorX; p.y = ay; p.ox = p.x; p.oy = p.y;
-  }
-
-  // 3. Restrições de comprimento (8 iterações para rigidez)
-  for (let iter = 0; iter < 8; iter++) {
-    for (let r = 0; r <= rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        const a = pts[r][c], b = pts[r][c+1];
-        const dx = b.x-a.x, dy = b.y-a.y;
-        const d = Math.hypot(dx,dy) || 0.001;
-        const corr = (d - restH) / d * 0.5;
-        const aFix = (c === anchorCol), bFix = (c+1 === anchorCol);
-        if (!aFix) { a.x += dx*corr; a.y += dy*corr; }
-        if (!bFix) { b.x -= dx*corr; b.y -= dy*corr; }
-      }
-    }
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c <= cols; c++) {
-        const a = pts[r][c], b = pts[r+1][c];
-        const dx = b.x-a.x, dy = b.y-a.y;
-        const d = Math.hypot(dx,dy) || 0.001;
-        const corr = (d - restV) / d * 0.5;
-        const aFix = (c === anchorCol), bFix = (c === anchorCol);
-        if (!aFix) { a.x += dx*corr; a.y += dy*corr; }
-        if (!bFix) { b.x -= dx*corr; b.y -= dy*corr; }
-      }
-    }
-    // Re-fixa âncora
-    for (let r = 0; r <= rows; r++) {
-      const p = pts[r][anchorCol];
-      const ay = anchorY0 - BH/2 + r * (BH/rows) + Math.sin(t*1.1+bs.bobPh+r*0.3)*2.5;
-      p.x = anchorX; p.y = ay; p.ox = p.x; p.oy = p.y;
-    }
+  for (let c = 0; c <= cols; c++) {
+    if (c === anchorCol) { offY[c] = 0; offVY[c] = 0; continue; }
+    // Distância normalizada da âncora (0=perto, 1=longe)
+    const dist = Math.abs(c - anchorCol) / cols;
+    // Força de onda que aumenta com a distância
+    const wave = (Math.sin(t * 2.4 + c * 0.55) * 3.5
+                + Math.cos(t * 1.6 + c * 0.9)  * 1.8) * dist;
+    offVY[c] += (wave - offY[c] * 0.4) * dt * 18;
+    offVY[c] *= 0.88;
+    offY[c]  += offVY[c];
   }
 }
 
-// Mapeia a imagem PNG sobre os quads deformados via transformação afim por triângulo
-function _drawFlagPNG(ctx, bs) {
+// Desenha a bandeira PNG fatiada em colunas com deslocamento Y por coluna
+function _drawFlagPNG(ctx, bs, t) {
   const img = _bannerImg;
-  if (!img.complete || !img.naturalWidth) return; // imagem ainda carregando
-  const { pts, cols, rows } = bs;
+  if (!img.complete || !img.naturalWidth) return;
+
+  const { shipX, dir, y, BW, BH, cols, offY } = bs;
   const iw = img.naturalWidth, ih = img.naturalHeight;
 
+  // X da borda esquerda da bandeira na tela
+  // dir=1: bandeira à direita da nave (a nave puxa pela frente)
+  //        borda esquerda = anchorX (traseira da nave + cabo)
+  // dir=-1: bandeira à esquerda da nave
+  const sz = 22;
+  const anchorX = dir > 0 ? shipX + sz * 1.4 : shipX - sz * 1.4 - BW;
+
   ctx.save();
-  ctx.shadowColor = '#9b5cff'; ctx.shadowBlur = 20;
+  ctx.shadowColor = '#9b5cff'; ctx.shadowBlur = 18;
 
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      const p00 = pts[r][c],   p10 = pts[r][c+1];
-      const p01 = pts[r+1][c], p11 = pts[r+1][c+1];
-      const u0=(c/cols)*iw, u1=((c+1)/cols)*iw;
-      const v0=(r/rows)*ih, v1=((r+1)/rows)*ih;
+  const sliceW = BW / cols;       // largura de cada fatia na tela
+  const srcW   = iw / cols;       // largura de cada fatia no PNG
 
-      // Triângulo A: canto topo-esq, topo-dir, baixo-esq
-      _drawFlagTri(ctx, img, iw, ih,
-        p00, p10, p01, u0,v0, u1,v0, u0,v1);
-      // Triângulo B: topo-dir, baixo-dir, baixo-esq
-      _drawFlagTri(ctx, img, iw, ih,
-        p10, p11, p01, u1,v0, u1,v1, u0,v1);
-    }
+  for (let c = 0; c < cols; c++) {
+    const x0 = anchorX + c * sliceW;
+    const dy0 = offY[c];
+    const dy1 = offY[c + 1];
+    const srcX = c * srcW;
+
+    // Desenha a fatia c: quadrilátero com topo/base inclinados
+    // Usamos clip + transform para mapear a fatia PNG no trapézio de tela
+    const topY0 = y - BH / 2 + dy0;
+    const botY0 = y + BH / 2 + dy0;
+    const topY1 = y - BH / 2 + dy1;
+    const botY1 = y + BH / 2 + dy1;
+
+    ctx.save();
+    // Clip no trapézio desta fatia
+    ctx.beginPath();
+    ctx.moveTo(x0,        topY0);
+    ctx.lineTo(x0+sliceW, topY1);
+    ctx.lineTo(x0+sliceW, botY1);
+    ctx.lineTo(x0,        botY0);
+    ctx.closePath();
+    ctx.clip();
+
+    // Transformação: escala a fatia do PNG (srcX..srcX+srcW, 0..ih) → trapézio
+    // Aproximação: como o trapézio é estreito, usamos shear vertical médio
+    const shear = (dy1 - dy0) / sliceW; // inclinação da coluna
+    const midDy = (dy0 + dy1) / 2;
+    const scaleX = sliceW / srcW;
+    const scaleY = BH / ih;
+    ctx.transform(scaleX, shear * scaleY, 0, scaleY, x0 - srcX * scaleX, y - BH/2 + midDy);
+    ctx.drawImage(img, 0, 0);
+    ctx.restore();
   }
-  ctx.restore();
-}
 
-function _drawFlagTri(ctx, img, iw, ih, p0,p1,p2, u0,v0, u1,v1, u2,v2) {
-  // Transformação afim: mapeia (u,v) normalizado → (x,y) de tela
-  const s0=u0/iw, t0=v0/ih, s1=u1/iw, t1=v1/ih, s2=u2/iw, t2=v2/ih;
-  const det = (s1-s0)*(t2-t0) - (s2-s0)*(t1-t0);
-  if (Math.abs(det) < 1e-9) return;
-  const a = ((p1.x-p0.x)*(t2-t0) - (p2.x-p0.x)*(t1-t0)) / det;
-  const b = ((p2.x-p0.x)*(s1-s0) - (p1.x-p0.x)*(s2-s0)) / det;
-  const c =  p0.x - a*s0 - b*t0;
-  const d = ((p1.y-p0.y)*(t2-t0) - (p2.y-p0.y)*(t1-t0)) / det;
-  const e = ((p2.y-p0.y)*(s1-s0) - (p1.y-p0.y)*(s2-s0)) / det;
-  const f =  p0.y - d*s0 - e*t0;
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(p0.x,p0.y); ctx.lineTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y);
-  ctx.closePath(); ctx.clip();
-  ctx.transform(a, d, b, e, c, f);
-  ctx.drawImage(img, 0, 0);
   ctx.restore();
 }
 
@@ -1369,36 +1323,36 @@ function _drawBannerShip(ctx, skin, x, y, dir, sz, alpha) {
 function _tickBannerShips(ctx, W, H, dt, t) {
   const bs = _loginBgState.bannerShips;
   if (!bs) return;
-  const { dir, skin, anchorCol, cols, rows } = bs;
+  const { dir, skin, BW } = bs;
   const sz = 22;
 
   bs.shipX += bs.speed * dt;
   const shipY = bs.y + Math.sin(t * 1.1 + bs.bobPh) * 5;
 
-  // Ponto de ancoragem da bandeira = traseira da nave
-  // dir=1 (vai para direita): traseira = lado esquerdo = shipX - offset
-  // dir=-1 (vai para esquerda): traseira = lado direito = shipX + offset
-  const anchorX = bs.shipX - dir * sz * 1.6;
-  const anchorY = shipY;
+  // Física da bandeira (oscilação vertical por coluna)
+  _stepFlagPhysics(bs, dt, t);
 
-  // Física
-  _stepFlagPhysics(bs, dt, t, anchorX, anchorY);
-
-  // Cabo fino da traseira da nave até a borda da bandeira
-  const midPt = bs.pts[Math.floor(rows/2)][anchorCol];
+  // Cabo da nave até a borda da bandeira
+  // dir=1: bandeira à direita da nave → cabo vai da frente da nave até borda esq da bandeira
+  // dir=-1: bandeira à esquerda → cabo vai da frente até borda direita
+  const cableEndX = dir > 0 ? bs.shipX + sz * 1.4 : bs.shipX - sz * 1.4;
+  const cableEndY = shipY + bs.offY[dir > 0 ? 0 : bs.cols];
   ctx.save();
-  ctx.strokeStyle = '#7733dd'; ctx.lineWidth = 1.1; ctx.globalAlpha = 0.75;
-  ctx.shadowColor = '#9b5cff'; ctx.shadowBlur = 5;
-  ctx.beginPath(); ctx.moveTo(anchorX, anchorY); ctx.lineTo(midPt.x, midPt.y); ctx.stroke();
+  ctx.strokeStyle = '#7733dd'; ctx.lineWidth = 1.2; ctx.globalAlpha = 0.8;
+  ctx.shadowColor = '#9b5cff'; ctx.shadowBlur = 6;
+  ctx.beginPath();
+  ctx.moveTo(dir > 0 ? bs.shipX + sz * 0.5 : bs.shipX - sz * 0.5, shipY);
+  ctx.lineTo(cableEndX, cableEndY);
+  ctx.stroke();
   ctx.restore(); ctx.globalAlpha = 1;
 
-  // Partículas de propulsão
+  // Partículas de propulsão (saem da traseira)
   const trailX = bs.shipX - dir * sz * 1.2;
   if (Math.random() < 0.65) {
     bs.thrust.push({ x: trailX, y: shipY + (Math.random()-0.5)*5,
-      vx: -dir * (14+Math.random()*20), vy: (Math.random()-0.5)*5,
+      vx: -dir*(14+Math.random()*20), vy: (Math.random()-0.5)*5,
       life: 0.4+Math.random()*0.3, maxLife: 0,
-      r: 2+Math.random()*3, col: skin?.color || '#9b5cff' });
+      r: 2+Math.random()*3, col: skin?.color||'#9b5cff' });
   }
   for (const p of bs.thrust) { p.maxLife=p.maxLife||p.life; p.x+=p.vx*dt; p.y+=p.vy*dt; p.life-=dt; }
   for (let i=bs.thrust.length-1;i>=0;i--) if(bs.thrust[i].life<=0) bs.thrust.splice(i,1);
@@ -1409,17 +1363,16 @@ function _tickBannerShips(ctx, W, H, dt, t) {
     ctx.beginPath(); ctx.arc(p.x,p.y,p.r*a,0,Math.PI*2); ctx.fill(); ctx.restore();
   }
 
-  // Bandeira PNG deformada
-  _drawFlagPNG(ctx, bs);
+  // Bandeira PNG com física de ondulação
+  _drawFlagPNG(ctx, bs, t);
 
-  // Nave por cima
+  // Nave por cima de tudo
   _drawBannerShip(ctx, skin, bs.shipX, shipY, dir, sz, 1.0);
 
-  // Saída: quando a nave ultrapassou a tela E a bandeira foi arrastada para fora
-  const farthestFlagX = dir > 0
-    ? Math.min(...bs.pts.map(row => row[cols].x))  // ponta livre mais à esquerda
-    : Math.max(...bs.pts.map(row => row[0].x));    // ponta livre mais à direita
-  bs.done = dir > 0 ? farthestFlagX > W + 20 : farthestFlagX < -20;
+  // Saída: nave saiu da tela + folga para a bandeira sumir
+  const flagRight = dir > 0 ? bs.shipX + sz*1.4 + BW : bs.shipX - sz*1.4;
+  const flagLeft  = dir > 0 ? bs.shipX + sz*1.4       : bs.shipX - sz*1.4 - BW;
+  bs.done = dir > 0 ? flagLeft > W + 20 : flagRight < -20;
 }
 
 // ── Fundo arcade animado na tela de login ─────────────────────
