@@ -1,5 +1,5 @@
 import { Arena, ARENA_W, ARENA_H, ARENA_TYPES, ARENA_W_DEFAULT, ARENA_H_DEFAULT, setArenaSize } from './arena.js';
-import { Player, drawCrosshair } from './player.js';
+import { Player, drawCrosshair, drawTargetLock } from './player.js';
 import { EnemyManager, TeamBot, BOT_PROFILES }   from './enemies.js';
 import { ItemManager, BorderEffect }              from './items.js';
 import { CombatSystem }                          from './combat.js';
@@ -1418,9 +1418,13 @@ export class Game {
     this.player.draw(ctx);
     this.arena.drawParticles(ctx);
 
-    // Crosshair: visível no desktop; no mobile a mira é automática
-    if (!this.player.dead && !this.paused && PLATFORM.CROSSHAIR_VISIBLE) {
-      drawCrosshair(ctx, this._mouse.wx, this._mouse.wy, this.player._age);
+    // Crosshair no desktop; target lock no mobile quando há alvo
+    if (!this.player.dead && !this.paused) {
+      if (PLATFORM.CROSSHAIR_VISIBLE) {
+        drawCrosshair(ctx, this._mouse.wx, this._mouse.wy, this.player._age);
+      } else if (this._touchActive && this._autoAimX != null) {
+        drawTargetLock(ctx, this._autoAimX, this._autoAimY, this.player._age);
+      }
     }
 
     // ── Zona Segura — bolhas por time ──────────────────────────

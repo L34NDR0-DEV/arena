@@ -2970,6 +2970,7 @@ resizeCanvas(); window.addEventListener('resize',resizeCanvas);
 
 // ── Orientação / controles touch ──
 // IS_MOBILE vem de platform.js (importado no topo)
+if (IS_MOBILE) document.body.classList.add('is-mobile');
 const orientationWarning = document.getElementById('orientation-warning');
 const touchControls      = document.getElementById('touch-controls');
 

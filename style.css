@@ -1090,6 +1090,13 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .pause-game-name{font-family:'Press Start 2P',monospace;font-size:clamp(10px,2vw,18px);color:#9b5cff;text-shadow:0 0 14px #9b5cff88;text-align:center;line-height:1.5;}
 .pause-btns{display:flex;flex-direction:column;gap:8px;width:220px;margin-top:10px;}
 
+/* ═══ Regras exclusivas mobile (classe .is-mobile no body) ══ */
+/* Independente da largura — cobre celular em landscape (>760px) */
+.is-mobile #weapon-slots,
+.is-mobile #powerup-slots,
+.is-mobile #active-effects-canvas,
+.is-mobile #hud-bottom { display:none !important; }
+
 /* ═══ Touch hint overlay (mobile) ══════════════════════════ */
 #touch-hint-overlay{
   position:absolute;bottom:80px;left:50%;transform:translateX(-50%);
@@ -1692,7 +1699,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   .arcade-title{margin-bottom:12px;}
   .arcade-title-main{font-size:clamp(15px,5.5vw,26px);}
   .arcade-title-top,.arcade-title-sub{font-size:7px;letter-spacing:3px;}
-  /* HUD mobile: topbar compacta, weapon/powerup slots ocultos (substituídos pelos controles touch) */
+  /* HUD mobile: topbar compacta */
   #hud-topbar{height:44px;padding:0 8px;}
   .hud-player-name{font-size:6px;max-width:80px;}
   .hud-level{font-size:5px;}
@@ -1702,9 +1709,6 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   .hud-pause-btn svg{width:11px;height:11px;}
   .hud-xp-wrap{width:84px;}
   #minimap{width:84px!important;height:50px!important;}
-  #weapon-slots{display:none;}
-  #powerup-slots{display:none;}
-  #active-effects-canvas{display:none;}
   #hud-bottom{display:none;}
   #kill-feed{top:52px;right:8px;}
   .kf-entry{font-size:7px;padding:2px 6px;}
