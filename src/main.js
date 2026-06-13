@@ -831,6 +831,7 @@ const NEW_MODE_ANNOUNCEMENTS = [
   {
     id: 'playstore_and_modes_v1',
     mode: null,
+    badge: 'EM BREVE',
     title: 'Chegando no seu Smartphone!',
     text: 'Tower Defense Space em breve na Google Play para Android. Novos modos disponiveis agora no navegador: Equipe Online (PvP 3x3) e Tower Defense — dispute a torre central e ganhe a skin exclusiva Stealwing.',
     img: './icons/play-store.svg',
@@ -875,12 +876,20 @@ function maybeShowNewModeAlert(){
   });
   if (!available) return;
   _pendingNewModeId = available.id;
+  document.getElementById('nm-badge').textContent = available.badge || 'NOVO MODO';
   document.getElementById('nm-title').textContent = available.title;
   document.getElementById('nm-text').textContent = available.text;
   const iconEl = document.getElementById('nm-icon');
   if (available.img) {
-    iconEl.innerHTML = `<img src="${available.img}" style="width:52px;height:52px;display:block;" alt=""/>`;
+    iconEl.innerHTML = `<img src="${available.img}" class="nm-icon-img" alt=""/>`;
+    iconEl.style.background = 'none';
+    iconEl.style.border = 'none';
+    iconEl.style.boxShadow = 'none';
   } else {
+    iconEl.innerHTML = '';
+    iconEl.style.background = '';
+    iconEl.style.border = '';
+    iconEl.style.boxShadow = '';
     const needsStroke = !available.icon.includes('fill="');
     iconEl.innerHTML = `<svg viewBox="0 0 24 24" fill="none" ${needsStroke ? 'stroke="currentColor" stroke-width="1.8"' : ''}>${available.icon}</svg>`;
   }
