@@ -383,43 +383,13 @@ class BlackHole {
     ctx.fillText('ESCAPE!', this.x, this.y - this.r*1.9 + 10);
     ctx.shadowBlur  = 0;
 
-    // ── Disco de acreção com espiral de distorção ────────────
-    const rings = [
-      { frac: 2.4, color: '#5522aa', alpha: 0.25, lw: 14 },
-      { frac: 1.9, color: '#7733cc', alpha: 0.4,  lw: 10 },
-      { frac: 1.5, color: '#9944ee', alpha: 0.5,  lw: 7  },
-      { frac: 1.25,color: '#cc55ff', alpha: 0.6,  lw: 5  },
-      { frac: 1.05,color: '#ff88ff', alpha: 0.7,  lw: 3  },
-    ];
-    for (const ring of rings) {
-      ctx.globalAlpha = ring.alpha;
-      ctx.strokeStyle = ring.color;
-      ctx.lineWidth   = ring.lw * pulse;
-      ctx.shadowColor = '#8844ff'; ctx.shadowBlur = ring.lw * 2;
-      ctx.beginPath(); ctx.arc(this.x, this.y, this.r * ring.frac * pulse, 0, Math.PI*2); ctx.stroke();
-      ctx.shadowBlur = 0;
-    }
-
-    // ── Linhas de distorção giratórias ───────────────────────
-    ctx.globalAlpha = 0.3;
-    ctx.strokeStyle = '#cc88ff';
-    ctx.lineWidth   = 1;
-    const distLines = 16;
-    for (let i = 0; i < distLines; i++) {
-      const a  = (i / distLines) * Math.PI * 2 + this._age * 0.6;
-      const r1 = this.r * 1.1;
-      const r2 = this.r * 2.3;
-      // Curva ligeiramente arqueada em direção ao centro
-      const cp = this.r * 1.7;
-      const cpa = a + 0.25;
-      ctx.beginPath();
-      ctx.moveTo(this.x + Math.cos(a)*r1,  this.y + Math.sin(a)*r1);
-      ctx.quadraticCurveTo(
-        this.x + Math.cos(cpa)*cp, this.y + Math.sin(cpa)*cp,
-        this.x + Math.cos(a+0.5)*r2, this.y + Math.sin(a+0.5)*r2
-      );
-      ctx.stroke();
-    }
+    // ── Anel de horizonte de eventos (compacto) ──────────────
+    ctx.globalAlpha = 0.5;
+    ctx.strokeStyle = '#9944ee';
+    ctx.lineWidth   = 3 * pulse;
+    ctx.shadowColor = '#8844ff'; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.r * 1.1 * pulse, 0, Math.PI*2); ctx.stroke();
+    ctx.shadowBlur = 0;
 
     // ── Núcleo — buraco absolutamente preto ──────────────────
     ctx.globalAlpha = 1;
