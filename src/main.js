@@ -1173,7 +1173,204 @@ function _isCopaModeActive() { return Date.now() < COPA_END_TS; }
 
 // Estado compartilhado da animação de fundo (deve vir antes de resizeLoginBg)
 const _loginBgState = { copaShips: null, ships: null, stars: null, starsW: 0,
-  trophyImg: null, trophyLoaded: false, trophyFailed: false };
+  trophyImg: null, trophyLoaded: false, trophyFailed: false,
+  bannerShips: null };
+
+// ── Banner Play Store — duas naves arrastando bandeira pelo espaço ─────────
+function _initBannerShips(W, H) {
+  // Usa duas skins aleatórias diferentes
+  const skinA = SKINS[Math.floor(Math.random() * SKINS.length)];
+  let skinB = SKINS[Math.floor(Math.random() * SKINS.length)];
+  if (SKINS.length > 1) while (skinB === skinA) skinB = SKINS[Math.floor(Math.random() * SKINS.length)];
+  const y = H * (0.14 + Math.random() * 0.18); // terço superior
+  const speed = 62 + Math.random() * 28; // px/s
+  return {
+    // nave da frente (puxando)
+    x: -320, y,
+    skinA, skinB,
+    speed,
+    bobPhA: Math.random() * Math.PI * 2,
+    bobPhB: Math.random() * Math.PI * 2,
+    done: false,
+    // partículas de propulsão
+    thrustA: [], thrustB: [],
+    // segmentos da bandeira (física de corda)
+    SEGS: 22,
+    pts: null, // inicializado no 1o frame
+  };
+}
+
+function _drawBannerShip(ctx, skin, x, y, dir, sz, depth) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(dir > 0 ? Math.PI / 2 : -Math.PI / 2);
+  ctx.shadowColor = skin.color || '#9b5cff';
+  ctx.shadowBlur = 18 * depth;
+  ctx.globalAlpha = 0.92 * depth;
+  skin.drawPreview(ctx, (sz * 2) / skin._size);
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+function _drawBannerFlag(ctx, pts, t) {
+  if (!pts || pts.length < 2) return;
+  const N = pts.length;
+  // Sombra/glow da bandeira
+  ctx.save();
+  ctx.shadowColor = '#9b5cff';
+  ctx.shadowBlur = 12;
+  // Faixa superior da bandeira
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y - 14);
+  for (let i = 1; i < N; i++) ctx.lineTo(pts[i].x, pts[i].y - 14);
+  for (let i = N - 1; i >= 0; i--) ctx.lineTo(pts[i].x, pts[i].y + 14);
+  ctx.closePath();
+  // gradiente ao longo da bandeira
+  const grd = ctx.createLinearGradient(pts[0].x, 0, pts[N-1].x, 0);
+  grd.addColorStop(0,   'rgba(30,10,60,0.92)');
+  grd.addColorStop(0.15,'rgba(50,15,100,0.88)');
+  grd.addColorStop(0.85,'rgba(40,12,80,0.82)');
+  grd.addColorStop(1,   'rgba(15,5,35,0.6)');
+  ctx.fillStyle = grd;
+  ctx.fill();
+  // Borda superior e inferior com glow violeta
+  ctx.strokeStyle = '#9b5cff';
+  ctx.lineWidth = 1.4;
+  ctx.globalAlpha = 0.7;
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y - 14);
+  for (let i = 1; i < N; i++) ctx.lineTo(pts[i].x, pts[i].y - 14);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y + 14);
+  for (let i = 1; i < N; i++) ctx.lineTo(pts[i].x, pts[i].y + 14);
+  ctx.stroke();
+  // Fio de conexão (mais fino)
+  ctx.strokeStyle = '#ff8c00';
+  ctx.lineWidth = 0.8;
+  ctx.globalAlpha = 0.5;
+  ctx.setLineDash([4, 5]);
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < N; i++) ctx.lineTo(pts[i].x, pts[i].y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+  ctx.restore();
+  // Texto dentro da bandeira — posiciona no centro dos segmentos visíveis
+  const midIdx = Math.floor(N * 0.42);
+  const tx = pts[midIdx].x, ty = pts[midIdx].y;
+  ctx.save();
+  ctx.globalAlpha = 0.92;
+  // Ícone Play Store (triângulo) pequeno
+  ctx.fillStyle = '#34A853';
+  ctx.shadowColor = '#34A853'; ctx.shadowBlur = 8;
+  ctx.beginPath(); ctx.moveTo(tx - 74, ty - 5); ctx.lineTo(tx - 74, ty + 5); ctx.lineTo(tx - 66, ty); ctx.closePath(); ctx.fill();
+  // Texto principal
+  ctx.font = 'bold 11px "Press Start 2P", monospace';
+  ctx.fillStyle = '#ff8c00';
+  ctx.shadowColor = '#ff8c00'; ctx.shadowBlur = 10;
+  ctx.textAlign = 'center';
+  ctx.fillText('PLAY STORE', tx + 4, ty - 2);
+  ctx.font = '7px "Press Start 2P", monospace';
+  ctx.fillStyle = '#c9a4ff';
+  ctx.shadowColor = '#9b5cff'; ctx.shadowBlur = 6;
+  ctx.fillText('EM BREVE', tx + 4, ty + 9);
+  ctx.restore();
+  ctx.globalAlpha = 1;
+}
+
+function _tickBannerShips(ctx, W, H, dt, t) {
+  const bs = _loginBgState.bannerShips;
+  if (!bs) return;
+  bs.x += bs.speed * dt;
+
+  // bob vertical individual por nave (suave, espacial)
+  const yA = bs.y + Math.sin(t * 1.1 + bs.bobPhA) * 7;
+  const yB = bs.y + Math.sin(t * 1.1 + bs.bobPhB) * 7;
+  const sz = 18;
+  const GAP = 52; // distância entre naves (em X)
+  const xA = bs.x;
+  const xB = bs.x + GAP;
+
+  // Ancoragem da corda: saem da traseira das naves (esquerda)
+  const ropeAnchorX = xA - sz * 1.2;
+  const ropeAnchorY = yA;
+
+  // Inicializa pontos da corda se necessário
+  if (!bs.pts) {
+    bs.pts = Array.from({ length: bs.SEGS }, (_, i) => ({
+      x: ropeAnchorX - i * 14, y: ropeAnchorY,
+      vx: 0, vy: 0,
+    }));
+  }
+
+  // Física verlet simples: segmentos ligados, ponta livre ondula
+  const segLen = 13;
+  // Fixa o 1o ponto na traseira da nave
+  bs.pts[0].x = ropeAnchorX;
+  bs.pts[0].y = ropeAnchorY;
+  // Aplica vento espacial + turbulência nos demais
+  for (let i = 1; i < bs.SEGS; i++) {
+    const wave = Math.sin(t * 2.8 + i * 0.55) * 1.4 + Math.sin(t * 4.1 + i * 0.9) * 0.7;
+    bs.pts[i].vy += wave * dt * 18;
+    bs.pts[i].vx += -bs.speed * 0.012 * dt; // arrasto leve pra trás
+    bs.pts[i].vy *= 0.88;
+    bs.pts[i].vx *= 0.94;
+    bs.pts[i].x += bs.pts[i].vx;
+    bs.pts[i].y += bs.pts[i].vy;
+  }
+  // Restrição de distância entre segmentos (2x para estabilidade)
+  for (let iter = 0; iter < 2; iter++) {
+    bs.pts[0].x = ropeAnchorX; bs.pts[0].y = ropeAnchorY;
+    for (let i = 1; i < bs.SEGS; i++) {
+      const dx = bs.pts[i].x - bs.pts[i-1].x;
+      const dy = bs.pts[i].y - bs.pts[i-1].y;
+      const d = Math.hypot(dx, dy) || 0.001;
+      const diff = (d - segLen) / d;
+      bs.pts[i].x -= dx * diff * 0.5;
+      bs.pts[i].y -= dy * diff * 0.5;
+      bs.pts[i-1].x += dx * diff * 0.5;
+      bs.pts[i-1].y += dy * diff * 0.5;
+    }
+    bs.pts[0].x = ropeAnchorX; bs.pts[0].y = ropeAnchorY;
+  }
+
+  // Partículas de propulsão (thruster de cada nave)
+  for (let n = 0; n < 2; n++) {
+    const nx = n === 0 ? xA : xB, ny = n === 0 ? yA : yB;
+    const arr = n === 0 ? bs.thrustA : bs.thrustB;
+    const col = n === 0 ? (bs.skinA.color || '#9b5cff') : (bs.skinB.color || '#ff8c00');
+    if (Math.random() < 0.6) arr.push({ x: nx - sz * 1.1, y: ny, vx: -(18+Math.random()*22), vy: (Math.random()-0.5)*10, life: 0.45+Math.random()*0.3, maxLife: 0, r: 2+Math.random()*3, col });
+    for (const p of arr) { p.maxLife = p.maxLife || p.life; p.x += p.vx*dt; p.y += p.vy*dt; p.life -= dt; }
+    for (let i = arr.length - 1; i >= 0; i--) if (arr[i].life <= 0) arr.splice(i, 1);
+    for (const p of arr) {
+      const a = (p.life / p.maxLife);
+      ctx.save(); ctx.globalAlpha = a * 0.75; ctx.fillStyle = p.col;
+      ctx.shadowColor = p.col; ctx.shadowBlur = 8;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r * a, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // Desenha as 2 naves
+  _drawBannerShip(ctx, bs.skinA, xA, yA,  1, sz, 1.0);
+  _drawBannerShip(ctx, bs.skinB, xB, yB,  1, sz, 0.88);
+
+  // Fio de cabo entre as naves (laranja)
+  ctx.save();
+  ctx.strokeStyle = '#ff8c00'; ctx.lineWidth = 1.2; ctx.globalAlpha = 0.55;
+  ctx.shadowColor = '#ff8c00'; ctx.shadowBlur = 6;
+  ctx.setLineDash([3, 4]);
+  ctx.beginPath(); ctx.moveTo(xA - sz * 0.3, yA); ctx.lineTo(xB + sz * 0.3, yB); ctx.stroke();
+  ctx.setLineDash([]); ctx.restore(); ctx.globalAlpha = 1;
+
+  // Bandeira
+  _drawBannerFlag(ctx, bs.pts, t);
+
+  // Sai da tela
+  if (xA > W + 400) bs.done = true;
+}
 
 // ── Fundo arcade animado na tela de login ─────────────────────
 const loginBg=document.getElementById('login-bg-canvas');
@@ -1661,12 +1858,17 @@ function _buildCopaShipPaths(flagCx, flagCy, fw, fh) {
   ];
 }
 
+let _bannerLastSpawn = 0; // controla intervalo entre banners
+let _bannerPrevT = 0;
+
 (function animateLoginBg(){
   try {
     const ctx = loginBg.getContext('2d');
     const W = loginBg.width||window.innerWidth, H = loginBg.height||window.innerHeight;
     if (W<2||H<2) { requestAnimationFrame(animateLoginBg); return; }
     const t = Date.now()/1000;
+    const dt = Math.min(t - (_bannerPrevT || t), 0.05);
+    _bannerPrevT = t;
 
     // ── Fundo ──────────────────────────────────────────────────
     ctx.fillStyle='#020508'; ctx.fillRect(0,0,W,H);
@@ -1732,6 +1934,22 @@ function _buildCopaShipPaths(flagCx, flagCy, fw, fh) {
       s.skin.drawPreview(ctx,(sz*2)/s.skin._size);
       ctx.restore(); ctx.globalAlpha=1;
       if((s.dir>0&&s.x>W+90)||(s.dir<0&&s.x<-90)) ships.splice(i,1);
+    }
+
+    // ── Banner Play Store: duas naves + bandeira ──────────────
+    if (SKINS.length) {
+      // Spawn: aparece ~12s após carregar, e depois a cada ~38s
+      if (!_loginBgState.bannerShips && t - _bannerLastSpawn > 12) {
+        _loginBgState.bannerShips = _initBannerShips(W, H);
+        _bannerLastSpawn = t;
+      }
+      if (_loginBgState.bannerShips) {
+        _tickBannerShips(ctx, W, H, dt, t);
+        if (_loginBgState.bannerShips.done) {
+          _loginBgState.bannerShips = null;
+          _bannerLastSpawn = t; // reseta contagem para próximo ciclo
+        }
+      }
     }
 
     // Scanlines
