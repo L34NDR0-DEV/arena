@@ -306,95 +306,119 @@
   </div>
 </div>
 
-<!-- ═══ Controles touch (mobile) ═══════════════════════════════ -->
+<!-- ═══ Controles touch (mobile) — novo layout ═══════════════ -->
 <div id="touch-controls">
-  <div class="touch-stick-zone" id="touch-stick-zone">
-    <span class="touch-stick-arrow touch-stick-arrow-up"></span>
-    <span class="touch-stick-arrow touch-stick-arrow-right"></span>
-    <span class="touch-stick-arrow touch-stick-arrow-down"></span>
-    <span class="touch-stick-arrow touch-stick-arrow-left"></span>
-    <div class="touch-stick-core"></div>
-    <div class="touch-stick-knob" id="touch-stick-knob"></div>
-  </div>
-  <div class="touch-actions">
-    <div class="touch-btn touch-btn-pause" id="touch-btn-pause" title="Pausar / Sair">
-      <svg viewBox="0 0 12 12" fill="currentColor" stroke="none"><rect x="3" y="2.5" width="2" height="7" rx=".5"/><rect x="7" y="2.5" width="2" height="7" rx=".5"/></svg>
+  <!-- Joystick esquerdo -->
+  <div class="tc-joystick-wrap">
+    <div class="touch-stick-zone" id="touch-stick-zone">
+      <div class="tsk-ring tsk-ring-outer"></div>
+      <div class="tsk-ring tsk-ring-inner"></div>
+      <div class="touch-stick-knob" id="touch-stick-knob"></div>
     </div>
-    <div class="touch-btn touch-btn-fire" id="touch-btn-fire" title="Atirar"><span class="touch-btn-core"><span class="touch-icon-fire"></span></span></div>
-    <div class="touch-btn touch-btn-dash" id="touch-btn-dash" title="Dash"><span class="touch-btn-core"><span class="touch-icon-dash"></span></span></div>
   </div>
-  <div class="touch-slots">
-    <div class="touch-slot" data-slot="1"><canvas class="touch-slot-icon" width="32" height="32"></canvas><span>1</span></div>
-    <div class="touch-slot" data-slot="2"><canvas class="touch-slot-icon" width="32" height="32"></canvas><span>2</span></div>
-    <div class="touch-slot" data-slot="3"><canvas class="touch-slot-icon" width="32" height="32"></canvas><span>3</span></div>
-    <div class="touch-slot" data-slot="4"><canvas class="touch-slot-icon" width="32" height="32"></canvas><span>4</span></div>
-    <div class="touch-slot" data-slot="5"><canvas class="touch-slot-icon" width="32" height="32"></canvas><span>5</span></div>
-    <div class="touch-slot" data-slot="x"><canvas class="touch-slot-icon" width="32" height="32"></canvas><span>X</span></div>
+
+  <!-- Barra inferior central: slots de item -->
+  <div class="tc-item-bar">
+    <div class="touch-slot" data-slot="1"><canvas class="touch-slot-icon" width="36" height="36"></canvas><span class="ts-label">1</span></div>
+    <div class="touch-slot" data-slot="2"><canvas class="touch-slot-icon" width="36" height="36"></canvas><span class="ts-label">2</span></div>
+    <div class="touch-slot" data-slot="3"><canvas class="touch-slot-icon" width="36" height="36"></canvas><span class="ts-label">3</span></div>
+    <div class="touch-slot" data-slot="4"><canvas class="touch-slot-icon" width="36" height="36"></canvas><span class="ts-label">4</span></div>
+    <div class="touch-slot" data-slot="5"><canvas class="touch-slot-icon" width="36" height="36"></canvas><span class="ts-label">5</span></div>
+    <div class="touch-slot touch-slot-x" data-slot="x"><canvas class="touch-slot-icon" width="36" height="36"></canvas><span class="ts-label">X</span></div>
+  </div>
+
+  <!-- Botão de arma atual (centro-baixo, entre itens e botões direita) -->
+  <div class="tc-weapon-switcher" id="tc-weapon-switcher">
+    <canvas class="tc-weapon-icon" id="tc-weapon-icon" width="40" height="40"></canvas>
+    <span class="tc-weapon-name" id="tc-weapon-name">SEM ARMA</span>
+    <div class="tc-weapon-arrows">
+      <span class="tc-warrow tc-warrow-l" id="tc-warrow-l">&#8249;</span>
+      <span class="tc-warrow tc-warrow-r" id="tc-warrow-r">&#8250;</span>
+    </div>
+  </div>
+
+  <!-- Botões direita: FIRE + DASH empilhados -->
+  <div class="tc-right-btns">
+    <div class="tc-btn tc-btn-fire" id="touch-btn-fire">
+      <span class="tc-btn-inner">
+        <span class="tc-icon-fire"></span>
+      </span>
+      <span class="tc-btn-label">FOGO</span>
+    </div>
+    <div class="tc-btn tc-btn-dash" id="touch-btn-dash">
+      <span class="tc-btn-inner">
+        <span class="tc-icon-dash"></span>
+      </span>
+      <span class="tc-btn-label">DASH</span>
+    </div>
   </div>
 </div>
 
 <!-- ═══ HUD ════════════════════════════════════════════════ -->
 <div id="hud">
-  <!-- Esquerdo: nome + XP -->
-  <div id="hud-left">
-    <span class="hud-player-name" id="hud-pname">JOGADOR</span>
-    <div class="bar-row">
-      <svg class="bar-icon" viewBox="0 0 12 12" fill="#cc44ff"><polygon points="6,1 7.5,4.5 11,5 8.5,7.5 9.2,11 6,9.2 2.8,11 3.5,7.5 1,5 4.5,4.5"/></svg>
-      <div class="bar-bg"><div class="bar-fill" id="xp-fill" style="width:0%"></div></div>
-      <span class="hud-level" id="player-level">NV.1</span>
-    </div>
-    <!-- IDs mantidos para compatibilidade mas não exibidos -->
-    <span id="hp-fill" style="display:none"></span>
-    <span id="shield-fill" style="display:none"></span>
-    <span id="mana-fill" style="display:none"></span>
-  </div>
-
-  <!-- Centro: placar -->
-  <div id="hud-center">
-    <div class="score-row">
-      <div class="score-box">
-        <span class="score-label">VOCÊ</span>
-        <span class="score-val" id="score-player">0</span>
+  <!-- Topo: barra única esticada -->
+  <div id="hud-topbar">
+    <!-- Esquerda: pause + nome + level -->
+    <div id="hud-topbar-left">
+      <button class="hud-pause-btn" id="touch-btn-pause" onclick="togglePause()">
+        <svg viewBox="0 0 12 12" fill="currentColor"><rect x="2" y="2" width="3" height="8" rx=".6"/><rect x="7" y="2" width="3" height="8" rx=".6"/></svg>
+      </button>
+      <div class="hud-identity">
+        <span class="hud-player-name" id="hud-pname">JOGADOR</span>
+        <span class="hud-level" id="player-level">NV.1</span>
       </div>
-      <span class="score-sep">vs</span>
-      <div class="score-box">
-        <span class="score-label">INIMIGO</span>
+    </div>
+
+    <!-- Centro: placar + timer -->
+    <div id="hud-center">
+      <div class="score-row">
+        <span class="score-val" id="score-player">0</span>
+        <span class="score-sep">VS</span>
         <span class="score-val enemy" id="score-enemy">0</span>
       </div>
+      <div id="timer"></div>
+      <div id="team-kill-counter" style="display:none;">
+        <b id="tkc-red">0</b><em>vs</em><b id="tkc-blue">0</b>
+      </div>
     </div>
-    <div id="timer"></div>
+
+    <!-- Direita: XP bar + minimap -->
+    <div id="hud-topbar-right">
+      <div class="hud-xp-wrap">
+        <div class="bar-bg"><div class="bar-fill" id="xp-fill" style="width:0%"></div></div>
+      </div>
+      <canvas id="minimap" width="110" height="62"></canvas>
+    </div>
   </div>
 
-  <!-- Direito: slots de arma + inventário de itens -->
-  <div id="hud-right">
-    <div id="team-kill-counter" style="display:none;">
-      <span class="tkc-label">ABATES</span>
-      <span class="tkc-score"><b id="tkc-red">0</b><em>vs</em><b id="tkc-blue">0</b></span>
-    </div>
-    <!-- Slots de arma permanentes (R T Y U I + extra L) -->
-    <div id="weapon-slots">
-      <div class="ws-slot" id="ws0"><canvas class="ws-icon" width="32" height="32"></canvas><span class="ws-key">R</span></div>
-      <div class="ws-slot" id="ws1"><canvas class="ws-icon" width="32" height="32"></canvas><span class="ws-key">T</span></div>
-      <div class="ws-slot" id="ws2"><canvas class="ws-icon" width="32" height="32"></canvas><span class="ws-key">Y</span></div>
-      <div class="ws-slot" id="ws3"><canvas class="ws-icon" width="32" height="32"></canvas><span class="ws-key">U</span></div>
-      <div class="ws-slot" id="ws4"><canvas class="ws-icon" width="32" height="32"></canvas><span class="ws-key">I</span></div>
-      <div class="ws-slot ws-extra" id="ws-extra"><canvas class="ws-icon" width="32" height="32"></canvas><span class="ws-key ws-key-l">L</span><span class="ws-drop-hint">G=jogar fora</span></div>
-    </div>
-    <!-- Inventário de itens usáveis -->
-    <div id="powerup-slots">
-      <div class="pu-slot" id="pu0"><canvas class="pu-icon" width="28" height="28"></canvas><span class="pu-key">1</span></div>
-      <div class="pu-slot" id="pu1"><canvas class="pu-icon" width="28" height="28"></canvas><span class="pu-key">2</span></div>
-      <div class="pu-slot" id="pu2"><canvas class="pu-icon" width="28" height="28"></canvas><span class="pu-key">3</span></div>
-      <div class="pu-slot" id="pu3"><canvas class="pu-icon" width="28" height="28"></canvas><span class="pu-key">4</span></div>
-      <div class="pu-slot" id="pu4"><canvas class="pu-icon" width="28" height="28"></canvas><span class="pu-key">5</span></div>
-      <div class="pu-slot pu-extra hidden-slot" id="pu-extra"><canvas class="pu-icon" width="28" height="28"></canvas><span class="pu-key pu-key-x">X</span></div>
-    </div>
-    <canvas id="active-effects-canvas" width="276" height="28"></canvas>
+  <!-- Slots de arma (desktop, ficam no canto direito abaixo da topbar) -->
+  <div id="weapon-slots">
+    <div class="ws-slot" id="ws0"><canvas class="ws-icon" width="32" height="32"></canvas><span class="ws-key">R</span></div>
+    <div class="ws-slot" id="ws1"><canvas class="ws-icon" width="32" height="32"></canvas><span class="ws-key">T</span></div>
+    <div class="ws-slot" id="ws2"><canvas class="ws-icon" width="32" height="32"></canvas><span class="ws-key">Y</span></div>
+    <div class="ws-slot" id="ws3"><canvas class="ws-icon" width="32" height="32"></canvas><span class="ws-key">U</span></div>
+    <div class="ws-slot" id="ws4"><canvas class="ws-icon" width="32" height="32"></canvas><span class="ws-key">I</span></div>
+    <div class="ws-slot ws-extra" id="ws-extra"><canvas class="ws-icon" width="32" height="32"></canvas><span class="ws-key ws-key-l">L</span><span class="ws-drop-hint">G=jogar fora</span></div>
   </div>
+
+  <!-- Slots de item usável (desktop, canto direito) -->
+  <div id="powerup-slots">
+    <div class="pu-slot" id="pu0"><canvas class="pu-icon" width="28" height="28"></canvas><span class="pu-key">1</span></div>
+    <div class="pu-slot" id="pu1"><canvas class="pu-icon" width="28" height="28"></canvas><span class="pu-key">2</span></div>
+    <div class="pu-slot" id="pu2"><canvas class="pu-icon" width="28" height="28"></canvas><span class="pu-key">3</span></div>
+    <div class="pu-slot" id="pu3"><canvas class="pu-icon" width="28" height="28"></canvas><span class="pu-key">4</span></div>
+    <div class="pu-slot" id="pu4"><canvas class="pu-icon" width="28" height="28"></canvas><span class="pu-key">5</span></div>
+    <div class="pu-slot pu-extra hidden-slot" id="pu-extra"><canvas class="pu-icon" width="28" height="28"></canvas><span class="pu-key pu-key-x">X</span></div>
+  </div>
+  <canvas id="active-effects-canvas" width="276" height="28"></canvas>
+
+  <!-- IDs de barras mantidos ocultos para compatibilidade com game.js -->
+  <span id="hp-fill" style="display:none"></span>
+  <span id="shield-fill" style="display:none"></span>
+  <span id="mana-fill" style="display:none"></span>
 
   <div id="kill-feed"></div>
   <div id="notify"></div>
-  <canvas id="minimap" width="124" height="74"></canvas>
   <div id="hud-bottom">
     <span class="hint"><kbd>SEGURAR DIR</kbd> Mover</span>
     <span class="hint"><kbd>ESPAÇO</kbd> Atirar</span>
@@ -412,7 +436,7 @@
     <svg viewBox="0 0 20 20" fill="currentColor"><rect x="4" y="3" width="4" height="14" rx="1"/><rect x="12" y="3" width="4" height="14" rx="1"/></svg>
     PAUSADO
   </div>
-  <div class="pause-game-name">TOWER DEFENSE<br>ON THE SPACE</div>
+  <div class="pause-game-name">TOWER DEFENSE<br>SPACE</div>
   <div class="pause-btns">
     <button class="btn btn-primary" onclick="resumeGame()"><svg viewBox="0 0 12 12" fill="currentColor"><polygon points="1,0 12,6 1,12"/></svg>CONTINUAR</button>
     <button class="btn btn-ghost" id="pause-mute-btn" onclick="pauseToggleMute()">
