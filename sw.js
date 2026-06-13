@@ -56,7 +56,7 @@ self.addEventListener('fetch', evt => {
       caches.match(evt.request).then(cached => {
         if (cached) return cached;
         return fetch(evt.request).then(res => {
-          if (res.ok) {
+          if (res.ok && res.status !== 206) {
             const clone = res.clone();
             caches.open(CACHE_STATIC).then(c => c.put(evt.request, clone));
           }
@@ -70,7 +70,7 @@ self.addEventListener('fetch', evt => {
   // JS, HTML, CSS: network-first — garante que o jogo está sempre atualizado
   evt.respondWith(
     fetch(evt.request).then(res => {
-      if (res.ok && evt.request.method === 'GET') {
+      if (res.ok && res.status !== 206 && evt.request.method === 'GET') {
         const clone = res.clone();
         caches.open(CACHE_NAME).then(c => c.put(evt.request, clone));
       }
