@@ -1181,6 +1181,7 @@ const _loginBgState = { copaShips: null, ships: null, stars: null, starsW: 0,
 // A bandeira é a imagem bandeira.png deformada por física de tecido (verlet)
 
 const _bannerImg = new Image();
+_bannerImg.crossOrigin = 'anonymous';
 _bannerImg.src = './icons/bandeira.png';
 
 function _pickUniqueSkins(n) {
@@ -1256,50 +1257,44 @@ function _drawFlagPNG(ctx, bs, t) {
 
   const { shipX, dir, y, BW, BH, cols, offY } = bs;
   const iw = img.naturalWidth, ih = img.naturalHeight;
-
-  // X da borda esquerda da bandeira na tela
-  // dir=1: bandeira à direita da nave (a nave puxa pela frente)
-  //        borda esquerda = anchorX (traseira da nave + cabo)
-  // dir=-1: bandeira à esquerda da nave
   const sz = 22;
-  const anchorX = dir > 0 ? shipX + sz * 1.4 : shipX - sz * 1.4 - BW;
+
+  // X onde começa a borda esquerda da bandeira
+  // dir=1: nave vai para direita, bandeira fica à direita puxada pela frente da nave
+  // dir=-1: nave vai para esquerda, bandeira fica à esquerda
+  const flagLeft = dir > 0 ? shipX + sz * 1.4 : shipX - sz * 1.4 - BW;
+
+  const sliceW = BW / cols;   // largura de cada fatia na tela
+  const srcW   = iw / cols;   // largura de cada fatia no PNG
+  const scaleY = BH / ih;     // escala vertical fixa
 
   ctx.save();
-  ctx.shadowColor = '#9b5cff'; ctx.shadowBlur = 18;
-
-  const sliceW = BW / cols;       // largura de cada fatia na tela
-  const srcW   = iw / cols;       // largura de cada fatia no PNG
+  ctx.shadowColor = '#9b5cff';
+  ctx.shadowBlur  = 16;
 
   for (let c = 0; c < cols; c++) {
-    const x0 = anchorX + c * sliceW;
+    const x0  = flagLeft + c * sliceW;
     const dy0 = offY[c];
     const dy1 = offY[c + 1];
-    const srcX = c * srcW;
-
-    // Desenha a fatia c: quadrilátero com topo/base inclinados
-    // Usamos clip + transform para mapear a fatia PNG no trapézio de tela
-    const topY0 = y - BH / 2 + dy0;
-    const botY0 = y + BH / 2 + dy0;
-    const topY1 = y - BH / 2 + dy1;
-    const botY1 = y + BH / 2 + dy1;
+    const topY0 = y - BH/2 + dy0, botY0 = y + BH/2 + dy0;
+    const topY1 = y - BH/2 + dy1, botY1 = y + BH/2 + dy1;
+    const srcX  = c * srcW;
 
     ctx.save();
     // Clip no trapézio desta fatia
     ctx.beginPath();
-    ctx.moveTo(x0,        topY0);
-    ctx.lineTo(x0+sliceW, topY1);
-    ctx.lineTo(x0+sliceW, botY1);
-    ctx.lineTo(x0,        botY0);
+    ctx.moveTo(x0,         topY0);
+    ctx.lineTo(x0+sliceW,  topY1);
+    ctx.lineTo(x0+sliceW,  botY1);
+    ctx.lineTo(x0,         botY0);
     ctx.closePath();
     ctx.clip();
 
-    // Transformação: escala a fatia do PNG (srcX..srcX+srcW, 0..ih) → trapézio
-    // Aproximação: como o trapézio é estreito, usamos shear vertical médio
-    const shear = (dy1 - dy0) / sliceW; // inclinação da coluna
-    const midDy = (dy0 + dy1) / 2;
+    // Escala + posiciona a fatia: recorta só srcX..srcX+srcW do PNG
     const scaleX = sliceW / srcW;
-    const scaleY = BH / ih;
-    ctx.transform(scaleX, shear * scaleY, 0, scaleY, x0 - srcX * scaleX, y - BH/2 + midDy);
+    const midDy  = (dy0 + dy1) / 2;
+    ctx.translate(x0 - srcX * scaleX, y - BH/2 + midDy);
+    ctx.scale(scaleX, scaleY);
     ctx.drawImage(img, 0, 0);
     ctx.restore();
   }
