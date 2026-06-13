@@ -17,7 +17,7 @@
 *::-webkit-scrollbar-track{background:#0c0818;border-radius:4px;}
 *::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#4a1a88,var(--accent-violet));border-radius:4px;box-shadow:0 0 6px #9b5cff66;}
 *::-webkit-scrollbar-thumb:hover{background:var(--accent-violet);box-shadow:0 0 10px #9b5cffaa;}
-body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;height:100vh;overflow:hidden;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;height:100vh;overflow:hidden;position:relative;}
 
 /* ═══ TELA INICIAL ARCADE ════════════════════════════════════ */
 #login-screen{
@@ -1448,7 +1448,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   --touch-gold:#ffcc44;
   --touch-shell:#120e18;
   --touch-shell2:#2a1a40;
-  position:absolute;inset:0;display:none;pointer-events:none;z-index:50;
+  position:fixed;inset:0;display:none;pointer-events:none;z-index:200;
 }
 #touch-controls.active{display:block;}
 .touch-stick-zone{
