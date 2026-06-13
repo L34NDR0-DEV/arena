@@ -308,6 +308,23 @@
 
 <!-- ═══ Controles touch (mobile) ═══════════════════════════════ -->
 <div id="touch-controls">
+  <!-- Topbar mobile: HP + pause + nome -->
+  <div id="touch-topbar">
+    <div id="touch-hp-hud">
+      <div class="thp-bar-wrap">
+        <div class="thp-bar-bg"><div class="thp-bar-fill" id="touch-hp-fill"></div></div>
+        <span class="thp-label" id="touch-hp-label">HP</span>
+      </div>
+      <div class="thp-bar-wrap thp-mana">
+        <div class="thp-bar-bg"><div class="thp-bar-fill thp-mana-fill" id="touch-mana-fill"></div></div>
+        <span class="thp-label" id="touch-mana-label">MP</span>
+      </div>
+    </div>
+    <div class="touch-btn touch-btn-pause" id="touch-btn-pause" title="Pausar">
+      <svg viewBox="0 0 12 12" fill="currentColor" stroke="none"><rect x="3" y="2.5" width="2" height="7" rx=".5"/><rect x="7" y="2.5" width="2" height="7" rx=".5"/></svg>
+    </div>
+  </div>
+  <!-- Joystick -->
   <div class="touch-stick-zone" id="touch-stick-zone">
     <span class="touch-stick-arrow touch-stick-arrow-up"></span>
     <span class="touch-stick-arrow touch-stick-arrow-right"></span>
@@ -316,13 +333,12 @@
     <div class="touch-stick-core"></div>
     <div class="touch-stick-knob" id="touch-stick-knob"></div>
   </div>
+  <!-- Botões direita -->
   <div class="touch-actions">
-    <div class="touch-btn touch-btn-pause" id="touch-btn-pause" title="Pausar / Sair">
-      <svg viewBox="0 0 12 12" fill="currentColor" stroke="none"><rect x="3" y="2.5" width="2" height="7" rx=".5"/><rect x="7" y="2.5" width="2" height="7" rx=".5"/></svg>
-    </div>
     <div class="touch-btn touch-btn-fire" id="touch-btn-fire" title="Atirar"><span class="touch-btn-core"><span class="touch-icon-fire"></span></span></div>
     <div class="touch-btn touch-btn-dash" id="touch-btn-dash" title="Dash"><span class="touch-btn-core"><span class="touch-icon-dash"></span></span></div>
   </div>
+  <!-- Slots de item -->
   <div class="touch-slots">
     <div class="touch-slot" data-slot="1"><canvas class="touch-slot-icon" width="32" height="32"></canvas><span>1</span></div>
     <div class="touch-slot" data-slot="2"><canvas class="touch-slot-icon" width="32" height="32"></canvas><span>2</span></div>

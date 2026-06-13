@@ -1500,7 +1500,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .touch-actions{
   position:absolute;
   right:calc(16px + env(safe-area-inset-right));
-  bottom:calc(136px + env(safe-area-inset-bottom));
+  bottom:calc(80px + env(safe-area-inset-bottom));
   display:flex;flex-direction:column;align-items:flex-end;gap:12px;pointer-events:none;
 }
 .touch-btn{
@@ -1547,13 +1547,27 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
   clip-path:polygon(0 40%,52% 40%,42% 6%,100% 50%,42% 94%,52% 60%,0 60%);
   filter:drop-shadow(0 0 8px var(--accent));
 }
+/* ── Topbar mobile (pause centro + HP) ── */
+#touch-topbar{
+  position:absolute;top:0;left:0;right:0;
+  height:44px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 10px;gap:8px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(2,4,12,.72) 0%,transparent 100%);
+}
+#touch-hp-hud{
+  flex:1;display:flex;flex-direction:column;gap:4px;pointer-events:none;
+}
+.thp-bar-wrap{display:flex;align-items:center;gap:5px;}
+.thp-bar-bg{flex:1;height:7px;border-radius:4px;background:rgba(10,6,20,.7);overflow:hidden;border:1px solid rgba(255,255,255,.08);}
+.thp-bar-fill{height:100%;border-radius:4px;width:100%;background:#00e060;box-shadow:0 0 6px #00e06088;transition:width .1s linear;}
+.thp-mana .thp-bar-fill{background:#4488ff;box-shadow:0 0 6px #4488ff88;}
+.thp-label{font-size:8px;color:rgba(220,200,255,.7);font-family:'Press Start 2P',monospace;min-width:22px;text-align:right;}
 .touch-btn-pause{
   --accent:var(--touch-violet);
-  position:relative;top:auto;left:auto;transform:none;
-  width:44px;height:44px;z-index:60;pointer-events:auto;
-  align-self:flex-end;margin-right:3px;
+  position:relative;flex-shrink:0;
+  width:40px;height:40px;z-index:60;pointer-events:auto;
 }
-.touch-btn-pause svg{width:15px;height:15px;z-index:2;filter:drop-shadow(0 0 6px var(--touch-violet));}
+.touch-btn-pause svg{width:14px;height:14px;z-index:2;filter:drop-shadow(0 0 6px var(--touch-violet));}
 .touch-btn-pause:active,.touch-btn-pause.pressed{transform:scale(.93);filter:brightness(1.18);}
 .touch-slots{
   position:absolute;left:50%;bottom:calc(12px + env(safe-area-inset-bottom));

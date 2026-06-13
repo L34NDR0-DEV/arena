@@ -1504,12 +1504,14 @@ export class Player {
       ctx.restore();
     }
 
-    // ── Nome acima das barras ─────────────────────────────────
-    ctx.fillStyle = '#8ab0cc';
-    ctx.font = 'bold 9px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText(this.name, this.x, yHp - bh - 2);
+    // ── Nome acima das barras (só desktop — mobile tem topbar) ───
+    if (!window._isMobile) {
+      ctx.fillStyle = '#8ab0cc';
+      ctx.font = 'bold 9px monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(this.name, this.x, yHp - bh - 2);
+    }
   }
 
   // ── Modo Cards of Defense ─────────────────────────────────────────
