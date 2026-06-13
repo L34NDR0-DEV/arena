@@ -12,6 +12,7 @@ import { PortalManager, setPortalCooldown }       from './portals.js';
 import { RechargeManager }                       from './recharge.js';
 import { CardDefenseManager }                    from './enemies.js';
 import * as SkinsModule                          from './skins.js';
+import { PLATFORM }                              from './platform.js';
 
 const MATCH_DURATION_NORMAL = 900;  // 15 min
 const MATCH_DURATION_ONLINE = 1200; // 20 min
@@ -715,12 +716,52 @@ export class Game {
       worldMouseX: wasdActive ? wasdX : this._mouse.wx,
       worldMouseY: wasdActive ? wasdY : this._mouse.wy,
     };
+    // ── Auto-mira mobile ──────────────────────────────────────
+    if (this._touchActive && PLATFORM.AUTO_AIM_ENABLED) {
+      const aim = this._autoAim();
+      if (aim) { inp.worldMouseX = aim.x; inp.worldMouseY = aim.y; }
+    }
     // Qualquer ação do jogador reseta o timer de inatividade
     if (inp.shooting || inp.holdRight || inp.dash || inp.space || wasdActive || this._touchActive) {
       this._idleTime = 0;
       this._idleWarned = false;
     }
     return inp;
+  }
+
+  // Retorna {x,y} do alvo mais próximo dentro do raio de auto-mira, ou null.
+  // Considera inimigos vivos + jogadores remotos inimigos (modos PvP).
+  _autoAim() {
+    const px = this.player.x, py = this.player.y;
+    const radius = PLATFORM.AUTO_AIM_RADIUS;
+    let best = null, bestDist = radius;
+
+    // Inimigos PvE
+    for (const e of this.enemyMgr.enemies) {
+      if (e.dead || e.invisible) continue;
+      const d = Math.hypot(e.x - px, e.y - py);
+      if (d < bestDist) { bestDist = d; best = e; }
+    }
+
+    // Jogadores remotos (modos PvP — só os do time inimigo)
+    for (const id in this.peers) {
+      const p = this.peers[id];
+      if (!p || p.dead) continue;
+      // Em modos de equipe filtra pelo time oposto
+      if (this.team && p.team === this.team) continue;
+      const d = Math.hypot(p.x - px, p.y - py);
+      if (d < bestDist) { bestDist = d; best = p; }
+    }
+
+    if (!best) return null;
+
+    // Suaviza a mira com lerp para evitar snap instantâneo
+    const snap = PLATFORM.AUTO_AIM_SNAP;
+    const ax = this._autoAimX ?? best.x;
+    const ay = this._autoAimY ?? best.y;
+    this._autoAimX = ax + (best.x - ax) * (1 - snap);
+    this._autoAimY = ay + (best.y - ay) * (1 - snap);
+    return { x: this._autoAimX, y: this._autoAimY };
   }
 
   _updateIdleKick(dt) {
@@ -1377,10 +1418,9 @@ export class Game {
     this.player.draw(ctx);
     this.arena.drawParticles(ctx);
 
-    // Mira espiral (em coords mundo) — oculta no modo touch, já que a mira
-    // segue a direção do movimento (sem ponteiro de mouse para indicar)
-    if (!this.player.dead&&!this.paused&&!this._touchActive) {
-      drawCrosshair(ctx,this._mouse.wx,this._mouse.wy,this.player._age);
+    // Crosshair: visível no desktop; no mobile a mira é automática
+    if (!this.player.dead && !this.paused && PLATFORM.CROSSHAIR_VISIBLE) {
+      drawCrosshair(ctx, this._mouse.wx, this._mouse.wy, this.player._age);
     }
 
     // ── Zona Segura — bolhas por time ──────────────────────────

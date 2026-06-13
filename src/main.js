@@ -5,6 +5,7 @@ import { Game }           from './game.js';
 import { CHANGELOG }      from './changelog.js';
 import { PROFILE_ICON_DEFS, drawProfileIcon } from './profileIcons.js';
 import { startVersionChecker } from './version-check.js';
+import { IS_MOBILE, PLATFORM }   from './platform.js';
 
 let game=null, selectedSkin=0, selectedMode='contra1', paused=false;
 let pilotName='JOGADOR';
@@ -2967,10 +2968,8 @@ const canvas=document.getElementById('game-canvas');
 function resizeCanvas(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;if(game)game.onResize(canvas.width,canvas.height);}
 resizeCanvas(); window.addEventListener('resize',resizeCanvas);
 
-// ── Detecção de dispositivo móvel / orientação / controles touch ──
-const IS_MOBILE = /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent)
-  || (navigator.maxTouchPoints > 0 && window.matchMedia('(pointer:coarse)').matches);
-
+// ── Orientação / controles touch ──
+// IS_MOBILE vem de platform.js (importado no topo)
 const orientationWarning = document.getElementById('orientation-warning');
 const touchControls      = document.getElementById('touch-controls');
 
