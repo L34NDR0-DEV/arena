@@ -353,15 +353,6 @@ class BlackHole {
     const pulse = 0.95 + 0.05 * Math.sin(this._age * 7);
     ctx.save();
 
-    // ── Halo de distorção gravitacional (raio visual reduzido para não poluir a tela) ──
-    const haloR = BLACKHOLE_INFLUENCE * 0.45;
-    const distGrad = ctx.createRadialGradient(this.x, this.y, this.r*0.5, this.x, this.y, haloR);
-    distGrad.addColorStop(0,   '#8844ff18');
-    distGrad.addColorStop(0.5, '#4422aa0a');
-    distGrad.addColorStop(1,   '#00000000');
-    ctx.fillStyle = distGrad;
-    ctx.beginPath(); ctx.arc(this.x, this.y, haloR, 0, Math.PI*2); ctx.fill();
-
     // ── Anéis de aviso (choque pulsante) ────────────────────
     for (const w of this._warnRings) {
       const ringR = Math.max(0.01, w.r);
