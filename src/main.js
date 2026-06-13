@@ -1216,7 +1216,7 @@ function _initBannerShips(W, H) {
   // Cada coluna tem um offset Y que ondula — física de tecido simplificada
   // Nave começa fora da tela; bandeira fica ATRÁS, então nave entra primeiro
   // dir=1: nave entra da esquerda, já visível logo, bandeira aparece chegando atrás
-  const shipX0 = dir > 0 ? -sz - 10 : W + sz + 10;
+  const shipX0 = dir > 0 ? -32 : W + 32;
 
   // offY[c] = deslocamento vertical da coluna c (física 1D por coluna)
   const offY  = new Float32Array(cols + 1).fill(0);
