@@ -1181,7 +1181,7 @@ const _loginBgState = { copaShips: null, ships: null, stars: null, starsW: 0,
 // A bandeira é a imagem bandeira.png deformada por física de tecido (verlet)
 
 const _bannerImg = new Image();
-_bannerImg.src = './src/icons/bandeira.png';
+_bannerImg.src = './icons/bandeira.png';
 
 function _pickUniqueSkins(n) {
   if (!SKINS.length) return [];
