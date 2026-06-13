@@ -21,6 +21,7 @@ export const CHANGELOG = [
       'Voz da buraco negro corrigida: arquivo de áudio com nome errado foi ajustado',
       'Buraco negro não dispara mais a voz de morte padrão junto com sua própria narração',
       'Cache do Service Worker v2.3.5: respostas parciais de áudio (HTTP 206) não são mais armazenadas em cache, evitando erro de reprodução',
+      'Buracos negros: inimigos agora são imunes à morte pelo núcleo — continuam sendo atraídos pela gravidade, mas não recebem dano nem morrem dentro do buraco negro',
     ],
   },
   {

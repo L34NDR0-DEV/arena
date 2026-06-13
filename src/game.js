@@ -1031,20 +1031,10 @@ export class Game {
           if (died) this.combat._triggerPlayerRebuild(this.player, this.mode==='contra1');
         }
       }
-      // Dano dos buracos negros aos inimigos
+      // Buracos negros atraem inimigos mas não causam dano/morte neles
       if (!preStartLock) for (const e of this.enemyMgr.enemies) {
         if (e.dead) continue;
-        const bhe = this.portalMgr.applyBlackHoles(e, dt);
-        if (bhe.destroyed) {
-          e.hp = 0;
-          this.arena.spawnParticles(e.x,e.y,'#8844ff',20,220);
-          this.player.kills++; this.player.score+=e.score; this.player.addXP(e.score);
-          this.hitStop(0.04);
-        } else if (bhe.dmg > 0) {
-          e.hp -= bhe.dmg;
-          this._flash(e);
-          if (e.hp < 0) e.hp = 0;
-        }
+        this.portalMgr.applyBlackHoles(e, dt);
       }
     }
 
